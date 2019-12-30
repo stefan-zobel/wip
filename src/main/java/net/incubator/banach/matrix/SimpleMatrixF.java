@@ -18,7 +18,9 @@ package net.incubator.banach.matrix;
 import java.util.Arrays;
 
 import net.dedekind.blas.Blas;
+import net.dedekind.lapack.Lapack;
 import net.frobenius.TTrans;
+import net.frobenius.lapack.PlainLapack;
 
 /**
  * <b>Note: this is experimental, unfinished and completely untested code!</b>
@@ -100,8 +102,18 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
     @Override
     public MatrixF solve(MatrixF B, MatrixF X) {
         Checks.checkSolve(this, B, X);
+        if (this.isSquareMatrix()) {
+            return lusolve(this, X, B);
+        }
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("not done yet");
+    }
+
+    private static MatrixF lusolve(MatrixF A, MatrixF X, MatrixF B) {
+        X.setInplace(B);
+        PlainLapack.sgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),
+                Math.max(1, A.numRows()), new int[A.numRows()], X.getArrayUnsafe(), Math.max(1, A.numRows()));
+        return X;
     }
 
     @Override
