@@ -155,6 +155,21 @@ final class Checks {
         }
     }
 
+    static void checkSolve(Dimensions A, Dimensions B, Dimensions X) {
+        if (A.numRows() != B.numRows()) {
+            throw new IndexOutOfBoundsException(
+                    "A.numRows() != B.numRows() (" + A.numRows() + " != " + B.numRows() + ")");
+        }
+        if (A.numColumns() != X.numRows()) {
+            throw new IndexOutOfBoundsException(
+                    "A.numColumns() != X.numRows() (" + A.numColumns() + " != " + X.numRows() + ")");
+        }
+        if (X.numColumns() != B.numColumns()) {
+            throw new IndexOutOfBoundsException(
+                    "X.numColumns() != B.numColumns() (" + X.numColumns() + " != " + B.numColumns() + ")");
+        }
+    }
+
     static double[] checkJaggedArrayD(double[][] data) {
         int _rows = data.length;
         int _cols = data[0].length;

@@ -99,6 +99,7 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
 
     @Override
     public MatrixD solve(MatrixD B, MatrixD X) {
+        Checks.checkSolve(this, B, X);
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("not done yet");
     }
