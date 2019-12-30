@@ -148,6 +148,30 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a new zero matrix of same dimension as {@code md}.
+     * 
+     * @param md
+     *            {@code MatrixD} template for the dimensions to use for the new
+     *            matrix
+     * @return new zero matrix of same dimension as {@code md}
+     */
+    public static MatrixD sameDimD(MatrixD md) {
+        return new SimpleMatrixD(md.numRows(), md.numColumns());
+    }
+
+    /**
+     * Create a new zero matrix of same dimension as {@code mf}.
+     * 
+     * @param mf
+     *            {@code MatrixF} template for the dimensions to use for the new
+     *            matrix
+     * @return new zero matrix of same dimension as {@code mf}
+     */
+    public static MatrixF sameDimF(MatrixF mf) {
+        return new SimpleMatrixF(mf.numRows(), mf.numColumns());
+    }
+
     private Matrices() {
         throw new AssertionError();
     }
