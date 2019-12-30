@@ -105,14 +105,36 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         if (this.isSquareMatrix()) {
             return lusolve(this, X, B);
         }
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("not done yet");
+        return qrsolve(this, X, B);
     }
 
     private static MatrixF lusolve(MatrixF A, MatrixF X, MatrixF B) {
         X.setInplace(B);
         PlainLapack.sgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),
                 Math.max(1, A.numRows()), new int[A.numRows()], X.getArrayUnsafe(), Math.max(1, A.numRows()));
+        return X;
+    }
+
+    private static MatrixF qrsolve(MatrixF A, MatrixF X, MatrixF B) {
+        int rhsCount = B.numColumns();
+        int mm = A.numRows();
+        int nn = A.numColumns();
+
+        SimpleMatrixF tmp = new SimpleMatrixF(Math.max(mm, nn), rhsCount);
+        for (int j = 0; j < rhsCount; ++j) {
+            for (int i = 0; i < mm; ++i) {
+                tmp.setUnsafe(i, j, B.getUnsafe(i, j));
+            }
+        }
+
+        PlainLapack.sgels(Lapack.getInstance(), TTrans.NO_TRANS, mm, nn, rhsCount, A.getArrayUnsafe().clone(),
+                Math.max(1, mm), tmp.getArrayUnsafe(), Math.max(1, Math.max(mm, nn)));
+
+        for (int j = 0; j < rhsCount; ++j) {
+            for (int i = 0; i < nn; ++i) {
+                X.setUnsafe(i, j, tmp.getUnsafe(i, j));
+            }
+        }
         return X;
     }
 
