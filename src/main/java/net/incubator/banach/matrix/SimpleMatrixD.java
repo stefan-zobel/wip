@@ -98,6 +98,12 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
     }
 
     @Override
+    public MatrixD solve(MatrixD B, MatrixD X) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("not done yet");
+    }
+
+    @Override
     public MatrixD copy() {
         return new SimpleMatrixD(this); 
     }
