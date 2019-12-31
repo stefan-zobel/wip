@@ -108,6 +108,11 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return qrsolve(this, X, B);
     }
 
+    @Override
+    public SvdD svd(boolean full) {
+        return new SvdD(this, full);
+    }
+
     private static MatrixD lusolve(MatrixD A, MatrixD X, MatrixD B) {
         X.setInplace(B);
         PlainLapack.dgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),

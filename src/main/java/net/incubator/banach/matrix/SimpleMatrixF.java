@@ -108,6 +108,11 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return qrsolve(this, X, B);
     }
 
+    @Override
+    public SvdF svd(boolean full) {
+        return new SvdF(this, full);
+    }
+
     private static MatrixF lusolve(MatrixF A, MatrixF X, MatrixF B) {
         X.setInplace(B);
         PlainLapack.sgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),

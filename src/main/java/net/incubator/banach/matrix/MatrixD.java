@@ -245,6 +245,7 @@ public interface MatrixD extends Dimensions {
 
     /**
      * {@code A = alpha * B}
+     * 
      * @param alpha
      * @param B
      * @return {@code A}
@@ -323,7 +324,19 @@ public interface MatrixD extends Dimensions {
     MatrixD solve(MatrixD B, MatrixD X);
 
     /**
-     * Copy into a jagged array. 
+     * Computes the singular value decomposition of this matrix.
+     * 
+     * @param full
+     *            controls whether the full decomposition should be computed (if
+     *            {@code true}) or the singular values only (if {@code false})
+     * @return the {@link SvdD} of this matrix, either full or the singular
+     *         values only (if {@code full} is set to {@code false})
+     */
+    SvdD svd(boolean full);
+
+    /**
+     * Copy into a jagged array.
+     * 
      * @return this matrix converted to a jagged array
      */
     double[][] toJaggedArray();
