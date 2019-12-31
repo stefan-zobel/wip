@@ -19,26 +19,70 @@ import net.dedekind.lapack.Lapack;
 import net.frobenius.TSvdJob;
 import net.frobenius.lapack.PlainLapack;
 
+/**
+ * Singular value decomposition of a double m-by-n matrix {@code A}.
+ * <p>
+ * The SVD is written
+ * 
+ * <pre>
+ * {@code
+ * A = U * S * transpose(V)
+ * }
+ * </pre>
+ *
+ * where {@code S} is an m-by-n matrix which is zero except for its min(m, n)
+ * diagonal elements, {@code U} is an m-by-n orthogonal matrix, and {@code V} is
+ * a n-by-n orthogonal matrix. The diagonal elements of {@code S} are the
+ * singular values of {@code A}; they are real and non-negative, and are
+ * returned in descending order. The first min(m, n) columns of {@code U} and
+ * {@code V} are the left and right singular vectors of {@code A}.
+ */
 public class SvdD {
 
+    // either "A" or "N"
     private final TSvdJob jobType;
 
     private final SimpleMatrixD U;
     private final SimpleMatrixD Vt;
     private final double[] S;
 
+    /**
+     * The left singular vectors (column-wise) or {@code null} if the singular
+     * vectors haven't been computed.
+     * 
+     * @return m-by-n orthogonal matrix
+     */
     public MatrixD getU() {
         return U;
     }
 
+    /**
+     * The right singular vectors (row-wise) or {@code null} if the singular
+     * vectors haven't been computed.
+     * <p>
+     * Note that the algorithm return <code>V<sup>T</sup></code>, not {@code V}.
+     * 
+     * @return n-by-n orthogonal matrix
+     */
     public MatrixD getVt() {
         return Vt;
     }
 
+    /**
+     * The singular values in descending order.
+     * 
+     * @return array containing the singular values in descending order
+     */
     public double[] getS() {
         return S;
     }
 
+    /**
+     * {@code true} if singular vectors have been computed, {@code false}
+     * otherwise.
+     * 
+     * @return whether singular vectors have been computed or not
+     */
     public boolean hasSingularVectors() {
         return jobType == TSvdJob.ALL;
     }
