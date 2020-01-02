@@ -43,9 +43,9 @@ public class EvdD {
      * computed.
      * 
      * @return n-by-n eigenvector matrix or {@code null} if
-     *         {@link #hasEigenVectors()} returns {@code false}
+     *         {@link #hasEigenvectors()} returns {@code false}
      */
-    public SimpleMatrixD getEigenVectors() {
+    public SimpleMatrixD getEigenvectors() {
         return eigenVectors;
     }
 
@@ -54,7 +54,7 @@ public class EvdD {
      * 
      * @return whether eigenvectors have been computed or not
      */
-    public boolean hasEigenVectors() {
+    public boolean hasEigenvectors() {
         return rightEVec == TEigJob.ALL;
     }
 
@@ -75,7 +75,7 @@ public class EvdD {
         int n = AA.numRows();
         int ld = Math.max(1, n);
         PlainLapack.dgeev(Lapack.getInstance(), leftEVec, rightEVec, n, AA.getArrayUnsafe(), ld, eigValRealParts,
-                eigValImagParts, new double[0], ld, hasEigenVectors() ? eigenVectors.getArrayUnsafe() : new double[0],
+                eigValImagParts, new double[0], ld, hasEigenvectors() ? eigenVectors.getArrayUnsafe() : new double[0],
                 ld);
     }
 }
