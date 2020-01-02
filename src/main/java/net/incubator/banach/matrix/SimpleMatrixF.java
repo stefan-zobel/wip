@@ -121,6 +121,11 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return new EvdF(this, full);
     }
 
+    @Override
+    public float norm2() {
+        return new SvdF(this, false).norm2();
+    }
+
     private static MatrixF lusolve(MatrixF A, MatrixF X, MatrixF B) {
         X.setInplace(B);
         PlainLapack.sgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),

@@ -362,6 +362,13 @@ public interface MatrixF extends Dimensions {
      */
     float normF();
 
+    /**
+     * Two norm
+     * 
+     * @return maximum singular value
+     */
+    float norm2();
+
     float[] getArrayUnsafe();
 
     float getUnsafe(int row, int col);

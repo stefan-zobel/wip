@@ -77,6 +77,10 @@ public class SvdF {
         return S;
     }
 
+    /* package */ float norm2() {
+        return S[0];
+    }
+
     /**
      * {@code true} if singular vectors have been computed, {@code false}
      * otherwise.

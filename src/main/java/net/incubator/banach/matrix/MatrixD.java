@@ -362,6 +362,13 @@ public interface MatrixD extends Dimensions {
      */
     double normF();
 
+    /**
+     * Two norm
+     * 
+     * @return maximum singular value
+     */
+    double norm2();
+
     double[] getArrayUnsafe();
 
     double getUnsafe(int row, int col);

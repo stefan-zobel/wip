@@ -121,6 +121,11 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return new EvdD(this, full);
     }
 
+    @Override
+    public double norm2() {
+        return new SvdD(this, false).norm2();
+    }
+
     private static MatrixD lusolve(MatrixD A, MatrixD X, MatrixD B) {
         X.setInplace(B);
         PlainLapack.dgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),
