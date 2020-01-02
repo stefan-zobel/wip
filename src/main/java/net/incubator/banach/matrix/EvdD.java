@@ -4,6 +4,9 @@ import net.dedekind.lapack.Lapack;
 import net.frobenius.TEigJob;
 import net.frobenius.lapack.PlainLapack;
 
+/**
+ * Eigenvalues and eigenvectors of a general n-by-n double matrix.
+ */
 public class EvdD {
 
     // never compute left eigenvectors
@@ -17,18 +20,40 @@ public class EvdD {
     // eigenvalue imaginary parts
     private final double[] eigValImagParts;
 
+    /**
+     * Returns the real parts of the eigenvalues.
+     * 
+     * @return array containing the real parts of the eigenvalues
+     */
     public double[] getRealEigenvalues() {
         return eigValRealParts;
     }
 
+    /**
+     * Returns the imaginary parts of the eigenvalues.
+     * 
+     * @return array containing the imaginary parts of the eigenvalues
+     */
     public double[] getImaginaryEigenvalues() {
         return eigValImagParts;
     }
 
+    /**
+     * The (right) eigenvectors or {@code null} if the eigenvectors haven't been
+     * computed.
+     * 
+     * @return n-by-n eigenvector matrix or {@code null} if
+     *         {@link #hasEigenVectors()} returns {@code false}
+     */
     public SimpleMatrixD getEigenVectors() {
         return eigenVectors;
     }
 
+    /**
+     * {@code true} if eigenvectors have been computed, {@code false} otherwise.
+     * 
+     * @return whether eigenvectors have been computed or not
+     */
     public boolean hasEigenVectors() {
         return rightEVec == TEigJob.ALL;
     }
@@ -46,9 +71,10 @@ public class EvdD {
     }
 
     private void computeEvdInplace(SimpleMatrixD A) {
-        int n = A.numRows();
+        MatrixD AA = A.copy();
+        int n = AA.numRows();
         int ld = Math.max(1, n);
-        PlainLapack.dgeev(Lapack.getInstance(), leftEVec, rightEVec, n, A.getArrayUnsafe(), ld, eigValRealParts,
+        PlainLapack.dgeev(Lapack.getInstance(), leftEVec, rightEVec, n, AA.getArrayUnsafe(), ld, eigValRealParts,
                 eigValImagParts, new double[0], ld, hasEigenVectors() ? eigenVectors.getArrayUnsafe() : new double[0],
                 ld);
     }
