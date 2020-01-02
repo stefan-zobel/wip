@@ -113,6 +113,14 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return new SvdD(this, full);
     }
 
+    @Override
+    public EvdD evd(boolean full) {
+        if (!this.isSquareMatrix()) {
+            throw new IllegalArgumentException("EVD only works for square matrices");
+        }
+        return new EvdD(this, full);
+    }
+
     private static MatrixD lusolve(MatrixD A, MatrixD X, MatrixD B) {
         X.setInplace(B);
         PlainLapack.dgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),
@@ -145,6 +153,6 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
 
     @Override
     public MatrixD copy() {
-        return new SimpleMatrixD(this); 
+        return new SimpleMatrixD(this);
     }
 }

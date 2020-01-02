@@ -113,6 +113,14 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return new SvdF(this, full);
     }
 
+    @Override
+    public EvdF evd(boolean full) {
+        if (!this.isSquareMatrix()) {
+            throw new IllegalArgumentException("EVD only works for square matrices");
+        }
+        return new EvdF(this, full);
+    }
+
     private static MatrixF lusolve(MatrixF A, MatrixF X, MatrixF B) {
         X.setInplace(B);
         PlainLapack.sgesv(Lapack.getInstance(), A.numRows(), B.numColumns(), A.getArrayUnsafe().clone(),

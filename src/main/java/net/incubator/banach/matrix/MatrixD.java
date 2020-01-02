@@ -335,6 +335,20 @@ public interface MatrixD extends Dimensions {
     SvdD svd(boolean full);
 
     /**
+     * Computes the eigenvalue decomposition of this matrix if it is quadratic.
+     * 
+     * @param full
+     *            controls whether the (right) eigenvectors should be computed
+     *            in addition (if {@code true}) or the eigenvalues only (if
+     *            {@code false})
+     * @return the {@link EvdD} of this matrix, either full or the eigenvalues
+     *         only (if {@code full} is set to {@code false})
+     * @throws IllegalArgumentException
+     *             if this matrix is not quadratic
+     */
+    EvdD evd(boolean full);
+
+    /**
      * Copy into a jagged array.
      * 
      * @return this matrix converted to a jagged array
