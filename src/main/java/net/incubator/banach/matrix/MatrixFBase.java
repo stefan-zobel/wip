@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -503,6 +503,15 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
             }
         }
         return (float) (scale * Math.sqrt(sumsquared));
+    }
+
+    @Override
+    public float trace() {
+        float t = 0.0f;
+        for (int i = 0; i < Math.min(rows, cols); ++i) {
+            t += getUnsafe(i, i);
+        }
+        return t;
     }
 
     protected abstract MatrixF create(int rows, int cols, float[] data);

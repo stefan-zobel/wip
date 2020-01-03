@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -368,6 +368,13 @@ public interface MatrixD extends Dimensions {
      * @return maximum singular value
      */
     double norm2();
+
+    /**
+     * Matrix trace
+     * 
+     * @return sum of the diagonal elements
+     */
+    double trace();
 
     double[] getArrayUnsafe();
 

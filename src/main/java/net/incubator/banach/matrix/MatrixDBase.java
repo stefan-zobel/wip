@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -503,6 +503,15 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
             }
         }
         return scale * Math.sqrt(sumsquared);
+    }
+
+    @Override
+    public double trace() {
+        double t = 0.0;
+        for (int i = 0; i < Math.min(rows, cols); ++i) {
+            t += getUnsafe(i, i);
+        }
+        return t;
     }
 
     protected abstract MatrixD create(int rows, int cols, double[] data);
