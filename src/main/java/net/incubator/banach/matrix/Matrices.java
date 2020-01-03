@@ -15,6 +15,7 @@
  */
 package net.incubator.banach.matrix;
 
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -107,6 +108,18 @@ public final class Matrices {
         for (int i = 0; i < _a.length; ++i) {
             _a[i] = (float) rnd.nextGaussian();
         }
+        return m;
+    }
+
+    public static MatrixD onesD(int rows, int cols) {
+        SimpleMatrixD m = new SimpleMatrixD(rows, cols);
+        Arrays.fill(m.getArrayUnsafe(), 1.0);
+        return m;
+    }
+
+    public static MatrixF onesF(int rows, int cols) {
+        SimpleMatrixF m = new SimpleMatrixF(rows, cols);
+        Arrays.fill(m.getArrayUnsafe(), 1.0f);
         return m;
     }
 
