@@ -483,6 +483,15 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
     }
 
     @Override
+    public MatrixF inv(MatrixF I) {
+        if (!this.isSquareMatrix()) {
+            throw new IllegalArgumentException("The inverse is only defined for square matrices");
+        }
+        Checks.checkEqualDimension(this, I);
+        return solve(Matrices.identityF(this.numRows()), I);
+    }
+
+    @Override
     public float normF() {
         // overflow resistant implementation
         double scale = 0.0;

@@ -483,6 +483,15 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     @Override
+    public MatrixD inv(MatrixD I) {
+        if (!this.isSquareMatrix()) {
+            throw new IllegalArgumentException("The inverse is only defined for square matrices");
+        }
+        Checks.checkEqualDimension(this, I);
+        return solve(Matrices.identityD(this.numRows()), I);
+    }
+
+    @Override
     public double normF() {
         // overflow resistant implementation
         double scale = 0.0;

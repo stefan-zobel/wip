@@ -324,6 +324,18 @@ public interface MatrixD extends Dimensions {
     MatrixD solve(MatrixD B, MatrixD X);
 
     /**
+     * Matrix inverse for quadratic matrices.
+     * 
+     * @param I
+     *            matrix where the inverse is stored. Must have the same
+     *            dimension as this matrix
+     * @return the inverse matrix (i.e. the argument {@code I})
+     * @throw IllegalArgumentException if this matrix is not quadratic or if
+     *        {@code I} has the wrong dimension
+     */
+    MatrixD inv(MatrixD I);
+
+    /**
      * Computes the singular value decomposition of this matrix.
      * 
      * @param full
