@@ -492,6 +492,33 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     @Override
+    public MatrixD pseudoInv() {
+        if (this.isSquareMatrix()) {
+            return inv(create(rows, cols));
+        }
+        SvdD svd = svd(true);
+        double[] sigma = svd.getS();
+        double tol = MACH_EPS_DBL * Math.max(rows, cols) * sigma[0];
+        // Sigma dagger
+        MatrixD SInv = create(cols, rows);
+        for (int i = 0; i < sigma.length; ++i) {
+            if (sigma[i] > tol) {
+                SInv.setUnsafe(i, i, 1.0 / sigma[i]);
+            }
+        }
+        // Vt transposed
+        MatrixD Vt = svd.getVt();
+        MatrixD VtTrans = Vt.trans(create(Vt.numColumns(), Vt.numRows()));
+        // U transposed
+        MatrixD U = svd.getU();
+        MatrixD UTrans = U.trans(create(U.numColumns(), U.numRows()));
+        // VtTrans times SInv (intermediary result)
+        MatrixD x = VtTrans.mult(SInv, create(Vt.numRows(), SInv.numColumns()));
+        // x times UTrans (the Moore-Penrose pseudoinverse)
+        return x.mult(UTrans, create(x.numRows(), UTrans.numColumns()));
+    }
+
+    @Override
     public double normF() {
         // overflow resistant implementation
         double scale = 0.0;
@@ -522,6 +549,8 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         }
         return t;
     }
+
+    protected abstract MatrixD create(int rows, int cols);
 
     protected abstract MatrixD create(int rows, int cols, double[] data);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,11 @@
 package net.incubator.banach.matrix;
 
 public abstract class DimensionsBase implements Dimensions {
+
+    /** The IEEE 754 machine epsilon from Cephes: (2^-53) */
+    protected static final double MACH_EPS_DBL = 1.11022302462515654042e-16;
+    /** The IEEE 754 single precision machine epsilon: (2^-24) */
+    protected static final float MACH_EPS_FLT = 5.9604644775390625e-8f;
 
     protected final int rows;
     protected final int cols;

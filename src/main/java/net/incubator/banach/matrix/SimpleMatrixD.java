@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,11 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
 
     protected SimpleMatrixD(int rows, int cols, double[] data) {
         super(rows, cols, data, false);
+    }
+
+    @Override
+    protected MatrixD create(int rows, int cols) {
+        return new SimpleMatrixD(rows, cols);
     }
 
     @Override

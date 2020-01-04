@@ -336,6 +336,13 @@ public interface MatrixD extends Dimensions {
     MatrixD inv(MatrixD inverse);
 
     /**
+     * Compute the Moore-Penrose pseudoinverse.
+     * 
+     * @return the Moore-Penrose Pseudo-Inverse
+     */
+    MatrixD pseudoInv();
+
+    /**
      * Computes the singular value decomposition of this matrix.
      * 
      * @param full
