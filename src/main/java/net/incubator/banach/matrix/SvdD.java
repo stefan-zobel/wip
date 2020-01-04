@@ -91,7 +91,7 @@ public class SvdD {
         return jobType == TSvdJob.ALL;
     }
 
-    /* package */ SvdD(SimpleMatrixD A, boolean full) {
+    /* package */ SvdD(MatrixD A, boolean full) {
         S = new double[Math.min(A.numRows(), A.numColumns())];
         jobType = full ? TSvdJob.ALL : TSvdJob.NONE;
         if (jobType == TSvdJob.ALL) {
@@ -104,7 +104,7 @@ public class SvdD {
         computeSvdInplace(A);
     }
 
-    private void computeSvdInplace(SimpleMatrixD A) {
+    private void computeSvdInplace(MatrixD A) {
         MatrixD AA = A.copy();
         int m = AA.numRows();
         int n = AA.numColumns();

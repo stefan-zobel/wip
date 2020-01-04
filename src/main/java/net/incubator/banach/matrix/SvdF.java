@@ -91,7 +91,7 @@ public class SvdF {
         return jobType == TSvdJob.ALL;
     }
 
-    /* package */ SvdF(SimpleMatrixF A, boolean full) {
+    /* package */ SvdF(MatrixF A, boolean full) {
         S = new float[Math.min(A.numRows(), A.numColumns())];
         jobType = full ? TSvdJob.ALL : TSvdJob.NONE;
         if (jobType == TSvdJob.ALL) {
@@ -104,7 +104,7 @@ public class SvdF {
         computeSvdInplace(A);
     }
 
-    private void computeSvdInplace(SimpleMatrixF A) {
+    private void computeSvdInplace(MatrixF A) {
         MatrixF AA = A.copy();
         int m = AA.numRows();
         int n = AA.numColumns();

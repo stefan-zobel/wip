@@ -73,7 +73,7 @@ public class EvdD {
         return rightEVec == TEigJob.ALL;
     }
 
-    /* package */ EvdD(SimpleMatrixD A, boolean full) {
+    /* package */ EvdD(MatrixD A, boolean full) {
         if (!A.isSquareMatrix()) {
             throw new IllegalArgumentException("EVD only works for square matrices");
         }
@@ -85,7 +85,7 @@ public class EvdD {
         computeEvdInplace(A);
     }
 
-    private void computeEvdInplace(SimpleMatrixD A) {
+    private void computeEvdInplace(MatrixD A) {
         MatrixD AA = A.copy();
         int n = AA.numRows();
         int ld = Math.max(1, n);
