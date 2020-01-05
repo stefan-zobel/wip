@@ -506,16 +506,12 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
                 SInv.setUnsafe(i, i, 1.0 / sigma[i]);
             }
         }
-        // Vt transposed
+        // Vt transposed times SInv
         MatrixD Vt = svd.getVt();
-        MatrixD VtTrans = Vt.trans(create(Vt.numColumns(), Vt.numRows()));
-        // U transposed
+        MatrixD x = Vt.transAmult(SInv, create(Vt.numRows(), SInv.numColumns()));
+        // x times U transposed (the Moore-Penrose pseudoinverse)
         MatrixD U = svd.getU();
-        MatrixD UTrans = U.trans(create(U.numColumns(), U.numRows()));
-        // VtTrans times SInv (intermediary result)
-        MatrixD x = VtTrans.mult(SInv, create(Vt.numRows(), SInv.numColumns()));
-        // x times UTrans (the Moore-Penrose pseudoinverse)
-        return x.mult(UTrans, create(x.numRows(), UTrans.numColumns()));
+        return x.transBmult(U, create(x.numRows(), U.numRows()));
     }
 
     @Override
