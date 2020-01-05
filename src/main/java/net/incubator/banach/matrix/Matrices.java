@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Stefan Zobel
+ * Copyright 2019, 2020 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,14 @@ import java.util.concurrent.ThreadLocalRandom;
  * Static utility methods for matrices.
  */
 public final class Matrices {
+
+    public static MatrixD createD(int rows, int cols) {
+        return new SimpleMatrixD(rows, cols);
+    }
+
+    public static MatrixF createF(int rows, int cols) {
+        return new SimpleMatrixF(rows, cols);
+    }
 
     public static MatrixD fromJaggedArrayD(double[][] data) {
         double[] copy = Checks.checkJaggedArrayD(data);
