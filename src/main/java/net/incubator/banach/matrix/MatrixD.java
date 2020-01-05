@@ -244,10 +244,28 @@ public interface MatrixD extends Dimensions {
      */
     MatrixD transBmultAdd(double alpha, MatrixD B, MatrixD C);
 
+    /**
+     * Get a newly created copy of this matrix.
+     * 
+     * @return fresh copy of this matrix
+     */
     MatrixD copy();
 
+    /**
+     * Set all elements of this matrix to {@code 0.0} mutating this matrix.
+     * 
+     * @return this matrix (mutated)
+     */
     MatrixD zeroInplace();
 
+    /**
+     * Copy the {@code other} matrix into this matrix (mutating this matrix)
+     * where the dimensions of {@code other} and {@code this} must be the same.
+     * 
+     * @param other
+     *            matrix whose elements should be copied into this matrix
+     * @return this matrix (mutated)
+     */
     MatrixD setInplace(MatrixD other);
 
     /**

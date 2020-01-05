@@ -244,10 +244,28 @@ public interface MatrixF extends Dimensions {
      */
     MatrixF transBmultAdd(float alpha, MatrixF B, MatrixF C);
 
+    /**
+     * Get a newly created copy of this matrix.
+     * 
+     * @return fresh copy of this matrix
+     */
     MatrixF copy();
 
+    /**
+     * Set all elements of this matrix to {@code 0.0f} mutating this matrix.
+     * 
+     * @return this matrix (mutated)
+     */
     MatrixF zeroInplace();
 
+    /**
+     * Copy the {@code other} matrix into this matrix (mutating this matrix)
+     * where the dimensions of {@code other} and {@code this} must be the same.
+     * 
+     * @param other
+     *            matrix whose elements should be copied into this matrix
+     * @return this matrix (mutated)
+     */
     MatrixF setInplace(MatrixF other);
 
     /**
