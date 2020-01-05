@@ -22,6 +22,13 @@ package net.incubator.banach.matrix;
  */
 public interface MatrixD extends Dimensions {
 
+    /**
+     * Get the single element as a scalar if this matrix is 1-by-1.
+     * 
+     * @return the single element as a scalar if this matrix is 1-by-1
+     * @throws IllegalStateException
+     *             if this matrix is not 1-by-1
+     */
     double toScalar();
 
     /**
@@ -395,9 +402,34 @@ public interface MatrixD extends Dimensions {
      */
     double trace();
 
+    /**
+     * Get the reference to the internal backing array without copying.
+     * 
+     * @return the reference to the internal backing array
+     */
     double[] getArrayUnsafe();
 
+    /**
+     * Get the matrix element {@code (row, col)} without bounds checking.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @return the matrix element at {@code (row, col)}
+     */
     double getUnsafe(int row, int col);
 
+    /**
+     * Set the matrix element at {@code (row, col)} to {@code val} without
+     * bounds checking.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @param val
+     *            new value
+     */
     void setUnsafe(int row, int col, double val);
 }
