@@ -546,6 +546,15 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return t;
     }
 
+    // DMatrixBasicOps
+
+    @Override
+    public MatrixD times(MatrixD B) {
+        return mult(B, Matrices.createD(rows, B.numColumns()));
+    }
+
+    // protected methods
+
     protected abstract MatrixD create(int rows, int cols);
 
     protected abstract MatrixD create(int rows, int cols, double[] data);

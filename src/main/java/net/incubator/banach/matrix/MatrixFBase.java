@@ -546,6 +546,15 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return t;
     }
 
+    // FMatrixBasicOps
+
+    @Override
+    public MatrixF times(MatrixF B) {
+        return mult(B, Matrices.createF(this.rows, B.numColumns()));
+    }
+
+    // protected methods
+
     protected abstract MatrixF create(int rows, int cols);
 
     protected abstract MatrixF create(int rows, int cols, float[] data);

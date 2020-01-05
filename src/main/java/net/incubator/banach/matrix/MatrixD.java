@@ -20,7 +20,7 @@ package net.incubator.banach.matrix;
  * storage layout. The addressing is zero based. All operations throw a
  * {@code NullPointerException} if any of the method arguments is {@code null}.
  */
-public interface MatrixD extends Dimensions {
+public interface MatrixD extends Dimensions, DMatrixBasicOps {
 
     /**
      * Get the single element as a scalar if this matrix is 1-by-1.
