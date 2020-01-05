@@ -259,10 +259,43 @@ public interface MatrixD extends Dimensions {
      */
     MatrixD setInplace(double alpha, MatrixD other);
 
+    /**
+     * Get the matrix element at {@code (row, col)}.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @return the matrix element at {@code (row, col)}
+     */
     double get(int row, int col);
 
+    /**
+     * Set the matrix element at {@code (row, col)} to {@code val} mutating this
+     * matrix.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @param val
+     *            new value
+     * @return this matrix (mutated)
+     */
     MatrixD set(int row, int col, double val);
 
+    /**
+     * Add {@code val} to the matrix element at {@code (row, col)} mutating this
+     * matrix.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @param val
+     *            the value to add to the element at {@code (row, col)}
+     * @return this matrix (mutated)
+     */
     MatrixD add(int row, int col, double val);
 
     /**

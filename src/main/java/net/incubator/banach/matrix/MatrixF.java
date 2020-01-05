@@ -259,10 +259,43 @@ public interface MatrixF extends Dimensions {
      */
     MatrixF setInplace(float alpha, MatrixF B);
 
+    /**
+     * Get the matrix element at {@code (row, col)}.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @return the matrix element at {@code (row, col)}
+     */
     float get(int row, int col);
 
+    /**
+     * Set the matrix element at {@code (row, col)} to {@code val} mutating this
+     * matrix.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @param val
+     *            new value
+     * @return this matrix (mutated)
+     */
     MatrixF set(int row, int col, float val);
 
+    /**
+     * Add {@code val} to the matrix element at {@code (row, col)} mutating this
+     * matrix.
+     * 
+     * @param row
+     *            row index, zero-based
+     * @param col
+     *            column index, zero-based
+     * @param val
+     *            the value to add to the element at {@code (row, col)}
+     * @return this matrix (mutated)
+     */
     MatrixF add(int row, int col, float val);
 
     /**
