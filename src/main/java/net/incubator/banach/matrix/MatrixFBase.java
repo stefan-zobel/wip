@@ -553,6 +553,36 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return mult(B, Matrices.createF(this.rows, B.numColumns()));
     }
 
+    @Override
+    public MatrixF timesTimes(MatrixF B, MatrixF C) {
+        return mult(B, Matrices.createF(rows, B.numColumns())).mult(C, Matrices.createF(rows, C.numColumns()));
+    }
+
+    @Override
+    public MatrixF transpose() {
+        return trans(Matrices.createF(cols, rows));
+    }
+
+    @Override
+    public MatrixF inverse() {
+        return inv(Matrices.sameDimF(this));
+    }
+
+    @Override
+    public MatrixF plus(MatrixF B) {
+        return add(B, Matrices.sameDimF(this));
+    }
+
+    @Override
+    public MatrixF minus(MatrixF B) {
+        return add(-1.0f, B, Matrices.sameDimF(this));
+    }
+
+    @Override
+    public MatrixF uminus() {
+        return scale(-1.0f, Matrices.sameDimF(this));
+    }
+
     // protected methods
 
     protected abstract MatrixF create(int rows, int cols);

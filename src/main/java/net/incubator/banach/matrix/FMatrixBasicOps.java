@@ -22,11 +22,67 @@ package net.incubator.banach.matrix;
  */
 public interface FMatrixBasicOps {
 
-//  MatrixF transpose();
-
+    /**
+     * {@code A * B} convenience multiplication. None of the operands is
+     * mutated.
+     * 
+     * @param B
+     *            second multiplicand
+     * @return the result of the multiplication
+     */
     MatrixF times(MatrixF B);
 
-//  MatrixF plus(MatrixF B);
+    /**
+     * {@code A * B * C} convenience multiplication. None of the operands is
+     * mutated.
+     * 
+     * @param B
+     *            second multiplicand
+     * @param C
+     *            third multiplicand
+     * @return the result of the multiplication
+     */
+    MatrixF timesTimes(MatrixF B, MatrixF C);
 
-//  MatrixF minus(MatrixF B);
+    /**
+     * Returns <code>A<sup>T</sup></code>. None of the operands is mutated.
+     * 
+     * @return the transposed matrix
+     */
+    MatrixF transpose();
+
+    /**
+     * Returns <code>A<sup>-1</sup></code> for quadratic matrices. None of the
+     * operands is mutated.
+     * 
+     * @return the inverse of this matrix if it is quadratic
+     * @throw IllegalArgumentException if this matrix is not quadratic
+     */
+    MatrixF inverse();
+
+    /**
+     * {@code A + B} convenience addition. None of the operands is mutated.
+     * 
+     * @param B
+     *            the addend
+     * @return the result of the addition
+     */
+    MatrixF plus(MatrixF B);
+
+    /**
+     * {@code A - B} convenience subtraction. None of the operands is mutated.
+     * 
+     * @param B
+     *            the subtrahend
+     * @return the result of the subtraction
+     */
+    MatrixF minus(MatrixF B);
+
+    /**
+     * Unary minus {@code -A} convenience method. None of the operands is
+     * mutated.
+     * 
+     * @return {@code -A}
+     */
+    MatrixF uminus();
 }

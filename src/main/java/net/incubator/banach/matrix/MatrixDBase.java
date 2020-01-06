@@ -553,6 +553,36 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return mult(B, Matrices.createD(rows, B.numColumns()));
     }
 
+    @Override
+    public MatrixD timesTimes(MatrixD B, MatrixD C) {
+        return mult(B, Matrices.createD(rows, B.numColumns())).mult(C, Matrices.createD(rows, C.numColumns()));
+    }
+
+    @Override
+    public MatrixD transpose() {
+        return trans(Matrices.createD(cols, rows));
+    }
+
+    @Override
+    public MatrixD inverse() {
+        return inv(Matrices.sameDimD(this));
+    }
+
+    @Override
+    public MatrixD plus(MatrixD B) {
+        return add(B, Matrices.sameDimD(this));
+    }
+
+    @Override
+    public MatrixD minus(MatrixD B) {
+        return add(-1.0, B, Matrices.sameDimD(this));
+    }
+
+    @Override
+    public MatrixD uminus() {
+        return scale(-1.0, Matrices.sameDimD(this));
+    }
+
     // protected methods
 
     protected abstract MatrixD create(int rows, int cols);

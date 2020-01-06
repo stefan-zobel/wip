@@ -22,11 +22,67 @@ package net.incubator.banach.matrix;
  */
 public interface DMatrixBasicOps {
 
-//  MatrixD transpose();
-
+    /**
+     * {@code A * B} convenience multiplication. None of the operands is
+     * mutated.
+     * 
+     * @param B
+     *            second multiplicand
+     * @return the result of the multiplication
+     */
     MatrixD times(MatrixD B);
 
-//  MatrixD plus(MatrixD B);
+    /**
+     * {@code A * B * C} convenience multiplication. None of the operands is
+     * mutated.
+     * 
+     * @param B
+     *            second multiplicand
+     * @param C
+     *            third multiplicand
+     * @return the result of the multiplication
+     */
+    MatrixD timesTimes(MatrixD B, MatrixD C);
 
-//  MatrixD minus(MatrixD B);
+    /**
+     * Returns <code>A<sup>T</sup></code>. None of the operands is mutated.
+     * 
+     * @return the transposed matrix
+     */
+    MatrixD transpose();
+
+    /**
+     * Returns <code>A<sup>-1</sup></code> for quadratic matrices. None of the
+     * operands is mutated.
+     * 
+     * @return the inverse of this matrix if it is quadratic
+     * @throw IllegalArgumentException if this matrix is not quadratic
+     */
+    MatrixD inverse();
+
+    /**
+     * {@code A + B} convenience addition. None of the operands is mutated.
+     * 
+     * @param B
+     *            the addend
+     * @return the result of the addition
+     */
+    MatrixD plus(MatrixD B);
+
+    /**
+     * {@code A - B} convenience subtraction. None of the operands is mutated.
+     * 
+     * @param B
+     *            the subtrahend
+     * @return the result of the subtraction
+     */
+    MatrixD minus(MatrixD B);
+
+    /**
+     * Unary minus {@code -A} convenience method. None of the operands is
+     * mutated.
+     * 
+     * @return {@code -A}
+     */
+    MatrixD uminus();
 }
