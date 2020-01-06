@@ -23,14 +23,48 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class Matrices {
 
+    /**
+     * Create a new {@link MatrixD} of dimension {@code (row, cols)}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number of columns
+     * @return a {@code MatrixD} of dimension {@code (row, cols)}
+     */
     public static MatrixD createD(int rows, int cols) {
         return new SimpleMatrixD(rows, cols);
     }
 
+    /**
+     * Create a new {@link MatrixF} of dimension {@code (row, cols)}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number of columns
+     * @return a {@code MatrixF} of dimension {@code (row, cols)}
+     */
     public static MatrixF createF(int rows, int cols) {
         return new SimpleMatrixF(rows, cols);
     }
 
+    /**
+     * Create a {@link MatrixD} from a {@code double[][]} array. The elements of
+     * {@code data} get copied, i.e. the array is not referenced.
+     * <p>
+     * The first index of {@code data} is interpreted as the row index. Note
+     * that all rows must have the same length otherwise an
+     * IllegalArgumentException is thrown.
+     * 
+     * @param data
+     *            array whose shape and content determines the shape and content
+     *            of the newly created matrix
+     * @return a {@code MatrixD} of the same shape as {@code data} filled with
+     *         the content of {@code data}.
+     * @throws IllegalArgumentException
+     *             if not all rows have the same length
+     */
     public static MatrixD fromJaggedArrayD(double[][] data) {
         double[] copy = Checks.checkJaggedArrayD(data);
         int _rows = data.length;
@@ -47,6 +81,22 @@ public final class Matrices {
         return new SimpleMatrixD(_rows, _cols, copy);
     }
 
+    /**
+     * Create a {@link MatrixF} from a {@code float[][]} array. The elements of
+     * {@code data} get copied, i.e. the array is not referenced.
+     * <p>
+     * The first index of {@code data} is interpreted as the row index. Note
+     * that all rows must have the same length otherwise an
+     * IllegalArgumentException is thrown.
+     * 
+     * @param data
+     *            array whose shape and content determines the shape and content
+     *            of the newly created matrix
+     * @return a {@code MatrixF} of the same shape as {@code data} filled with
+     *         the content of {@code data}.
+     * @throws IllegalArgumentException
+     *             if not all rows have the same length
+     */
     public static MatrixF fromJaggedArrayF(float[][] data) {
         float[] copy = Checks.checkJaggedArrayF(data);
         int _rows = data.length;
@@ -63,6 +113,13 @@ public final class Matrices {
         return new SimpleMatrixF(_rows, _cols, copy);
     }
 
+    /**
+     * Create an MatrixD identity matrix of dimension {@code (n, n)}.
+     * 
+     * @param n
+     *            dimension of the quadratic identity matrix
+     * @return MatrixD identity matrix of dimension {@code (n, n)}
+     */
     public static MatrixD identityD(int n) {
         SimpleMatrixD m = new SimpleMatrixD(n, n);
         for (int i = 0; i < n; ++i) {
@@ -71,6 +128,13 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create an MatrixF identity matrix of dimension {@code (n, n)}.
+     * 
+     * @param n
+     *            dimension of the quadratic identity matrix
+     * @return MatrixF identity matrix of dimension {@code (n, n)}
+     */
     public static MatrixF identityF(int n) {
         SimpleMatrixF m = new SimpleMatrixF(n, n);
         for (int i = 0; i < n; ++i) {
@@ -79,6 +143,17 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a MatrixD of dimension {@code (rows, cols)} filled with uniformly
+     * distributed random numbers drawn from the range {@code [0.0, 1.0)}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return {@code (rows, cols)} MatrixD filled with {@code ~U[0, 1]}
+     *         distributed random numbers
+     */
     public static MatrixD randomUniformD(int rows, int cols) {
         SimpleMatrixD m = new SimpleMatrixD(rows, cols);
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
@@ -89,6 +164,17 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a MatrixF of dimension {@code (rows, cols)} filled with uniformly
+     * distributed random numbers drawn from the range {@code [0.0f, 1.0f)}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return {@code (rows, cols)} MatrixF filled with {@code ~U[0, 1]}
+     *         distributed random numbers
+     */
     public static MatrixF randomUniformF(int rows, int cols) {
         SimpleMatrixF m = new SimpleMatrixF(rows, cols);
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
@@ -99,6 +185,18 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a MatrixD of dimension {@code (rows, cols)} filled with normally
+     * distributed (i.e., standard gausssian) random numbers with expectation
+     * {@code 0.0} and variance {@code 1.0}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return {@code (rows, cols)} MatrixD filled with {@code ~N[0, 1]}
+     *         distributed random numbers (standard normal distribution)
+     */
     public static MatrixD randomNormalD(int rows, int cols) {
         SimpleMatrixD m = new SimpleMatrixD(rows, cols);
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
@@ -109,6 +207,18 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a MatrixF of dimension {@code (rows, cols)} filled with normally
+     * distributed (i.e., standard gausssian) random numbers with expectation
+     * {@code 0.0f} and variance {@code 1.0f}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return {@code (rows, cols)} MatrixF filled with {@code ~N[0, 1]}
+     *         distributed random numbers (standard normal distribution)
+     */
     public static MatrixF randomNormalF(int rows, int cols) {
         SimpleMatrixF m = new SimpleMatrixF(rows, cols);
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
@@ -119,12 +229,32 @@ public final class Matrices {
         return m;
     }
 
+    /**
+     * Create a MatrixD of dimension {@code (rows, cols)} whose elements are all
+     * {@code 1.0}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return MatrixD of dimension {@code (rows, cols)} filled with ones
+     */
     public static MatrixD onesD(int rows, int cols) {
         SimpleMatrixD m = new SimpleMatrixD(rows, cols);
         Arrays.fill(m.getArrayUnsafe(), 1.0);
         return m;
     }
 
+    /**
+     * Create a MatrixF of dimension {@code (rows, cols)} whose elements are all
+     * {@code 1.0f}.
+     * 
+     * @param rows
+     *            number or rows
+     * @param cols
+     *            number or columns
+     * @return MatrixD of dimension {@code (rows, cols)} filled with ones
+     */
     public static MatrixF onesF(int rows, int cols) {
         SimpleMatrixF m = new SimpleMatrixF(rows, cols);
         Arrays.fill(m.getArrayUnsafe(), 1.0f);
@@ -132,10 +262,14 @@ public final class Matrices {
     }
 
     /**
-     * Useful for tests.
+     * Create a MatrixD of dimension {@code (rows, cols)} filled with the
+     * natural numbers starting with 1 in row-major order. This is mainly useful
+     * for tests.
      * 
      * @param rows
+     *            number or rows
      * @param cols
+     *            number or columns
      * @return matrix filled with the natural numbers starting with 1 in
      *         row-major order
      */
@@ -151,10 +285,14 @@ public final class Matrices {
     }
 
     /**
-     * Useful for tests.
+     * Create a MatrixF of dimension {@code (rows, cols)} filled with the
+     * natural numbers starting with 1 in row-major order. This is mainly useful
+     * for tests.
      * 
      * @param rows
+     *            number or rows
      * @param cols
+     *            number or columns
      * @return matrix filled with the natural numbers starting with 1 in
      *         row-major order
      */
