@@ -15,6 +15,9 @@
  */
 package net.incubator.banach.matrix;
 
+import net.frobenius.ComputationTruncatedException;
+import net.frobenius.NotConvergedException;
+
 /**
  * A {@code MatrixD} is a dense matrix of primitive doubles with column-major
  * storage layout. The addressing is zero based. All operations throw a
@@ -378,6 +381,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      *            {@code B}
      * @return {@code X}, the solution of dimension either {@code n x r} (in the
      *         {@code n x n} case) or {@code m x r} (in the {@code m x n} case).
+     * @throws ComputationTruncatedException
+     *             for exactly singular factors in the LU decomposition of a
+     *             quadratic matrix
+     * @throws ComputationTruncatedException
+     *             for a non-quadratic matrix that doesn't have full rank
      */
     MatrixD solve(MatrixD B, MatrixD X);
 
@@ -390,6 +398,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * @return the inverse matrix (i.e. the argument {@code inverse})
      * @throws IllegalArgumentException if this matrix is not quadratic or if
      *        {@code inverse} has the wrong dimension
+     * @throws ComputationTruncatedException
+     *             for exactly singular factors in the LU decomposition of
+     *             this matrix
      */
     MatrixD inv(MatrixD inverse);
 
@@ -397,6 +408,8 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * Compute the Moore-Penrose pseudoinverse.
      * 
      * @return the Moore-Penrose Pseudo-Inverse
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     MatrixD pseudoInv();
 
@@ -408,6 +421,8 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      *            {@code true}) or the singular values only (if {@code false})
      * @return the {@link SvdD} of this matrix, either full or the singular
      *         values only (if {@code full} is set to {@code false})
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     SvdD svd(boolean full);
 
@@ -422,6 +437,8 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      *         only (if {@code full} is set to {@code false})
      * @throws IllegalArgumentException
      *             if this matrix is not quadratic
+     * @throws ComputationTruncatedException
+     *             if the QR decomposition failed to compute all eigenvalues
      */
     EvdD evd(boolean full);
 
@@ -443,6 +460,8 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * Two norm
      * 
      * @return maximum singular value
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     double norm2();
 

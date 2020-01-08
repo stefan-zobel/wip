@@ -15,6 +15,9 @@
  */
 package net.incubator.banach.matrix;
 
+import net.frobenius.ComputationTruncatedException;
+import net.frobenius.NotConvergedException;
+
 /**
  * A {@code MatrixF} is a dense matrix of primitive floats with column-major
  * storage layout. The addressing is zero based. All operations throw a
@@ -378,6 +381,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *            {@code B}
      * @return {@code X}, the solution of dimension either {@code n x r} (in the
      *         {@code n x n} case) or {@code m x r} (in the {@code m x n} case).
+     * @throws ComputationTruncatedException
+     *             for exactly singular factors in the LU decomposition of a
+     *             quadratic matrix
+     * @throws ComputationTruncatedException
+     *             for a non-quadratic matrix that doesn't have full rank
      */
     MatrixF solve(MatrixF B, MatrixF X);
 
@@ -390,6 +398,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * @return the inverse matrix (i.e. the argument {@code inverse})
      * @throws IllegalArgumentException if this matrix is not quadratic or if
      *        {@code inverse} has the wrong dimension
+     * @throws ComputationTruncatedException
+     *             for exactly singular factors in the LU decomposition of
+     *             this matrix
      */
     MatrixF inv(MatrixF inverse);
 
@@ -397,6 +408,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * Compute the Moore-Penrose pseudoinverse.
      * 
      * @return the Moore-Penrose Pseudo-Inverse
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     MatrixF pseudoInv();
 
@@ -408,6 +421,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *            {@code true}) or the singular values only (if {@code false})
      * @return the {@link SvdF} of this matrix, either full or the singular
      *         values only (if {@code full} is set to {@code false})
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     SvdF svd(boolean full);
 
@@ -422,6 +437,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *         only (if {@code full} is set to {@code false})
      * @throws IllegalArgumentException
      *             if this matrix is not quadratic
+     * @throws ComputationTruncatedException
+     *             if the QR decomposition failed to compute all eigenvalues
      */
     EvdF evd(boolean full);
 
@@ -443,6 +460,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * Two norm
      * 
      * @return maximum singular value
+     * @throws NotConvergedException
+     *             if the singular value decomposition did not converge
      */
     float norm2();
 
