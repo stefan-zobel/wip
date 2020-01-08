@@ -53,14 +53,14 @@ public interface Dimensions {
     boolean isSquareMatrix();
 
     /**
-     * Returns the number of columns (>= 1) of this matrix.
+     * Returns the number of columns (&gt;= 1) of this matrix.
      * 
      * @return the number of matrix columns
      */
     int numColumns();
 
     /**
-     * Returns the number of rows (>= 1) of this matrix.
+     * Returns the number of rows (&gt;= 1) of this matrix.
      * 
      * @return the number of matrix rows
      */

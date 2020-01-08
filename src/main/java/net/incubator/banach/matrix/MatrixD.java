@@ -272,7 +272,7 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code A = alpha * B}
      * 
      * @param alpha
-     * @param B
+     * @param other
      * @return {@code A}
      */
     MatrixD setInplace(double alpha, MatrixD other);
@@ -388,7 +388,7 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      *            matrix where the inverse is stored. Must have the same
      *            dimension as this matrix
      * @return the inverse matrix (i.e. the argument {@code inverse})
-     * @throw IllegalArgumentException if this matrix is not quadratic or if
+     * @throws IllegalArgumentException if this matrix is not quadratic or if
      *        {@code inverse} has the wrong dimension
      */
     MatrixD inv(MatrixD inverse);

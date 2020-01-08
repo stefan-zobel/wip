@@ -56,7 +56,7 @@ public interface FMatrixBasicOps {
      * operands is mutated.
      * 
      * @return the inverse of this matrix if it is quadratic
-     * @throw IllegalArgumentException if this matrix is not quadratic
+     * @throws IllegalArgumentException if this matrix is not quadratic
      */
     MatrixF inverse();
 

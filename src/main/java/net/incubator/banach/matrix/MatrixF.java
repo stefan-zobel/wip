@@ -388,7 +388,7 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *            matrix where the inverse is stored. Must have the same
      *            dimension as this matrix
      * @return the inverse matrix (i.e. the argument {@code inverse})
-     * @throw IllegalArgumentException if this matrix is not quadratic or if
+     * @throws IllegalArgumentException if this matrix is not quadratic or if
      *        {@code inverse} has the wrong dimension
      */
     MatrixF inv(MatrixF inverse);
