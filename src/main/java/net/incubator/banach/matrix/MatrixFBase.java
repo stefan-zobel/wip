@@ -29,6 +29,24 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
 
     protected final float[] a;
 
+    /**
+     * Create a new {@code MatrixFBase} of dimension {@code (rows, cols)} with
+     * its matrix elements set to the content of {@code array} in column-major
+     * order. If {@code doArrayCopy} is {@code false} the passed {@code array}
+     * is referenced directly, otherwise it is copied into a newly allocated
+     * internal array.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     * @param array
+     *            float array that determines the elements in this matrix in
+     *            column-major order
+     * @param doArrayCopy
+     *            if {@code true} the array is copied, otherwise it is
+     *            referenced directly
+     */
     public MatrixFBase(int rows, int cols, float[] array, boolean doArrayCopy) {
         super(rows, cols);
         checkArrayLength(array, rows, cols);

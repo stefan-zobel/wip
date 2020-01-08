@@ -29,6 +29,24 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
 
     protected final double[] a;
 
+    /**
+     * Create a new {@code MatrixDBase} of dimension {@code (rows, cols)} with
+     * its matrix elements set to the content of {@code array} in column-major
+     * order. If {@code doArrayCopy} is {@code false} the passed {@code array}
+     * is referenced directly, otherwise it is copied into a newly allocated
+     * internal array.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     * @param array
+     *            double array that determines the elements in this matrix in
+     *            column-major order
+     * @param doArrayCopy
+     *            if {@code true} the array is copied, otherwise it is
+     *            referenced directly
+     */
     public MatrixDBase(int rows, int cols, double[] array, boolean doArrayCopy) {
         super(rows, cols);
         checkArrayLength(array, rows, cols);
