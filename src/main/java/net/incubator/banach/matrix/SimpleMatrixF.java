@@ -56,6 +56,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return new SimpleMatrixF(rows, cols, data);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF multAdd(float alpha, MatrixF B, MatrixF C) {
         Checks.checkMultAdd(this, B, C);
@@ -68,6 +71,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF transABmultAdd(float alpha, MatrixF B, MatrixF C) {
         Checks.checkTransABmultAdd(this, B, C);
@@ -80,6 +86,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF transAmultAdd(float alpha, MatrixF B, MatrixF C) {
         Checks.checkTransAmultAdd(this, B, C);
@@ -92,6 +101,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF transBmultAdd(float alpha, MatrixF B, MatrixF C) {
         Checks.checkTransBmultAdd(this, B, C);
@@ -104,6 +116,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF solve(MatrixF B, MatrixF X) {
         Checks.checkSolve(this, B, X);
@@ -113,11 +128,17 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return qrsolve(this, X, B);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public SvdF svd(boolean full) {
         return new SvdF(this, full);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public EvdF evd(boolean full) {
         if (!this.isSquareMatrix()) {
@@ -126,6 +147,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return new EvdF(this, full);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float norm2() {
         return new SvdF(this, false).norm2();
@@ -161,6 +185,9 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
         return X;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF copy() {
         return new SimpleMatrixF(this);

@@ -56,6 +56,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return new SimpleMatrixD(rows, cols, data);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD multAdd(double alpha, MatrixD B, MatrixD C) {
         Checks.checkMultAdd(this, B, C);
@@ -68,6 +71,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD transABmultAdd(double alpha, MatrixD B, MatrixD C) {
         Checks.checkTransABmultAdd(this, B, C);
@@ -80,6 +86,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD transAmultAdd(double alpha, MatrixD B, MatrixD C) {
         Checks.checkTransAmultAdd(this, B, C);
@@ -92,6 +101,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD transBmultAdd(double alpha, MatrixD B, MatrixD C) {
         Checks.checkTransBmultAdd(this, B, C);
@@ -104,6 +116,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return C;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD solve(MatrixD B, MatrixD X) {
         Checks.checkSolve(this, B, X);
@@ -113,11 +128,17 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return qrsolve(this, X, B);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public SvdD svd(boolean full) {
         return new SvdD(this, full);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public EvdD evd(boolean full) {
         if (!this.isSquareMatrix()) {
@@ -126,6 +147,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return new EvdD(this, full);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double norm2() {
         return new SvdD(this, false).norm2();
@@ -161,6 +185,9 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
         return X;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD copy() {
         return new SimpleMatrixD(this);
