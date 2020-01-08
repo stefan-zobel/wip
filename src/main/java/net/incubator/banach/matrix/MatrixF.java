@@ -383,9 +383,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *         {@code n x n} case) or {@code m x r} (in the {@code m x n} case).
      * @throws ComputationTruncatedException
      *             for exactly singular factors in the LU decomposition of a
-     *             quadratic matrix
-     * @throws ComputationTruncatedException
-     *             for a non-quadratic matrix that doesn't have full rank
+     *             quadratic matrix or for a non-quadratic matrix that doesn't
+     *             have full rank
      */
     MatrixF solve(MatrixF B, MatrixF X);
 
