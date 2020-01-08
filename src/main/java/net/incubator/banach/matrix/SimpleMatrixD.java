@@ -23,7 +23,8 @@ import net.frobenius.TTrans;
 import net.frobenius.lapack.PlainLapack;
 
 /**
- * <b>Note: this is experimental, unfinished and completely untested code!</b>
+ * A simple dense matrix implementation of a column-major layout double matrix
+ * based on {@code BLAS} and {@code LAPACK} routines.
  */
 public class SimpleMatrixD extends MatrixDBase implements MatrixD {
 

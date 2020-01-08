@@ -22,8 +22,6 @@ import java.util.Arrays;
  * primitive doubles with column-major storage layout. The addressing is zero
  * based. All operations throw a {@code NullPointerException} if any of the
  * method arguments is {@code null}.
- * <p>
- * <b>Note: this is experimental, unfinished and completely untested code!</b>
  */
 public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
 
