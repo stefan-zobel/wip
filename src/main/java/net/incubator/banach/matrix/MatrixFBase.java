@@ -617,7 +617,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF times(MatrixF B) {
-        return mult(B, Matrices.createF(this.rows, B.numColumns()));
+        return mult(B, create(this.rows, B.numColumns()));
     }
 
     /**
@@ -625,7 +625,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF timesTimes(MatrixF B, MatrixF C) {
-        return mult(B, Matrices.createF(rows, B.numColumns())).mult(C, Matrices.createF(rows, C.numColumns()));
+        return mult(B, create(rows, B.numColumns())).mult(C, create(rows, C.numColumns()));
     }
 
     /**
@@ -633,7 +633,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF transpose() {
-        return trans(Matrices.createF(cols, rows));
+        return trans(create(cols, rows));
     }
 
     /**
@@ -641,7 +641,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF inverse() {
-        return inv(Matrices.sameDimF(this));
+        return inv(create(rows, cols));
     }
 
     /**
@@ -649,7 +649,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF plus(MatrixF B) {
-        return add(B, Matrices.sameDimF(this));
+        return add(B, create(rows, cols));
     }
 
     /**
@@ -657,7 +657,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF minus(MatrixF B) {
-        return add(-1.0f, B, Matrices.sameDimF(this));
+        return add(-1.0f, B, create(rows, cols));
     }
 
     /**
@@ -665,7 +665,7 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
      */
     @Override
     public MatrixF uminus() {
-        return scale(-1.0f, Matrices.sameDimF(this));
+        return scale(-1.0f, create(rows, cols));
     }
 
     // protected methods

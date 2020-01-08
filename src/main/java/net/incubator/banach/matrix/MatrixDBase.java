@@ -620,7 +620,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD times(MatrixD B) {
-        return mult(B, Matrices.createD(rows, B.numColumns()));
+        return mult(B, create(rows, B.numColumns()));
     }
 
     /**
@@ -628,7 +628,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD timesTimes(MatrixD B, MatrixD C) {
-        return mult(B, Matrices.createD(rows, B.numColumns())).mult(C, Matrices.createD(rows, C.numColumns()));
+        return mult(B, create(rows, B.numColumns())).mult(C, create(rows, C.numColumns()));
     }
 
     /**
@@ -636,7 +636,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD transpose() {
-        return trans(Matrices.createD(cols, rows));
+        return trans(create(cols, rows));
     }
 
     /**
@@ -644,7 +644,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD inverse() {
-        return inv(Matrices.sameDimD(this));
+        return inv(create(rows, cols));
     }
 
     /**
@@ -652,7 +652,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD plus(MatrixD B) {
-        return add(B, Matrices.sameDimD(this));
+        return add(B, create(rows, cols));
     }
 
     /**
@@ -660,7 +660,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD minus(MatrixD B) {
-        return add(-1.0, B, Matrices.sameDimD(this));
+        return add(-1.0, B, create(rows, cols));
     }
 
     /**
@@ -668,7 +668,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
      */
     @Override
     public MatrixD uminus() {
-        return scale(-1.0, Matrices.sameDimD(this));
+        return scale(-1.0, create(rows, cols));
     }
 
     // protected methods
