@@ -32,36 +32,57 @@ public abstract class DimensionsBase implements Dimensions {
         this.cols = cols;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isScalar() {
         return rows == 1 && cols == 1;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isColumnVector() {
         return cols == 1;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isRowVector() {
         return rows == 1;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSquareMatrix() {
         return rows == cols;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int numColumns() {
         return cols;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int numRows() {
         return rows;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void checkIndex(int row, int col) {
         if (row < 0 || row >= rows) {
@@ -73,6 +94,9 @@ public abstract class DimensionsBase implements Dimensions {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void checkSubmatrixIndexes(int rFrom, int cFrom, int rTo, int cTo) {
         checkIndex(rFrom, cFrom);
