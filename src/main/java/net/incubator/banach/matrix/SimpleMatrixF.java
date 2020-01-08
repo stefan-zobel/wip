@@ -29,10 +29,28 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
 
     private static final float BETA = 1.0f;
 
+    /**
+     * Create a new {@code SimpleMatrixF} of dimension {@code (rows, cols)}.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     */
     public SimpleMatrixF(int rows, int cols) {
         this(rows, cols, new float[Checks.checkArrayLength(rows, cols)]);
     }
 
+    /**
+     * Create a new {@code SimpleMatrixF} of dimension {@code (rows, cols)} with
+     * all matrix elements set to {@code initialValue}.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     * @param initialValue
+     */
     public SimpleMatrixF(int rows, int cols, float initialValue) {
         super(rows, cols, new float[Checks.checkArrayLength(rows, cols)], false);
         Arrays.fill(a, initialValue);

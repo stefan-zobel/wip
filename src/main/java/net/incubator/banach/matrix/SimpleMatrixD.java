@@ -29,10 +29,28 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
 
     private static final double BETA = 1.0;
 
+    /**
+     * Create a new {@code SimpleMatrixD} of dimension {@code (rows, cols)}.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     */
     public SimpleMatrixD(int rows, int cols) {
         this(rows, cols, new double[Checks.checkArrayLength(rows, cols)]);
     }
 
+    /**
+     * Create a new {@code SimpleMatrixD} of dimension {@code (rows, cols)} with
+     * all matrix elements set to {@code initialValue}.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     * @param initialValue
+     */
     public SimpleMatrixD(int rows, int cols, double initialValue) {
         super(rows, cols, new double[Checks.checkArrayLength(rows, cols)], false);
         Arrays.fill(a, initialValue);
