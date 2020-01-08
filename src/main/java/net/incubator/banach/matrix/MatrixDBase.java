@@ -41,6 +41,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double toScalar() {
         if (!isScalar()) {
@@ -370,17 +373,26 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     @Override
     public abstract MatrixD transBmultAdd(double alpha, MatrixD B, MatrixD C);
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD zeroInplace() {
         Arrays.fill(a, 0.0);
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD setInplace(MatrixD other) {
         return setInplace(1.0, other);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD setInplace(double alpha, MatrixD other) {
         Checks.checkEqualDimension(this, other);
@@ -398,6 +410,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return this; 
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD submatrix(int r0, int c0, int r1, int c1, MatrixD B, int rb, int cb) {
         checkSubmatrixIndexes(r0, c0, r1, c1);
@@ -414,6 +429,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return B;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD setSubmatrixInplace(int r0, int c0, MatrixD B, int rb0, int cb0, int rb1, int cb1) {
         B.checkSubmatrixIndexes(rb0, cb0, rb1, cb1);
@@ -430,16 +448,25 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double get(int row, int col) {
         checkIndex(row, col);
         return a[idx(row, col)];
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public double getUnsafe(int row, int col) {
         return a[idx(row, col)];
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD set(int row, int col, double val) {
         checkIndex(row, col);
@@ -447,10 +474,16 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public void setUnsafe(int row, int col, double val) {
         a[idx(row, col)] = val;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD add(int row, int col, double val) {
         checkIndex(row, col);
@@ -462,11 +495,17 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         a[idx(row, col)] += val;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double[] getArrayUnsafe() {
         return a;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double[][] toJaggedArray() {
         int _rows = rows;
@@ -482,6 +521,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return copy;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD inv(MatrixD inverse) {
         if (!this.isSquareMatrix()) {
@@ -491,6 +533,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return solve(Matrices.identityD(this.numRows()), inverse);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD pseudoInv() {
         if (this.isSquareMatrix()) {
@@ -514,6 +559,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return x.transBmult(U, create(x.numRows(), U.numRows()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double normF() {
         // overflow resistant implementation
@@ -537,6 +585,9 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         return scale * Math.sqrt(sumsquared);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double trace() {
         double t = 0.0;
@@ -548,36 +599,57 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
 
     // DMatrixBasicOps
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD times(MatrixD B) {
         return mult(B, Matrices.createD(rows, B.numColumns()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD timesTimes(MatrixD B, MatrixD C) {
         return mult(B, Matrices.createD(rows, B.numColumns())).mult(C, Matrices.createD(rows, C.numColumns()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD transpose() {
         return trans(Matrices.createD(cols, rows));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD inverse() {
         return inv(Matrices.sameDimD(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD plus(MatrixD B) {
         return add(B, Matrices.sameDimD(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD minus(MatrixD B) {
         return add(-1.0, B, Matrices.sameDimD(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixD uminus() {
         return scale(-1.0, Matrices.sameDimD(this));

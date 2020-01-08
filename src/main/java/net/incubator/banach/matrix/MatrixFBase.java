@@ -41,6 +41,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float toScalar() {
         if (!isScalar()) {
@@ -376,11 +379,17 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF setInplace(MatrixF other) {
         return setInplace(1.0f, other);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF setInplace(float alpha, MatrixF other) {
         Checks.checkEqualDimension(this, other);
@@ -398,6 +407,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF submatrix(int r0, int c0, int r1, int c1, MatrixF B, int rb, int cb) {
         checkSubmatrixIndexes(r0, c0, r1, c1);
@@ -414,6 +426,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return B;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF setSubmatrixInplace(int r0, int c0, MatrixF B, int rb0, int cb0, int rb1, int cb1) {
         B.checkSubmatrixIndexes(rb0, cb0, rb1, cb1);
@@ -430,16 +445,25 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float get(int row, int col) {
         checkIndex(row, col);
         return a[idx(row, col)];
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public float getUnsafe(int row, int col) {
         return a[idx(row, col)];
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF set(int row, int col, float val) {
         checkIndex(row, col);
@@ -447,10 +471,16 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public void setUnsafe(int row, int col, float val) {
         a[idx(row, col)] = val;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF add(int row, int col, float val) {
         checkIndex(row, col);
@@ -462,11 +492,17 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         a[idx(row, col)] += val;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float[] getArrayUnsafe() {
         return a;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float[][] toJaggedArray() {
         int _rows = rows;
@@ -482,6 +518,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return copy;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF inv(MatrixF inverse) {
         if (!this.isSquareMatrix()) {
@@ -491,6 +530,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return solve(Matrices.identityF(this.numRows()), inverse);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF pseudoInv() {
         if (this.isSquareMatrix()) {
@@ -514,6 +556,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return x.transBmult(U, create(x.numRows(), U.numRows()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float normF() {
         // overflow resistant implementation
@@ -537,6 +582,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
         return (float) (scale * Math.sqrt(sumsquared));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public float trace() {
         float t = 0.0f;
@@ -548,36 +596,57 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
 
     // FMatrixBasicOps
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF times(MatrixF B) {
         return mult(B, Matrices.createF(this.rows, B.numColumns()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF timesTimes(MatrixF B, MatrixF C) {
         return mult(B, Matrices.createF(rows, B.numColumns())).mult(C, Matrices.createF(rows, C.numColumns()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF transpose() {
         return trans(Matrices.createF(cols, rows));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF inverse() {
         return inv(Matrices.sameDimF(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF plus(MatrixF B) {
         return add(B, Matrices.sameDimF(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF minus(MatrixF B) {
         return add(-1.0f, B, Matrices.sameDimF(this));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF uminus() {
         return scale(-1.0f, Matrices.sameDimF(this));
