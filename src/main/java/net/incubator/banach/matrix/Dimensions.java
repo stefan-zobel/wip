@@ -15,20 +15,68 @@
  */
 package net.incubator.banach.matrix;
 
+/**
+ * Basic matrix properties related to the dimension of a matrix.
+ */
 public interface Dimensions {
 
+    /**
+     * {@code true} if and only if this matrix is a 1-by-1 matrix.
+     * 
+     * @return {@code true} if this matrix can be converted to a scalar,
+     *         {@code false} otherwise
+     */
     boolean isScalar();
 
+    /**
+     * {@code true} if and only if this matrix is a n-by-1 matrix.
+     * 
+     * @return {@code true} if this matrix is a column vector, {@code false}
+     *         otherwise
+     */
     boolean isColumnVector();
 
+    /**
+     * {@code true} if and only if this matrix is a 1-by-n matrix.
+     * 
+     * @return {@code true} if this matrix is a row vector, {@code false}
+     *         otherwise
+     */
     boolean isRowVector();
 
+    /**
+     * {@code true} if and only if this matrix is a square n-by-n matrix.
+     * 
+     * @return {@code true} if this matrix is a quadratic, {@code false}
+     *         otherwise
+     */
     boolean isSquareMatrix();
 
+    /**
+     * Returns the number of columns (>= 1) of this matrix.
+     * 
+     * @return the number of matrix columns
+     */
     int numColumns();
 
+    /**
+     * Returns the number of rows (>= 1) of this matrix.
+     * 
+     * @return the number of matrix rows
+     */
     int numRows();
 
+    /**
+     * Check that {@code row} and {@code col} are valid (zero-based) indexes for
+     * this matrix. Throws {@link IllegalArgumentException} otherwise.
+     * 
+     * @param row
+     *            zero-based row index
+     * @param col
+     *            zero-based column index
+     * @throws IllegalArgumentException
+     *             if {@code (row, col)} is an invalid matrix index
+     */
     void checkIndex(int row, int col);
 
     /**
