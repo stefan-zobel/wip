@@ -130,12 +130,12 @@ final class IO {
         return getFloatB(bytes);
     }
 
-    static long putIntB(int x, byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
+    private static long putIntB(int x, byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
         os.write(putIntB(x, bytes));
         return 4L;
     }
 
-    static long putIntL(int x, byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
+    private static long putIntL(int x, byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
         os.write(putIntL(x, bytes));
         return 4L;
     }
