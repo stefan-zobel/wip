@@ -357,8 +357,7 @@ public final class Matrices {
     public static MatrixF deserializeF(InputStream is) throws IOException {
         byte[] buf = new byte[4];
         checkBigendian(IO.isBigendian(buf, is));
-        boolean isDoubleType = IO.isDoubleType(buf, is);
-        if (isDoubleType) {
+        if (IO.isDoubleType(buf, is)) {
             throw new IOException("Unexpected MatrixD. Use deserializeD() instead.");
         }
         int rows = IO.readRows(true, buf, is);
@@ -374,8 +373,7 @@ public final class Matrices {
     public static MatrixD deserializeD(InputStream is) throws IOException {
         byte[] buf = new byte[8];
         checkBigendian(IO.isBigendian(buf, is));
-        boolean isDoubleType = IO.isDoubleType(buf, is);
-        if (!isDoubleType) {
+        if (!IO.isDoubleType(buf, is)) {
             throw new IOException("Unexpected MatrixF. Use deserializeF() instead.");
         }
         int rows = IO.readRows(true, buf, is);
