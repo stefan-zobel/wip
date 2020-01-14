@@ -15,6 +15,9 @@
  */
 package net.incubator.banach.matrix;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -329,6 +332,66 @@ public final class Matrices {
      */
     public static MatrixF sameDimF(MatrixF mf) {
         return new SimpleMatrixF(mf.numRows(), mf.numColumns());
+    }
+
+    public static long serializeF(MatrixF mf, OutputStream os) throws IOException {
+        byte[] buf = new byte[4];
+        long sz = IO.writeMatrixHeaderB(mf.numRows(), mf.numColumns(), Float.SIZE, buf, os);
+        float[] data = mf.getArrayUnsafe();
+        for (int i = 0; i < data.length; ++i) {
+            sz += IO.putFloatB(data[i], buf, os);
+        }
+        return sz;
+    }
+
+    public static long serializeD(MatrixD md, OutputStream os) throws IOException {
+        byte[] buf = new byte[8];
+        long sz = IO.writeMatrixHeaderB(md.numRows(), md.numColumns(), Double.SIZE, buf, os);
+        double[] data = md.getArrayUnsafe();
+        for (int i = 0; i < data.length; ++i) {
+            sz += IO.putDoubleB(data[i], buf, os);
+        }
+        return sz;
+    }
+
+    public static MatrixF deserializeF(InputStream is) throws IOException {
+        byte[] buf = new byte[4];
+        checkBigendian(IO.isBigendian(buf, is));
+        boolean isDoubleType = IO.isDoubleType(buf, is);
+        if (isDoubleType) {
+            throw new IOException("Unexpected MatrixD. Use deserializeD() instead.");
+        }
+        int rows = IO.readRows(true, buf, is);
+        int cols = IO.readCols(true, buf, is);
+        MatrixF mf = createF(rows, cols);
+        float[] data = mf.getArrayUnsafe();
+        for (int i = 0; i < data.length; ++i) {
+            data[i] = IO.getFloatB(buf, is);
+        }
+        return mf;
+    }
+
+    public static MatrixD deserializeD(InputStream is) throws IOException {
+        byte[] buf = new byte[8];
+        checkBigendian(IO.isBigendian(buf, is));
+        boolean isDoubleType = IO.isDoubleType(buf, is);
+        if (!isDoubleType) {
+            throw new IOException("Unexpected MatrixF. Use deserializeF() instead.");
+        }
+        int rows = IO.readRows(true, buf, is);
+        int cols = IO.readCols(true, buf, is);
+        MatrixD md = createD(rows, cols);
+        double[] data = md.getArrayUnsafe();
+        for (int i = 0; i < data.length; ++i) {
+            data[i] = IO.getDoubleB(buf, is);
+        }
+        return md;
+    }
+
+    private static void checkBigendian(boolean isBigendian) throws IOException {
+        if (!isBigendian) {
+            throw new IOException("Unexpected little endian storage format");
+        }
     }
 
     private Matrices() {
