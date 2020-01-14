@@ -188,11 +188,11 @@ final class IO {
         return Float.intBitsToFloat(getIntB(bytes));
     }
 
-    static double getDoubleL(byte[] bytes) {
+    private static double getDoubleL(byte[] bytes) {
         return Double.longBitsToDouble(getLongL(bytes));
     }
 
-    static double getDoubleB(byte[] bytes) {
+    private static double getDoubleB(byte[] bytes) {
         return Double.longBitsToDouble(getLongB(bytes));
     }
 
