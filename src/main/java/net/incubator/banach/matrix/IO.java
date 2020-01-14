@@ -24,8 +24,8 @@ import java.io.OutputStream;
  */
 final class IO {
 
-    static final byte BIG_ENDIAN = 1;
-    static final byte LITTLE_ENDIAN = 2;
+    private static final byte BIG_ENDIAN = 1;
+    private static final byte LITTLE_ENDIAN = 2;
 
     static long writeMatrixHeaderB(int rows, int cols,
             byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
@@ -43,29 +43,24 @@ final class IO {
         return 9L;
     }
 
-    static byte readEndianess(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
+    static boolean isBigendian(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
         is.read(bytes, 0, 1);
-        return bytes[0];
+        if (BIG_ENDIAN == bytes[0]) {
+            return true;
+        } else if (LITTLE_ENDIAN == bytes[0]) {
+            return false;
+        }
+        throw new IOException("wrong InputStream position");
     }
 
-    static int readRowsL(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
+    static int readRows(boolean bigendian, byte[] bytes /* byte[4] */, InputStream is) throws IOException {
         is.read(bytes, 0, 4);
-        return getIntL(bytes);
+        return bigendian ? getIntB(bytes) : getIntL(bytes);
     }
 
-    static int readColsL(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
+    static int readCols(boolean bigendian, byte[] bytes /* byte[4] */, InputStream is) throws IOException {
         is.read(bytes, 0, 4);
-        return getIntL(bytes);
-    }
-
-    static int readRowsB(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
-        is.read(bytes, 0, 4);
-        return getIntB(bytes);
-    }
-
-    static int readColsB(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
-        is.read(bytes, 0, 4);
-        return getIntB(bytes);
+        return bigendian ? getIntB(bytes) : getIntL(bytes);
     }
 
     static long putDoubleL(double x, byte[] bytes /* byte[8] */, OutputStream os) throws IOException {
