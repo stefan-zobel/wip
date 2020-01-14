@@ -36,7 +36,9 @@ final class IO {
         os.write(BIG_ENDIAN);
         os.write(dtNumBits);
         putIntB(rows, bytes, os);
+        os.write(bytes, 0, 4);
         putIntB(cols, bytes, os);
+        os.write(bytes, 0, 4);
         return 10L;
     }
 
@@ -46,7 +48,9 @@ final class IO {
         os.write(LITTLE_ENDIAN);
         os.write(dtNumBits);
         putIntL(rows, bytes, os);
+        os.write(bytes, 0, 4);
         putIntL(cols, bytes, os);
+        os.write(bytes, 0, 4);
         return 10L;
     }
 
