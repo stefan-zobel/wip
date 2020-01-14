@@ -26,21 +26,34 @@ final class IO {
 
     private static final byte BIG_ENDIAN = 1;
     private static final byte LITTLE_ENDIAN = 2;
+    private static final byte DT_FLOAT_BITS = 32;
+    private static final byte DT_DOUBLE_BITS = 64;
+    private static final String WRONG_IS_POS = "Wrong InputStream position";
 
-    static long writeMatrixHeaderB(int rows, int cols,
+    static long writeMatrixHeaderB(int rows, int cols, int dtNumBits,
             byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
+        checkNumBits(dtNumBits);
         os.write(BIG_ENDIAN);
+        os.write(dtNumBits);
         putIntB(rows, bytes, os);
         putIntB(cols, bytes, os);
-        return 9L;
+        return 10L;
     }
 
-    static long writeMatrixHeaderL(int rows, int cols,
+    static long writeMatrixHeaderL(int rows, int cols, int dtNumBits,
             byte[] bytes /* byte[4] */, OutputStream os) throws IOException {
+        checkNumBits(dtNumBits);
         os.write(LITTLE_ENDIAN);
+        os.write(dtNumBits);
         putIntL(rows, bytes, os);
         putIntL(cols, bytes, os);
-        return 9L;
+        return 10L;
+    }
+
+    private static void checkNumBits(int dtNumBits) throws IllegalArgumentException {
+        if (dtNumBits != DT_FLOAT_BITS && dtNumBits != DT_DOUBLE_BITS) {
+            throw new IllegalArgumentException("Wrong datatype (number of bits = " + dtNumBits + ")");
+        }
     }
 
     static boolean isBigendian(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
@@ -50,7 +63,17 @@ final class IO {
         } else if (LITTLE_ENDIAN == bytes[0]) {
             return false;
         }
-        throw new IOException("wrong InputStream position");
+        throw new IOException(WRONG_IS_POS);
+    }
+
+    static boolean isDoubleType(byte[] bytes /* byte[4] */, InputStream is) throws IOException {
+        is.read(bytes, 0, 1);
+        if (DT_DOUBLE_BITS == bytes[0]) {
+            return true;
+        } else if (DT_FLOAT_BITS == bytes[0]) {
+            return false;
+        }
+        throw new IOException(WRONG_IS_POS);
     }
 
     static int readRows(boolean bigendian, byte[] bytes /* byte[4] */, InputStream is) throws IOException {
