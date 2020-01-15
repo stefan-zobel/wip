@@ -15,9 +15,13 @@
  */
 package net.incubator.banach.matrix;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -334,6 +338,19 @@ public final class Matrices {
         return new SimpleMatrixF(mf.numRows(), mf.numColumns());
     }
 
+    public static long serializeF(MatrixF mf, Path file) throws IOException {
+        //@formatter:off
+        try (OutputStream os = Files.newOutputStream(file);
+             BufferedOutputStream bos = new BufferedOutputStream(os, BUF_SIZE)
+        )
+        {
+            long sz = serializeF(mf, bos);
+            bos.flush();
+            return sz;
+        }
+        //@formatter:on
+    }
+
     public static long serializeF(MatrixF mf, OutputStream os) throws IOException {
         byte[] buf = new byte[4];
         long sz = IO.writeMatrixHeaderB(mf.numRows(), mf.numColumns(), Float.SIZE, buf, os);
@@ -344,6 +361,19 @@ public final class Matrices {
         return sz;
     }
 
+    public static long serializeD(MatrixD md, Path file) throws IOException {
+        //@formatter:off
+        try (OutputStream os = Files.newOutputStream(file);
+             BufferedOutputStream bos = new BufferedOutputStream(os, BUF_SIZE)
+        )
+        {
+            long sz = serializeD(md, bos);
+            bos.flush();
+            return sz;
+        }
+        //@formatter:on
+    }
+
     public static long serializeD(MatrixD md, OutputStream os) throws IOException {
         byte[] buf = new byte[8];
         long sz = IO.writeMatrixHeaderB(md.numRows(), md.numColumns(), Double.SIZE, buf, os);
@@ -352,6 +382,17 @@ public final class Matrices {
             sz += IO.putDoubleB(data[i], buf, os);
         }
         return sz;
+    }
+
+    public static MatrixF deserializeF(Path file) throws IOException {
+        //@formatter:off
+        try (InputStream is = Files.newInputStream(file);
+             BufferedInputStream bis = new BufferedInputStream(is, BUF_SIZE)
+        )
+        {
+            return deserializeF(bis);
+        }
+        //@formatter:on
     }
 
     public static MatrixF deserializeF(InputStream is) throws IOException {
@@ -368,6 +409,17 @@ public final class Matrices {
             data[i] = IO.getFloatB(buf, is);
         }
         return mf;
+    }
+
+    public static MatrixD deserializeD(Path file) throws IOException {
+        //@formatter:off
+        try (InputStream is = Files.newInputStream(file);
+             BufferedInputStream bis = new BufferedInputStream(is, BUF_SIZE)
+        )
+        {
+            return deserializeD(bis);
+        }
+        //@formatter:on
     }
 
     public static MatrixD deserializeD(InputStream is) throws IOException {
@@ -391,6 +443,9 @@ public final class Matrices {
             throw new IOException("Unexpected little endian storage format");
         }
     }
+
+    // 256k
+    private static final int BUF_SIZE = 1 << 18;
 
     private Matrices() {
         throw new AssertionError();
