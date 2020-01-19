@@ -389,6 +389,9 @@ public abstract class MatrixFBase extends DimensionsBase implements MatrixF {
     @Override
     public abstract MatrixF transBmultAdd(float alpha, MatrixF B, MatrixF C);
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MatrixF zeroInplace() {
         Arrays.fill(a, 0.0f);
