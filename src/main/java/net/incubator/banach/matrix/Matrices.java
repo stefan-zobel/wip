@@ -338,6 +338,18 @@ public final class Matrices {
         return new SimpleMatrixF(mf.numRows(), mf.numColumns());
     }
 
+    /**
+     * Writes the matrix {@code mf} into the provided Path {@code file} and
+     * returns the number of bytes written.
+     * 
+     * @param mf
+     *            the float matrix that needs to be serialized
+     * @param file
+     *            the file to write the {@code mf} matrix into
+     * @return the number of bytes written into the file
+     * @throws IOException
+     *             if anything goes wrong
+     */
     public static long serializeF(MatrixF mf, Path file) throws IOException {
         //@formatter:off
         try (OutputStream os = Files.newOutputStream(file);
@@ -351,6 +363,20 @@ public final class Matrices {
         //@formatter:on
     }
 
+    /**
+     * Writes the matrix {@code mf} into the provided output stream {@code os}
+     * and returns the number of bytes written. Everything related to (pre-)
+     * positioning, flushing and closing the output stream must be done by the
+     * caller.
+     * 
+     * @param mf
+     *            the float matrix that needs to be serialized
+     * @param os
+     *            the output stream to write the {@code mf} matrix into
+     * @return the number of bytes written into the output stream
+     * @throws IOException
+     *             if anything goes wrong
+     */
     public static long serializeF(MatrixF mf, OutputStream os) throws IOException {
         byte[] buf = new byte[4];
         long sz = IO.writeMatrixHeaderB(mf.numRows(), mf.numColumns(), Float.SIZE, buf, os);
@@ -361,6 +387,18 @@ public final class Matrices {
         return sz;
     }
 
+    /**
+     * Writes the matrix {@code md} into the provided Path {@code file} and
+     * returns the number of bytes written.
+     * 
+     * @param md
+     *            the double matrix that needs to be serialized
+     * @param file
+     *            the file to write the {@code md} matrix into
+     * @return the number of bytes written into the file
+     * @throws IOException
+     *             if anything goes wrong
+     */
     public static long serializeD(MatrixD md, Path file) throws IOException {
         //@formatter:off
         try (OutputStream os = Files.newOutputStream(file);
@@ -374,6 +412,20 @@ public final class Matrices {
         //@formatter:on
     }
 
+    /**
+     * Writes the matrix {@code md} into the provided output stream {@code os}
+     * and returns the number of bytes written. Everything related to (pre-)
+     * positioning, flushing and closing the output stream must be done by the
+     * caller.
+     * 
+     * @param md
+     *            the double matrix that needs to be serialized
+     * @param os
+     *            the output stream to write the {@code md} matrix into
+     * @return the number of bytes written into the output stream
+     * @throws IOException
+     *             if anything goes wrong
+     */
     public static long serializeD(MatrixD md, OutputStream os) throws IOException {
         byte[] buf = new byte[8];
         long sz = IO.writeMatrixHeaderB(md.numRows(), md.numColumns(), Double.SIZE, buf, os);
@@ -384,6 +436,16 @@ public final class Matrices {
         return sz;
     }
 
+    /**
+     * Attempts to read a float matrix from the provided Path {@code file}.
+     * 
+     * @param file
+     *            the file to read the float matrix from
+     * @return the deserialized float matrix
+     * @throws IOException
+     *             if anything goes wrong (e.g., there is no float matrix stored
+     *             in that file)
+     */
     public static MatrixF deserializeF(Path file) throws IOException {
         //@formatter:off
         try (InputStream is = Files.newInputStream(file);
@@ -395,6 +457,18 @@ public final class Matrices {
         //@formatter:on
     }
 
+    /**
+     * Attempts to read a float matrix from the current position of the provided
+     * input stream {@code is}. The correct positioning of the input stream and
+     * closing the input stream must be done by the caller.
+     * 
+     * @param is
+     *            the input stream to read a float matrix from
+     * @return the float matrix deserialized from the input stream
+     * @throws IOException
+     *             if anything goes wrong (e.g., the position is wrong or there
+     *             is no float matrix stored at the current position)
+     */
     public static MatrixF deserializeF(InputStream is) throws IOException {
         byte[] buf = new byte[4];
         checkBigendian(IO.isBigendian(buf, is));
@@ -411,6 +485,16 @@ public final class Matrices {
         return mf;
     }
 
+    /**
+     * Attempts to read a double matrix from the provided Path {@code file}.
+     * 
+     * @param file
+     *            the file to read the double matrix from
+     * @return the deserialized double matrix
+     * @throws IOException
+     *             if anything goes wrong (e.g., there is no double matrix
+     *             stored in that file)
+     */
     public static MatrixD deserializeD(Path file) throws IOException {
         //@formatter:off
         try (InputStream is = Files.newInputStream(file);
@@ -422,6 +506,18 @@ public final class Matrices {
         //@formatter:on
     }
 
+    /**
+     * Attempts to read a double matrix from the current position of the
+     * provided input stream {@code is}. The correct positioning of the input
+     * stream and closing the input stream must be done by the caller.
+     * 
+     * @param is
+     *            the input stream to read a double matrix from
+     * @return the double matrix deserialized from the input stream
+     * @throws IOException
+     *             if anything goes wrong (e.g., the position is wrong or there
+     *             is no double matrix stored at the current position)
+     */
     public static MatrixD deserializeD(InputStream is) throws IOException {
         byte[] buf = new byte[8];
         checkBigendian(IO.isBigendian(buf, is));
