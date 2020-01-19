@@ -15,6 +15,11 @@
  */
 package net.incubator.banach.matrix;
 
+/**
+ * Abstract base implementation of the {@code Dimensions} interface. Note that
+ * all addressing is zero based and that the numbers of rows and columns must be
+ * strictly positive.
+ */
 public abstract class DimensionsBase implements Dimensions {
 
     /** The IEEE 754 machine epsilon from Cephes: (2^-53) */
@@ -25,6 +30,17 @@ public abstract class DimensionsBase implements Dimensions {
     protected final int rows;
     protected final int cols;
 
+    /**
+     * Constructs a new {@link Dimensions} implementation which checks that both
+     * parameters are strictly positive.
+     * 
+     * @param rows
+     *            number of matrix rows
+     * @param cols
+     *            number of matrix columns
+     * @throws IllegalArgumentException
+     *             if any one of the parameters is not strictly positive
+     */
     public DimensionsBase(int rows, int cols) {
         checkRows(rows);
         checkCols(cols);
