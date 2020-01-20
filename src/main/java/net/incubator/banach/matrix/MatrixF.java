@@ -132,7 +132,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF mult(float alpha, MatrixF B, MatrixF C);
 
     /**
-     * {@code C = A * B + C}
+     * {@code C = A * B + C}. On exit, the matrix {@code C} is overwritten by
+     * the result of the operation.
      * 
      * @param B
      * @param C
@@ -141,7 +142,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF multAdd(MatrixF B, MatrixF C);
 
     /**
-     * {@code C = alpha * A * B + C}
+     * {@code C = alpha * A * B + C}. On exit, the matrix {@code C} is
+     * overwritten by the result of the operation.
      * 
      * @param alpha
      * @param B
@@ -208,7 +210,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transBmult(float alpha, MatrixF B, MatrixF C);
 
     /**
-     * <code>C = A<sup>T</sup> * B<sup>T</sup> + C</code>
+     * <code>C = A<sup>T</sup> * B<sup>T</sup> + C</code>. On exit, the matrix
+     * {@code C} is overwritten by the result of the operation.
      * 
      * @param B
      * @param C
@@ -217,7 +220,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transABmultAdd(MatrixF B, MatrixF C);
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup> + C</code>
+     * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup> + C</code>. On exit, the
+     * matrix {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
      * @param B
@@ -227,7 +231,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transABmultAdd(float alpha, MatrixF B, MatrixF C);
 
     /**
-     * <code>C = A<sup>T</sup> * B + C</code>
+     * <code>C = A<sup>T</sup> * B + C</code>. On exit, the matrix {@code C} is
+     * overwritten by the result of the operation.
      * 
      * @param B
      * @param C
@@ -236,7 +241,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transAmultAdd(MatrixF B, MatrixF C);
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B + C</code>
+     * <code>C = alpha * A<sup>T</sup> * B + C</code>. On exit, the matrix
+     * {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
      * @param B
@@ -246,7 +252,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transAmultAdd(float alpha, MatrixF B, MatrixF C);
 
     /**
-     * <code>C = A * B<sup>T</sup> + C</code>
+     * <code>C = A * B<sup>T</sup> + C</code>. On exit, the matrix {@code C} is
+     * overwritten by the result of the operation.
      * 
      * @param B
      * @param C
@@ -255,7 +262,8 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
     MatrixF transBmultAdd(MatrixF B, MatrixF C);
 
     /**
-     * <code>C = alpha * A * B<sup>T</sup> + C</code>
+     * <code>C = alpha * A * B<sup>T</sup> + C</code>. On exit, the matrix
+     * {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
      * @param B
