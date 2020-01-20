@@ -136,7 +136,10 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * the result of the operation.
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD multAdd(MatrixD B, MatrixD C);
@@ -146,8 +149,12 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * overwritten by the result of the operation.
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD multAdd(double alpha, MatrixD B, MatrixD C);
@@ -214,7 +221,10 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C} is overwritten by the result of the operation.
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transABmultAdd(MatrixD B, MatrixD C);
@@ -224,8 +234,12 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * matrix {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transABmultAdd(double alpha, MatrixD B, MatrixD C);
@@ -235,7 +249,10 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * overwritten by the result of the operation.
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transAmultAdd(MatrixD B, MatrixD C);
@@ -245,8 +262,12 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transAmultAdd(double alpha, MatrixD B, MatrixD C);
@@ -256,7 +277,10 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * overwritten by the result of the operation.
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transBmultAdd(MatrixD B, MatrixD C);
@@ -266,8 +290,12 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C} is overwritten by the result of the operation.
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            the matrix to add on input, contains the result of the
+     *            operation on output
      * @return {@code C}
      */
     MatrixD transBmultAdd(double alpha, MatrixD B, MatrixD C);
