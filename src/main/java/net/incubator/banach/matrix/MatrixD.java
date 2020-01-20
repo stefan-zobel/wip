@@ -38,6 +38,7 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code A = alpha * A}
      * 
      * @param alpha
+     *            scaling factor
      * @return {@code A}
      */
     MatrixD scaleInplace(double alpha);
@@ -46,7 +47,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code B = alpha * A}
      * 
      * @param alpha
+     *            scaling factor
      * @param B
+     *            output matrix
      * @return {@code B}
      */
     MatrixD scale(double alpha, MatrixD B);
@@ -55,6 +58,7 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>AT = A<sup>T</sup></code>
      * 
      * @param AT
+     *            output matrix
      * @return {@code AT}
      */
     MatrixD trans(MatrixD AT);
@@ -63,6 +67,7 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code A = A + B}
      * 
      * @param B
+     *            the matrix to be added to this matrix
      * @return {@code A}
      */
     MatrixD addInplace(MatrixD B);
@@ -71,7 +76,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code A = A + alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param B
+     *            matrix to be added to this matrix (after scaling)
      * @return {@code A}
      */
     MatrixD addInplace(double alpha, MatrixD B);
@@ -80,7 +87,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C = A + B}
      * 
      * @param B
+     *            matrix to be added to this matrix
      * @param C
+     *            output matrix for the result
      * @return {@code C}
      */
     MatrixD add(MatrixD B, MatrixD C);
@@ -89,8 +98,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C = A + alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param B
+     *            matrix to be added to this matrix (after scaling)
      * @param C
+     *            output matrix for the result
      * @return {@code C}
      */
     MatrixD add(double alpha, MatrixD B, MatrixD C);
@@ -99,7 +111,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C = A * B}
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD mult(MatrixD B, MatrixD C);
@@ -108,8 +122,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code C = alpha * A * B}
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD mult(double alpha, MatrixD B, MatrixD C);
@@ -395,11 +412,12 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      *            matrix where the inverse is stored. Must have the same
      *            dimension as this matrix
      * @return the inverse matrix (i.e. the argument {@code inverse})
-     * @throws IllegalArgumentException if this matrix is not quadratic or if
-     *        {@code inverse} has the wrong dimension
+     * @throws IllegalArgumentException
+     *             if this matrix is not quadratic or if {@code inverse} has the
+     *             wrong dimension
      * @throws ComputationTruncatedException
-     *             for exactly singular factors in the LU decomposition of
-     *             this matrix
+     *             for exactly singular factors in the LU decomposition of this
+     *             matrix
      */
     MatrixD inv(MatrixD inverse);
 

@@ -38,6 +38,7 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code A = alpha * A}
      * 
      * @param alpha
+     *            scaling factor
      * @return {@code A}
      */
     MatrixF scaleInplace(float alpha);
@@ -46,7 +47,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code B = alpha * A}
      * 
      * @param alpha
+     *            scaling factor
      * @param B
+     *            output matrix
      * @return {@code B}
      */
     MatrixF scale(float alpha, MatrixF B);
@@ -55,6 +58,7 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>AT = A<sup>T</sup></code>
      * 
      * @param AT
+     *            output matrix
      * @return {@code AT}
      */
     MatrixF trans(MatrixF AT);
@@ -63,6 +67,7 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code A = A + B}
      * 
      * @param B
+     *            the matrix to be added to this matrix
      * @return {@code A}
      */
     MatrixF addInplace(MatrixF B);
@@ -71,7 +76,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code A = A + alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param B
+     *            matrix to be added to this matrix (after scaling)
      * @return {@code A}
      */
     MatrixF addInplace(float alpha, MatrixF B);
@@ -80,7 +87,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code C = A + B}
      * 
      * @param B
+     *            matrix to be added to this matrix
      * @param C
+     *            output matrix for the result
      * @return {@code C}
      */
     MatrixF add(MatrixF B, MatrixF C);
@@ -89,8 +98,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code C = A + alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param B
+     *            matrix to be added to this matrix (after scaling)
      * @param C
+     *            output matrix for the result
      * @return {@code C}
      */
     MatrixF add(float alpha, MatrixF B, MatrixF C);
@@ -99,7 +111,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code C = A * B}
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF mult(MatrixF B, MatrixF C);
@@ -108,8 +122,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code C = alpha * A * B}
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF mult(float alpha, MatrixF B, MatrixF C);
@@ -395,11 +412,12 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      *            matrix where the inverse is stored. Must have the same
      *            dimension as this matrix
      * @return the inverse matrix (i.e. the argument {@code inverse})
-     * @throws IllegalArgumentException if this matrix is not quadratic or if
-     *        {@code inverse} has the wrong dimension
+     * @throws IllegalArgumentException
+     *             if this matrix is not quadratic or if {@code inverse} has the
+     *             wrong dimension
      * @throws ComputationTruncatedException
-     *             for exactly singular factors in the LU decomposition of
-     *             this matrix
+     *             for exactly singular factors in the LU decomposition of this
+     *             matrix
      */
     MatrixF inv(MatrixF inverse);
 
