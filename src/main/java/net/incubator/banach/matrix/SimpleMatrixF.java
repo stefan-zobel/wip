@@ -51,6 +51,7 @@ public class SimpleMatrixF extends MatrixFBase implements MatrixF {
      * @param cols
      *            number of matrix columns
      * @param initialValue
+     *            the initial value to set
      */
     public SimpleMatrixF(int rows, int cols, float initialValue) {
         super(rows, cols, new float[Checks.checkArrayLength(rows, cols)], false);

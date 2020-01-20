@@ -69,10 +69,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code A = alpha * A}
-     * 
-     * @param alpha
-     * @return {@code A}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD scaleInplace(double alpha) {
@@ -90,11 +87,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code B = alpha * A}
-     * 
-     * @param alpha
-     * @param B
-     * @return {@code B}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD scale(double alpha, MatrixD B) {
@@ -112,10 +105,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>AT = A<sup>T</sup></code>
-     * 
-     * @param AT
-     * @return {@code AT}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD trans(MatrixD AT) {
@@ -131,10 +121,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code A = A + B}
-     * 
-     * @param B
-     * @return {@code A}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD addInplace(MatrixD B) {
@@ -142,11 +129,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code A = A + alpha * B}
-     * 
-     * @param alpha
-     * @param B
-     * @return {@code A}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD addInplace(double alpha, MatrixD B) {
@@ -162,11 +145,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = A + B}
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD add(MatrixD B, MatrixD C) {
@@ -174,12 +153,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = A + alpha * B}
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD add(double alpha, MatrixD B, MatrixD C) {
@@ -198,11 +172,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = A * B}
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD mult(MatrixD B, MatrixD C) {
@@ -210,12 +180,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = alpha * A * B}
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD mult(double alpha, MatrixD B, MatrixD C) {
@@ -223,11 +188,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = A * B + C}
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD multAdd(MatrixD B, MatrixD C) {
@@ -235,22 +196,13 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * {@code C = alpha * A * B + C}
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public abstract MatrixD multAdd(double alpha, MatrixD B, MatrixD C);
 
     /**
-     * <code>C = A<sup>T</sup> * B<sup>T</sup></code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transABmult(MatrixD B, MatrixD C) {
@@ -258,12 +210,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup></code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transABmult(double alpha, MatrixD B, MatrixD C) {
@@ -271,11 +218,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = A<sup>T</sup> * B</code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transAmult(MatrixD B, MatrixD C) {
@@ -283,12 +226,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B</code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transAmult(double alpha, MatrixD B, MatrixD C) {
@@ -296,11 +234,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = A * B<sup>T</sup></code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transBmult(MatrixD B, MatrixD C) {
@@ -308,12 +242,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A * B<sup>T</sup></code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transBmult(double alpha, MatrixD B, MatrixD C) {
@@ -321,11 +250,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = A<sup>T</sup> * B<sup>T</sup> + C</code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transABmultAdd(MatrixD B, MatrixD C) {
@@ -333,22 +258,13 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup> + C</code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public abstract MatrixD transABmultAdd(double alpha, MatrixD B, MatrixD C);
 
     /**
-     * <code>C = A<sup>T</sup> * B + C</code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transAmultAdd(MatrixD B, MatrixD C) {
@@ -356,22 +272,13 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A<sup>T</sup> * B + C</code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public abstract MatrixD transAmultAdd(double alpha, MatrixD B, MatrixD C);
 
     /**
-     * <code>C = A * B<sup>T</sup> + C</code>
-     * 
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public MatrixD transBmultAdd(MatrixD B, MatrixD C) {
@@ -379,12 +286,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
     }
 
     /**
-     * <code>C = alpha * A * B<sup>T</sup> + C</code>
-     * 
-     * @param alpha
-     * @param B
-     * @param C
-     * @return {@code C}
+     * {@inheritDoc}
      */
     @Override
     public abstract MatrixD transBmultAdd(double alpha, MatrixD B, MatrixD C);
@@ -423,7 +325,7 @@ public abstract class MatrixDBase extends DimensionsBase implements MatrixD {
         for (int i = 0; i < _b.length; ++i) {
             _a[i] = alpha * _b[i];
         }
-        return this; 
+        return this;
     }
 
     /**

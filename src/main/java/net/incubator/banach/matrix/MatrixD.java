@@ -163,7 +163,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = A<sup>T</sup> * B<sup>T</sup></code>
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transABmult(MatrixD B, MatrixD C);
@@ -172,8 +174,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup></code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transABmult(double alpha, MatrixD B, MatrixD C);
@@ -182,7 +187,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = A<sup>T</sup> * B</code>
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transAmult(MatrixD B, MatrixD C);
@@ -191,8 +198,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = alpha * A<sup>T</sup> * B</code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transAmult(double alpha, MatrixD B, MatrixD C);
@@ -201,7 +211,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = A * B<sup>T</sup></code>
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transBmult(MatrixD B, MatrixD C);
@@ -210,8 +222,11 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * <code>C = alpha * A * B<sup>T</sup></code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixD transBmult(double alpha, MatrixD B, MatrixD C);
@@ -328,7 +343,9 @@ public interface MatrixD extends Dimensions, DMatrixBasicOps {
      * {@code A = alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param other
+     *            matrix to be multiplied from the right
      * @return {@code A}
      */
     MatrixD setInplace(double alpha, MatrixD other);

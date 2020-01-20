@@ -163,7 +163,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = A<sup>T</sup> * B<sup>T</sup></code>
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transABmult(MatrixF B, MatrixF C);
@@ -172,8 +174,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = alpha * A<sup>T</sup> * B<sup>T</sup></code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transABmult(float alpha, MatrixF B, MatrixF C);
@@ -182,7 +187,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = A<sup>T</sup> * B</code>
      * 
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transAmult(MatrixF B, MatrixF C);
@@ -191,8 +198,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = alpha * A<sup>T</sup> * B</code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transAmult(float alpha, MatrixF B, MatrixF C);
@@ -201,7 +211,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = A * B<sup>T</sup></code>
      * 
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transBmult(MatrixF B, MatrixF C);
@@ -210,8 +222,11 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * <code>C = alpha * A * B<sup>T</sup></code>
      * 
      * @param alpha
+     *            scale factor for the multiplication
      * @param B
+     *            matrix whose transpose is to be multiplied from the right
      * @param C
+     *            output matrix for the result of the multiplication
      * @return {@code C}
      */
     MatrixF transBmult(float alpha, MatrixF B, MatrixF C);
@@ -328,7 +343,9 @@ public interface MatrixF extends Dimensions, FMatrixBasicOps {
      * {@code A = alpha * B}
      * 
      * @param alpha
+     *            scale factor for {@code B}
      * @param B
+     *            other matrix to be multiplied from the right
      * @return {@code A}
      */
     MatrixF setInplace(float alpha, MatrixF B);

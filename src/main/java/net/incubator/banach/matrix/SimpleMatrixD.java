@@ -51,6 +51,7 @@ public class SimpleMatrixD extends MatrixDBase implements MatrixD {
      * @param cols
      *            number of matrix columns
      * @param initialValue
+     *            the initial value to set
      */
     public SimpleMatrixD(int rows, int cols, double initialValue) {
         super(rows, cols, new double[Checks.checkArrayLength(rows, cols)], false);
