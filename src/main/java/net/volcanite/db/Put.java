@@ -2,6 +2,7 @@ package net.volcanite.db;
 
 import org.rocksdb.Options;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksObject;
 import org.rocksdb.Transaction;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
@@ -28,12 +29,12 @@ public class Put implements AutoCloseable {
     private final TransactionDB txnDb;
     private final TransactionOptions txnOpts;
 
-    public Put(String dbPath) throws RocksDBException {
+    public Put(String dbPath) {
         @SuppressWarnings("resource")
         Options options = new Options().setCreateIfMissing(true).setIncreaseParallelism(PARALLELISM);
         writeOptions = new WriteOptions();
         txnDbOptions = new TransactionDBOptions();
-        txnDb = TransactionDB.open(options, txnDbOptions, dbPath);
+        txnDb = (TransactionDB) wrap(() -> TransactionDB.open(options, txnDbOptions, dbPath));
         txnOpts = new TransactionOptions();
         dbPath_ = dbPath;
         lastFlush = System.currentTimeMillis();
@@ -69,8 +70,24 @@ public class Put implements AutoCloseable {
         }
     }
 
-    public void write(byte[] key, byte[] value) throws RocksDBException {
-        write(key, value, txnDb, txnOpts, writeOptions);
+    private static interface ThrowingSupplier {
+        RocksObject get() throws Exception;
+    }
+
+    private static RocksObject wrap(ThrowingSupplier block) {
+        try {
+            return block.get();
+        } catch (Exception e) {
+            throw new DBException(e);
+        }
+    }
+
+    public void write(byte[] key, byte[] value) {
+        try {
+            write(key, value, txnDb, txnOpts, writeOptions);
+        } catch (RocksDBException e) {
+            throw new DBException(e);
+        }
     }
 
     private void write(byte[] key, byte[] value, TransactionDB txnDb, TransactionOptions txnOpts,
