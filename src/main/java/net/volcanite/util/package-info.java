@@ -1,4 +1,4 @@
 /**
- * Experimental stuff (TODO)
+ * Various utilities
  */
 package net.volcanite.util;

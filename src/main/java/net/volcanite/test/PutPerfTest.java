@@ -6,6 +6,7 @@ import java.util.Random;
 
 import net.volcanite.db.Put;
 import net.volcanite.util.DoubleStatistics;
+import static net.volcanite.util.Precision.round;
 
 public class PutPerfTest {
 
@@ -58,9 +59,5 @@ public class PutPerfTest {
         System.out.println("fsync every: "
                 + (totalTimeNanos.getSum() - fsyncTimeNanos.getSum()) / (1_000_000.0 * fsyncTimeNanos.getCount())
                 + " ms");
-    }
-
-    private static double round(double x) {
-        return BigDecimal.valueOf(x).setScale(5, RoundingMode.HALF_EVEN).doubleValue();
     }
 }
