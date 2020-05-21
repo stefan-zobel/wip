@@ -33,8 +33,8 @@ public class PutPerfTest {
                 runtime += (System.currentTimeMillis() - start);
             }
 
-            printStatistics(put);
             System.out.println("runti>  avg: " + (runtime / (double) RUNS) + " ms");
+            printStatistics(put);
         }
     }
 
