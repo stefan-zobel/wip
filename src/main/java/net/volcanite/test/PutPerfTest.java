@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Random;
 
-import org.rocksdb.RocksDBException;
-
 import net.volcanite.db.Put;
 import net.volcanite.util.DoubleStatistics;
 
@@ -20,22 +18,27 @@ public class PutPerfTest {
         return b;
     }
 
-    public static void main(String[] args) throws RocksDBException {
+    public static void main(String[] args) {
         String dbPath = "D:\\Temp\\rocksdb_database";
-
+        int RUNS = 500_000;
         long runtime = 0L;
-        Put put = new Put(dbPath);
-        final int RUNS = 500_000;
-        for (int i = 0; i < RUNS; ++i) {
-            long start = System.currentTimeMillis();
-            byte[] key = randomBytes();
-            byte[] value = randomBytes();
 
-            put.write(key, value);
-            runtime += (System.currentTimeMillis() - start);
+        try (Put put = new Put(dbPath)) {
+            for (int i = 0; i < RUNS; ++i) {
+                long start = System.currentTimeMillis();
+                byte[] key = randomBytes();
+                byte[] value = randomBytes();
+
+                put.write(key, value);
+                runtime += (System.currentTimeMillis() - start);
+            }
+
+            printStatistics(put);
+            System.out.println("runti>  avg: " + (runtime / (double) RUNS) + " ms");
         }
-        put.close();
+    }
 
+    private static void printStatistics(Put put) {
         DoubleStatistics writeTimeNanos = put.getWriteTimeNanos();
         DoubleStatistics fsyncTimeNanos = put.getFsyncTimeNanos();
         DoubleStatistics totalTimeNanos = put.getTotalTimeNanos();
@@ -52,7 +55,6 @@ public class PutPerfTest {
                 "total>  avg: " + round(totalTimeNanos.getAverage() / 1_000_000.0) + ", n: " + totalTimeNanos.getCount()
                         + ", std: " + round(totalTimeNanos.getStandardDeviation() / 1_000_000.0) + ", min: "
                         + totalTimeNanos.getMin() / 1_000_000.0 + ", max: " + totalTimeNanos.getMax() / 1_000_000.0);
-        System.out.println("runti>  avg: " + (runtime / (double) RUNS) + " ms");
         System.out.println("fsync every: "
                 + (totalTimeNanos.getSum() - fsyncTimeNanos.getSum()) / (1_000_000.0 * fsyncTimeNanos.getCount())
                 + " ms");
