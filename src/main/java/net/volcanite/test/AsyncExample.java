@@ -2,6 +2,7 @@ package net.volcanite.test;
 
 import static net.volcanite.test.TestUtil.randomBytes;
 
+import net.volcanite.persistence.RocksDBTransfer;
 import net.volcanite.persistence.TransmitTask;
 import net.volcanite.task.AsyncExecutor;
 
@@ -23,8 +24,9 @@ public class AsyncExample {
         }
 
         System.out.println("runti>  avg: " + (runtime / (double) RUNS) + " ms");
-        pause(13);
+        pause(15);
         AsyncExecutor.stop();
+        RocksDBTransfer.shutdown();
     }
 
     private static void pause(int seconds) {
