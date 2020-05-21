@@ -1,23 +1,11 @@
 package net.volcanite.test;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Random;
-
 import net.volcanite.db.Put;
 import net.volcanite.util.DoubleStatistics;
+import static net.volcanite.test.TestUtil.randomBytes;
 import static net.volcanite.util.Precision.round;
 
 public class PutPerfTest {
-
-    private static final Random rnd = new Random();
-
-    private static final byte[] randomBytes() {
-        int len = rnd.nextInt(400) + 1;
-        byte[] b = new byte[len];
-        rnd.nextBytes(b);
-        return b;
-    }
 
     public static void main(String[] args) {
         String dbPath = "D:\\Temp\\rocksdb_database";
