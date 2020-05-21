@@ -42,9 +42,7 @@ public class Put implements AutoCloseable {
     @Override
     public void close() {
         try {
-            txnDb.flushWal(true);
-        } catch (RocksDBException e) {
-            throw new RuntimeException(e);
+            tryFlushWal();
         } finally {
             close(txnDb);
             close(txnDbOptions);
@@ -60,6 +58,14 @@ public class Put implements AutoCloseable {
             } catch (Exception ignore) {
                 //
             }
+        }
+    }
+
+    private void tryFlushWal() {
+        try {
+            txnDb.flushWal(true);
+        } catch (RocksDBException e) {
+            throw new DBException(e);
         }
     }
 
@@ -82,13 +88,13 @@ public class Put implements AutoCloseable {
 
             if (System.currentTimeMillis() - lastFlush >= FLUSH_TIME_WINDOW_MILLIS) {
                 long flushStart = System.nanoTime();
-                txnDb.flushWal(true);
+                tryFlushWal();
                 fsyncTimeNanos.accept(System.nanoTime() - flushStart);
                 lastFlush = System.currentTimeMillis();
                 totalSinceLastFsync = 0L;
             } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
                 long flushStart = System.nanoTime();
-                txnDb.flushWal(true);
+                tryFlushWal();
                 fsyncTimeNanos.accept(System.nanoTime() - flushStart);
                 lastFlush = System.currentTimeMillis();
                 totalSinceLastFsync = 0L;
