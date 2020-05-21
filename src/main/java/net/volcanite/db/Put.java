@@ -45,15 +45,22 @@ public class Put implements AutoCloseable {
             txnDb.flushWal(true);
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
+        } finally {
+            close(txnDb);
+            close(txnDbOptions);
+            close(txnOpts);
+            close(writeOptions);
         }
-        try {
-            txnDb.closeE();
-        } catch (RocksDBException e) {
-            throw new RuntimeException(e);
+    }
+
+    private static void close(AutoCloseable ac) {
+        if (ac != null) {
+            try {
+                ac.close();
+            } catch (Exception ignore) {
+                //
+            }
         }
-        txnDbOptions.close();
-        txnOpts.close();
-        writeOptions.close();
     }
 
     public void write(byte[] key, byte[] value) throws RocksDBException {
