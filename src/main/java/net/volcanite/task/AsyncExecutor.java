@@ -30,8 +30,8 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Start the AsyncExecutor2 with a default queue capacity. This method has
-     * no effect if the executor is already running.
+     * Start the AsyncExecutor with a default queue capacity. This method has no
+     * effect if the executor is already running.
      */
     public void start() {
         if (executor == null || !isRunning()) {
@@ -40,8 +40,8 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Start the AsyncExecutor2 with the given queue capacity. This method has
-     * no effect if the executor is already running with the correct queue
+     * Start the AsyncExecutor with the given queue capacity. This method has no
+     * effect if the executor is already running with the correct queue
      * capacity.
      * 
      * @param queueCapacity
@@ -57,7 +57,7 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Stop the AsyncExecutor2 and discard any pending tasks in the queue. This
+     * Stop the AsyncExecutor and discard any pending tasks in the queue. This
      * method has no effect if the executor is already stopped.
      */
     public void stop() {
@@ -73,7 +73,7 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Stop the AsyncExecutor2 within {@code timeoutMillis} milliseconds and
+     * Stop the AsyncExecutor within {@code timeoutMillis} milliseconds and
      * discard any pending tasks in the queue. This method has no effect if the
      * executor is already stopped.
      * 
