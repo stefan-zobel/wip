@@ -138,9 +138,7 @@ public final class AsyncExecutor {
                 t.setDaemon(true);
                 t.setName(name);
                 return t;
-            }
-            // Overflow Tasks wegwerfen! (CallerRuns wäre fatal wenn der Caller
-            // Thread bereits eine Tx hat!)
+            } // throw away overflow tasks!
         }, new ThreadPoolExecutor.DiscardPolicy());
     }
 }
