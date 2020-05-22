@@ -18,8 +18,8 @@ public final class AsyncExecutor {
     private volatile ExecutorService executor = null;
     private volatile int queueCapacityDefault = DiscardOverflowsQueue.DEFAULT_MAX_CAPACITY;
     private volatile BlockingQueue<Runnable> queue = null;
-    private final String name;
-    static final AtomicInteger threadNumber = new AtomicInteger(1);
+    volatile String name;
+    private static final AtomicInteger threadNumber = new AtomicInteger(1);
 
     public AsyncExecutor() {
         this("");
@@ -30,8 +30,8 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Start the AsyncExecutor with a default queue capacity. This method has no
-     * effect if the executor is already running.
+     * Start the AsyncExecutor2 with a default queue capacity. This method has
+     * no effect if the executor is already running.
      */
     public void start() {
         if (executor == null || !isRunning()) {
@@ -40,8 +40,8 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Start the AsyncExecutor with the given queue capacity. This method has no
-     * effect if the executor is already running with the correct queue
+     * Start the AsyncExecutor2 with the given queue capacity. This method has
+     * no effect if the executor is already running with the correct queue
      * capacity.
      * 
      * @param queueCapacity
@@ -57,16 +57,15 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Stop the AsyncExecutor and discard any pending tasks in the queue. This
+     * Stop the AsyncExecutor2 and discard any pending tasks in the queue. This
      * method has no effect if the executor is already stopped.
      */
     public void stop() {
         if (isRunning()) {
             List<Runnable> tasksRemaining = executor.shutdownNow();
             if (tasksRemaining != null && tasksRemaining.size() > 0) {
-                // TODO
-                System.err.println(AsyncExecutor.class.getSimpleName() + " was stopped. " + tasksRemaining.size()
-                        + " AsyncTasks haven't been processed.");
+                System.err.println(
+                        name + " was stopped. " + tasksRemaining.size() + " AsyncTasks haven't been processed.");
             }
         }
         executor = null;
@@ -74,7 +73,7 @@ public final class AsyncExecutor {
     }
 
     /**
-     * Stop the AsyncExecutor within {@code timeoutMillis} milliseconds and
+     * Stop the AsyncExecutor2 within {@code timeoutMillis} milliseconds and
      * discard any pending tasks in the queue. This method has no effect if the
      * executor is already stopped.
      * 
@@ -86,14 +85,28 @@ public final class AsyncExecutor {
     public long stop(long timeoutMillis) {
         long elapsed = 0L;
         if (isRunning()) {
+            // don't wait less than 31 milliseconds
             timeoutMillis = (timeoutMillis < 31L) ? 31L : timeoutMillis;
-            while (queue != null && queue.size() > 0 && elapsed < timeoutMillis) {
-                try {
-                    Thread.sleep(31L);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            long lastTime = System.nanoTime();
+            long nanosTimeout = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+            while (queue != null && queue.size() > 0) {
+                // compute remaining timeout
+                long now = System.nanoTime();
+                nanosTimeout -= (now - lastTime);
+                lastTime = now;
+                // truncate down to milliseconds
+                long millisRemaining = TimeUnit.NANOSECONDS.toMillis(nanosTimeout);
+                if (millisRemaining > 0L) {
+                    millisRemaining = (millisRemaining > 16L) ? 16L : millisRemaining;
+                    try {
+                        Thread.sleep(millisRemaining);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    elapsed += ((System.nanoTime() - lastTime) / 1_000_000);
+                } else {
+                    break;
                 }
-                elapsed += 31L;
             }
             stop();
         }
@@ -110,16 +123,23 @@ public final class AsyncExecutor {
         return executor != null && !executor.isShutdown();
     }
 
+    public String getName() {
+        return name;
+    }
+
     private ExecutorService newExecutorService(int queueCapacity) {
         queue = new DiscardOverflowsQueue(queueCapacity);
+        name = (name.isEmpty() ? AsyncExecutor.class.getSimpleName() : name) + "-Thread-"
+                + threadNumber.getAndIncrement();
         return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, queue, new ThreadFactory() {
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(r);
                 t.setDaemon(true);
-                t.setName((name.isEmpty() ? AsyncExecutor.class.getSimpleName() : name) + "-Thread-"
-                        + threadNumber.getAndIncrement());
+                t.setName(name);
                 return t;
-            } // throw away overflow tasks!
+            }
+            // Overflow Tasks wegwerfen! (CallerRuns wäre fatal wenn der Caller
+            // Thread bereits eine Tx hat!)
         }, new ThreadPoolExecutor.DiscardPolicy());
     }
 }
