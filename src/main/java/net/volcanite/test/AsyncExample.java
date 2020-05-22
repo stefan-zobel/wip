@@ -23,22 +23,8 @@ public class AsyncExample {
             runtime += (System.currentTimeMillis() - start);
         }
 
-        System.out.println("runti>  avg: " + (runtime / (double) RUNS) + " ms");
-        pause(15);
-        AsyncExecutor.stop();
+        System.out.println("runti>  avg   :  " + (runtime / (double) RUNS) + " ms");
+        System.out.println("shutdown took :  " + AsyncExecutor.stop(15_000L) + " ms");
         RocksDBTransfer.shutdown();
-    }
-
-    private static void pause(int seconds) {
-        Object o = new Object();
-        try {
-            synchronized (o) {
-                System.err.println("waiting");
-                o.wait(1000L * seconds);
-                System.err.println("done");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
