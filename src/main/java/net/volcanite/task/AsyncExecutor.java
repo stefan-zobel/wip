@@ -100,9 +100,9 @@ public final class AsyncExecutor {
         return elapsed;
     }
 
-    public void execute(AsyncTask dbTask) {
-        if (dbTask != null && isRunning()) {
-            executor.execute(dbTask);
+    public void execute(AsyncTask task) {
+        if (task != null && isRunning()) {
+            executor.execute(task);
         }
     }
 
