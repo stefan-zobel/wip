@@ -15,22 +15,27 @@ import net.volcanite.util.DiscardOverflowsQueue;
  */
 public final class AsyncExecutor {
 
-    private static volatile ExecutorService executor = null;
-    private static volatile int queueCapacityDefault = DiscardOverflowsQueue.DEFAULT_MAX_CAPACITY;
-    private static volatile BlockingQueue<Runnable> queue = null;
+    private volatile ExecutorService executor = null;
+    private volatile int queueCapacityDefault = DiscardOverflowsQueue.DEFAULT_MAX_CAPACITY;
+    private volatile BlockingQueue<Runnable> queue = null;
+    private final String name;
     static final AtomicInteger threadNumber = new AtomicInteger(1);
 
-    private AsyncExecutor() {
-        throw new AssertionError();
+    public AsyncExecutor() {
+        this("");
+    }
+
+    public AsyncExecutor(String name) {
+        this.name = (name == null || name.isEmpty()) ? "" : name.trim();
     }
 
     /**
      * Start the AsyncExecutor with a default queue capacity. This method has no
      * effect if the executor is already running.
      */
-    public static void start() {
+    public void start() {
         if (executor == null || !isRunning()) {
-            executor = newExecutorService(AsyncExecutor.queueCapacityDefault);
+            executor = newExecutorService(queueCapacityDefault);
         }
     }
 
@@ -42,12 +47,12 @@ public final class AsyncExecutor {
      * @param queueCapacity
      *            maximum capacity for the queue.
      */
-    public static void start(int queueCapacity) {
+    public void start(int queueCapacity) {
         // stop the executor if it is running with the wrong capacity
-        if (isRunning() && queueCapacity != AsyncExecutor.queueCapacityDefault) {
+        if (isRunning() && queueCapacity != queueCapacityDefault) {
             stop();
         }
-        AsyncExecutor.queueCapacityDefault = queueCapacity;
+        queueCapacityDefault = queueCapacity;
         start();
     }
 
@@ -55,7 +60,7 @@ public final class AsyncExecutor {
      * Stop the AsyncExecutor and discard any pending tasks in the queue. This
      * method has no effect if the executor is already stopped.
      */
-    public static void stop() {
+    public void stop() {
         if (isRunning()) {
             List<Runnable> tasksRemaining = executor.shutdownNow();
             if (tasksRemaining != null && tasksRemaining.size() > 0) {
@@ -65,6 +70,7 @@ public final class AsyncExecutor {
             }
         }
         executor = null;
+        queue = null;
     }
 
     /**
@@ -77,7 +83,7 @@ public final class AsyncExecutor {
      * @return the number of milliseconds it actually took to shutdown the
      *         executor
      */
-    public static long stop(long timeoutMillis) {
+    public long stop(long timeoutMillis) {
         long elapsed = 0L;
         if (isRunning()) {
             timeoutMillis = (timeoutMillis < 31L) ? 31L : timeoutMillis;
@@ -94,23 +100,24 @@ public final class AsyncExecutor {
         return elapsed;
     }
 
-    public static void execute(AsyncTask dbTask) {
+    public void execute(AsyncTask dbTask) {
         if (dbTask != null && isRunning()) {
             executor.execute(dbTask);
         }
     }
 
-    private static boolean isRunning() {
+    private boolean isRunning() {
         return executor != null && !executor.isShutdown();
     }
 
-    private static ExecutorService newExecutorService(int queueCapacity) {
+    private ExecutorService newExecutorService(int queueCapacity) {
         queue = new DiscardOverflowsQueue(queueCapacity);
         return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, queue, new ThreadFactory() {
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(r);
                 t.setDaemon(true);
-                t.setName(AsyncExecutor.class.getSimpleName() + "-Thread-" + threadNumber.getAndIncrement());
+                t.setName((name.isEmpty() ? AsyncExecutor.class.getSimpleName() : name) + "-Thread-"
+                        + threadNumber.getAndIncrement());
                 return t;
             } // throw away overflow tasks!
         }, new ThreadPoolExecutor.DiscardPolicy());

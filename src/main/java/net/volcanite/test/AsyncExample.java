@@ -10,7 +10,9 @@ public class AsyncExample {
 
     public static void main(String[] args) {
 
-        AsyncExecutor.start();
+        AsyncExecutor executor = new AsyncExecutor();
+        executor.start();
+
         int RUNS = 500_000;
         long runtime = 0L;
 
@@ -19,12 +21,12 @@ public class AsyncExample {
             byte[] key = randomBytes();
             byte[] value = randomBytes();
 
-            AsyncExecutor.execute(new TransmitTask(key, value));
+            executor.execute(new TransmitTask(key, value));
             runtime += (System.currentTimeMillis() - start);
         }
 
         System.out.println("runti>  avg   :  " + (runtime / (double) RUNS) + " ms");
-        System.out.println("shutdown took :  " + AsyncExecutor.stop(15_000L) + " ms");
+        System.out.println("shutdown took :  " + executor.stop(15_000L) + " ms");
         RocksDBTransfer.shutdown();
     }
 }
