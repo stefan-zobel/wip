@@ -1,6 +1,7 @@
 package net.volcanite.task;
 
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -16,6 +17,7 @@ public final class AsyncExecutor {
 
     private static volatile ExecutorService executor = null;
     private static volatile int queueCapacityDefault = DiscardOverflowsQueue.DEFAULT_MAX_CAPACITY;
+    private static volatile BlockingQueue<Runnable> queue = null;
     static final AtomicInteger threadNumber = new AtomicInteger(1);
 
     private AsyncExecutor() {
@@ -65,6 +67,33 @@ public final class AsyncExecutor {
         executor = null;
     }
 
+    /**
+     * Stop the AsyncExecutor within {@code timeoutMillis} milliseconds and
+     * discard any pending tasks in the queue. This method has no effect if the
+     * executor is already stopped.
+     * 
+     * @param timeoutMillis
+     *            the maximum time to wait for shutdown (in milliseconds)
+     * @return the number of milliseconds it actually took to shutdown the
+     *         executor
+     */
+    public static long stop(long timeoutMillis) {
+        long elapsed = 0L;
+        if (isRunning()) {
+            timeoutMillis = (timeoutMillis < 31L) ? 31L : timeoutMillis;
+            while (queue != null && queue.size() > 0 && elapsed < timeoutMillis) {
+                try {
+                    Thread.sleep(31L);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                elapsed += 31L;
+            }
+            stop();
+        }
+        return elapsed;
+    }
+
     public static void execute(AsyncTask dbTask) {
         if (dbTask != null && isRunning()) {
             executor.execute(dbTask);
@@ -76,14 +105,14 @@ public final class AsyncExecutor {
     }
 
     private static ExecutorService newExecutorService(int queueCapacity) {
-        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new DiscardOverflowsQueue(queueCapacity),
-                new ThreadFactory() {
-                    public Thread newThread(Runnable r) {
-                        Thread t = new Thread(r);
-                        t.setDaemon(true);
-                        t.setName(AsyncExecutor.class.getSimpleName() + "-Thread-" + threadNumber.getAndIncrement());
-                        return t;
-                    } // throw away overflow tasks!
-                }, new ThreadPoolExecutor.DiscardPolicy());
+        queue = new DiscardOverflowsQueue(queueCapacity);
+        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, queue, new ThreadFactory() {
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r);
+                t.setDaemon(true);
+                t.setName(AsyncExecutor.class.getSimpleName() + "-Thread-" + threadNumber.getAndIncrement());
+                return t;
+            } // throw away overflow tasks!
+        }, new ThreadPoolExecutor.DiscardPolicy());
     }
 }
