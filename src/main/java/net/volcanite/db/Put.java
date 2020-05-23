@@ -1,5 +1,8 @@
 package net.volcanite.db;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.rocksdb.Options;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksObject;
@@ -16,6 +19,8 @@ public class Put implements AutoCloseable {
     private static final long FLUSH_TIME_WINDOW_MILLIS = 985L;
     private static final long FLUSH_BATCH_SIZE = 20_000L;
     private static final int PARALLELISM = 2;
+
+    private static final Logger logger = Logger.getLogger(Put.class.getName());
 
     private long totalSinceLastFsync = 0L;
     private final DoubleStatistics writeTimeNanos = DoubleStatistics.newInstance();
@@ -57,7 +62,7 @@ public class Put implements AutoCloseable {
             try {
                 ac.close();
             } catch (Exception ignore) {
-                //
+                logger.log(Level.INFO, "", ignore);
             }
         }
     }
