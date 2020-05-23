@@ -12,6 +12,7 @@ import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -20,6 +21,10 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.RandomAccess;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * Container class for unmodifiable collections. Not part of the public API.
@@ -84,6 +89,11 @@ final class ImmutableCollections {
         }
 
         @Override
+        public boolean removeIf(Predicate<? super E> filter) {
+            throw uoe();
+        }
+
+        @Override
         public boolean retainAll(Collection<?> c) {
             throw uoe();
         }
@@ -122,7 +132,17 @@ final class ImmutableCollections {
         }
 
         @Override
+        public void replaceAll(UnaryOperator<E> operator) {
+            throw uoe();
+        }
+
+        @Override
         public E set(int index, E element) {
+            throw uoe();
+        }
+
+        @Override
+        public void sort(Comparator<? super E> c) {
             throw uoe();
         }
 
@@ -467,8 +487,7 @@ final class ImmutableCollections {
         ListN(E... input) {
             // copy and check manually to avoid TOCTOU
             @SuppressWarnings("unchecked")
-            E[] tmp = (E[]) new Object[input.length]; // implicit nullcheck of
-                                                      // input
+            E[] tmp = (E[]) new Object[input.length]; // implicit nullcheck of input
             for (int i = 0; i < input.length; i++) {
                 tmp[i] = Objects.requireNonNull(input[i]);
             }
@@ -836,6 +855,26 @@ final class ImmutableCollections {
         }
 
         @Override
+        public V compute(K key, BiFunction<? super K, ? super V, ? extends V> rf) {
+            throw uoe();
+        }
+
+        @Override
+        public V computeIfAbsent(K key, Function<? super K, ? extends V> mf) {
+            throw uoe();
+        }
+
+        @Override
+        public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> rf) {
+            throw uoe();
+        }
+
+        @Override
+        public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> rf) {
+            throw uoe();
+        }
+
+        @Override
         public V put(K key, V value) {
             throw uoe();
         }
@@ -846,7 +885,32 @@ final class ImmutableCollections {
         }
 
         @Override
+        public V putIfAbsent(K key, V value) {
+            throw uoe();
+        }
+
+        @Override
         public V remove(Object key) {
+            throw uoe();
+        }
+
+        @Override
+        public boolean remove(Object key, Object value) {
+            throw uoe();
+        }
+
+        @Override
+        public V replace(K key, V value) {
+            throw uoe();
+        }
+
+        @Override
+        public boolean replace(K key, V oldValue, V newValue) {
+            throw uoe();
+        }
+
+        @Override
+        public void replaceAll(BiFunction<? super K, ? super V, ? extends V> f) {
             throw uoe();
         }
     }
