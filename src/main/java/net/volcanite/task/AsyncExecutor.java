@@ -29,8 +29,17 @@ public final class AsyncExecutor {
         this("");
     }
 
+    public AsyncExecutor(int queueCapacity) {
+        this("", queueCapacity);
+    }
+
     public AsyncExecutor(String name) {
         this.name = (name == null || name.isEmpty()) ? "" : name.trim();
+    }
+
+    public AsyncExecutor(String name, int queueCapacity) {
+        this(name);
+        queueCapacityDefault = (queueCapacity <= 0) ? 1 : queueCapacity;
     }
 
     /**
@@ -41,23 +50,6 @@ public final class AsyncExecutor {
         if (executor == null || !isRunning()) {
             executor = newExecutorService(queueCapacityDefault);
         }
-    }
-
-    /**
-     * Start the AsyncExecutor with the given queue capacity. This method has no
-     * effect if the executor is already running with the correct queue
-     * capacity.
-     * 
-     * @param queueCapacity
-     *            maximum capacity for the queue.
-     */
-    public void start(int queueCapacity) {
-        // stop the executor if it is running with the wrong capacity
-        if (isRunning() && queueCapacity != queueCapacityDefault) {
-            stop();
-        }
-        queueCapacityDefault = queueCapacity;
-        start();
     }
 
     /**
