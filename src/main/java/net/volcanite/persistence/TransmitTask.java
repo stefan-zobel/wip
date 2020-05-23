@@ -1,8 +1,13 @@
 package net.volcanite.persistence;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import net.volcanite.task.AsyncTask;
 
 public final class TransmitTask implements AsyncTask {
+
+    private static final Logger logger = Logger.getLogger(AsyncTask.class.getName());
 
     private final byte[] key;
     private final byte[] value;
@@ -19,8 +24,7 @@ public final class TransmitTask implements AsyncTask {
             try {
                 RocksDBTransfer.transmit(key, value);
             } catch (Throwable t) {
-                // TODO
-                t.printStackTrace();
+                logger.log(Level.SEVERE, "", t);
             }
         }
     }

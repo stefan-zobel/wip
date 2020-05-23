@@ -1,6 +1,8 @@
 package net.volcanite.util;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A bounded asymmetrically blocking queue that discards new elements if the max
@@ -11,6 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public final class DiscardOverflowsQueue extends LinkedBlockingQueue<Runnable> {
 
     private static final long serialVersionUID = 3052494991610810267L;
+    private static final Logger logger = Logger.getLogger(DiscardOverflowsQueue.class.getName());
 
     /**
      * Default maximum capacity for {@code DiscardOverflowsQueue} if no capacity
@@ -66,8 +69,7 @@ public final class DiscardOverflowsQueue extends LinkedBlockingQueue<Runnable> {
     public boolean offer(Runnable o) {
         boolean couldAdd = super.offer(o);
         if (!couldAdd) {
-            // TODO
-            System.err.println(
+            logger.log(Level.WARNING,
                     "Rejected Runnable: " + o.toString() + " (reached queue max. capacity of " + this.capacity + ")");
         }
         return couldAdd;

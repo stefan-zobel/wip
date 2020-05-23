@@ -7,6 +7,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import net.volcanite.util.DiscardOverflowsQueue;
 
@@ -14,6 +16,8 @@ import net.volcanite.util.DiscardOverflowsQueue;
  * A dedicated "fixed ThreadPool" Executor for asynchronous operations.
  */
 public final class AsyncExecutor {
+
+    private static final Logger logger = Logger.getLogger(AsyncExecutor.class.getName());
 
     private volatile ExecutorService executor = null;
     private volatile int queueCapacityDefault = DiscardOverflowsQueue.DEFAULT_MAX_CAPACITY;
@@ -64,8 +68,7 @@ public final class AsyncExecutor {
         if (isRunning()) {
             List<Runnable> tasksRemaining = executor.shutdownNow();
             if (tasksRemaining != null && tasksRemaining.size() > 0) {
-                // TODO
-                System.err.println(
+                logger.log(Level.WARNING,
                         name + " was stopped. " + tasksRemaining.size() + " AsyncTasks haven't been processed.");
             }
         }
