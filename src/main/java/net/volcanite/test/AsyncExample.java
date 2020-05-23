@@ -26,7 +26,8 @@ public class AsyncExample {
         }
 
         System.out.println("runti>  avg   :  " + (runtime / (double) RUNS) + " ms");
-        System.out.println("shutdown took :  " + executor.stop(15_000L) + " ms");
+        long shutdownMs = executor.stop(25_000L);
+        System.out.println("shutdown took :  " + shutdownMs + " ms");
         RocksDBTransfer.shutdown();
     }
 }
