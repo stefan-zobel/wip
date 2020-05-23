@@ -1,4 +1,4 @@
 /**
- * Experimental stuff (TODO)
+ * Basic RocksDB accessors
  */
 package net.volcanite.db;

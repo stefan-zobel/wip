@@ -16,7 +16,7 @@ public final class IDGen {
     private static final long FIRST_NOV_2014 = 1414800000000L;
 
     //@formatter:off
-   private static final char[] digits = { '!', '$', ';', '(', ')', '*', ',',
+    private static final char[] digits = { '!', '$', ';', '(', ')', '*', ',',
             '-', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':',
             '<', '=', '>', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
             'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
@@ -53,10 +53,10 @@ public final class IDGen {
 
     private static String next(long suffix) {
         //@formatter:off
-      return toBase85(
+        return toBase85(
             (int) ((System.currentTimeMillis() - FIRST_NOV_2014) / 1000L),
-            suffix);
-      //@formatter:on
+                    suffix);
+        //@formatter:on
     }
 
     private static String toBase85(int intVal, long longVal) {
@@ -66,17 +66,17 @@ public final class IDGen {
         longVal &= Long.MAX_VALUE;
         long low = longVal % BASE_85 + MAX_MOD;
         //@formatter:off
-      return toBase85(intVal,
-            ((longVal / BASE_85) + MAX_DIV + (low / BASE_85)),
-            (low % BASE_85));
-      //@formatter:on
+        return toBase85(intVal,
+                        ((longVal / BASE_85) + MAX_DIV + (low / BASE_85)),
+                        (low % BASE_85));
+        //@formatter:on
     }
 
     private static String toBase85(int intVal, long longVal, long remainder) {
         //@formatter:off
-      char[] buf = new char[] { '!', '!', '!', '!', '!', '!', '!',
+        char[] buf = new char[] { '!', '!', '!', '!', '!', '!', '!',
             '!', '!', '!', '!', '!', '!', '!', '!' }; // 15 chars always
-      //@formatter:on
+        //@formatter:on
 
         intVal = -intVal;
         longVal = -longVal;

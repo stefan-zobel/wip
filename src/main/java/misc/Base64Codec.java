@@ -183,8 +183,8 @@ public final class Base64Codec {
         int sepCnt = 0; // Number of separator characters. (Actually illegal
                         // characters, but that's a bonus...)
         for (int i = 0; i < sLen; i++) // If input is "pure" (I.e. no line
-                                        // separators or illegal chars) base64
-                                        // this loop can be commented out.
+                                       // separators or illegal chars) base64
+                                       // this loop can be commented out.
             if (IA[sArr[i]] < 0)
                 sepCnt++;
 
@@ -206,7 +206,7 @@ public final class Base64Codec {
             // Assemble three bytes into an int from four "valid" characters.
             int i = 0;
             for (int j = 0; j < 4; j++) { // j only increased if a valid char
-                                            // was found.
+                                          // was found.
                 int c = IA[sArr[s++]];
                 if (c >= 0)
                     i |= c << (18 - j * 6);
@@ -306,8 +306,8 @@ public final class Base64Codec {
         int sepCnt = 0; // Number of separator characters. (Actually illegal
                         // characters, but that's a bonus...)
         for (int i = 0; i < sLen; i++) // If input is "pure" (I.e. no line
-                                        // separators or illegal chars) base64
-                                        // this loop can be commented out.
+                                       // separators or illegal chars) base64
+                                       // this loop can be commented out.
             if (IA[sArr[i] & 0xff] < 0)
                 sepCnt++;
 
@@ -329,7 +329,7 @@ public final class Base64Codec {
             // Assemble three bytes into an int from four "valid" characters.
             int i = 0;
             for (int j = 0; j < 4; j++) { // j only increased if a valid char
-                                            // was found.
+                                          // was found.
                 int c = IA[sArr[s++] & 0xff];
                 if (c >= 0)
                     i |= c << (18 - j * 6);
@@ -396,8 +396,8 @@ public final class Base64Codec {
         int sepCnt = 0; // Number of separator characters. (Actually illegal
                         // characters, but that's a bonus...)
         for (int i = 0; i < sLen; i++) // If input is "pure" (I.e. no line
-                                        // separators or illegal chars) base64
-                                        // this loop can be commented out.
+                                       // separators or illegal chars) base64
+                                       // this loop can be commented out.
             if (IA[str.charAt(i)] < 0)
                 sepCnt++;
 
@@ -420,7 +420,7 @@ public final class Base64Codec {
             // Assemble three bytes into an int from four "valid" characters.
             int i = 0;
             for (int j = 0; j < 4; j++) { // j only increased if a valid char
-                                            // was found.
+                                          // was found.
                 int c = IA[str.charAt(s++)];
                 if (c >= 0)
                     i |= c << (18 - j * 6);
