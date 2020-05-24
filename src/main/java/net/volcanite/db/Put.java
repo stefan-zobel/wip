@@ -69,7 +69,9 @@ public class Put implements AutoCloseable {
 
     private void tryFlushWal() {
         try {
-            txnDb.flushWal(true);
+            if (txnDb.isOwningHandle()) {
+                txnDb.flushWal(true);
+            }
         } catch (RocksDBException e) {
             throw new DBException(e);
         }
