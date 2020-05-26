@@ -2,7 +2,6 @@ package org.schwefel.kv;
 
 public interface StoreOps extends AutoCloseable {
 
-//  void open();
     void close();
     void put(byte[] key, byte[] value);
     void putIfAbsent(byte[] key, byte[] value);
@@ -12,8 +11,10 @@ public interface StoreOps extends AutoCloseable {
     void update(byte[] key, byte[] value); // merge
     void writeBatch(Batch batch);
 //  Tx startTx(); // ???
-    void syncWAL(); // syncWAL ???
+    void syncWAL();
     boolean isOpen(); // ???
     void flush();
     void flushNoWait();
+//    void reopen(); // ???
+    Stats getStats();
 }

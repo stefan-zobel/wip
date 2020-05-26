@@ -15,7 +15,10 @@ import org.rocksdb.TransactionDBOptions;
 import org.rocksdb.TransactionOptions;
 import org.rocksdb.WriteOptions;
 
-public class KVStore implements StoreOps {
+public final class KVStore implements StoreOps {
+
+    private static final long FLUSH_TIME_WINDOW_MILLIS = 985L;
+    private static final long FLUSH_BATCH_SIZE = 20_000L;
 
     private static final Logger logger = Logger.getLogger(KVStore.class.getName());
 
@@ -31,6 +34,7 @@ public class KVStore implements StoreOps {
     private FlushOptions flushOptionsNoWait;
     private final Path dir; // XXX ??
     private final String path;
+    private final Stats stats = new Stats();
 
     public KVStore(Path dir) {
         this.dir = Objects.requireNonNull(dir);
@@ -61,9 +65,9 @@ public class KVStore implements StoreOps {
         if (!isOpen()) {
             return;
         }
+        open = false;
         wrap(() -> syncWAL());
         wrap(() -> flush());
-        open = false;
         close(txnDb);
         close(txnDbOptions);
         close(txnOpts);
@@ -176,7 +180,7 @@ public class KVStore implements StoreOps {
     }
 
     @Override
-    public void flushNoWait() {
+    public synchronized void flushNoWait() {
         if (isOpen()) {
             try {
                 txnDb.flush(flushOptionsNoWait);
@@ -184,6 +188,11 @@ public class KVStore implements StoreOps {
                 throw new StoreException(e);
             }
         }
+    }
+
+    @Override
+    public synchronized Stats getStats() {
+        return stats;
     }
 
     private static void close(AutoCloseable ac) {
