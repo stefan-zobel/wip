@@ -38,7 +38,7 @@ public final class KVStore implements StoreOps {
 
     public KVStore(Path dir) {
         this.dir = Objects.requireNonNull(dir);
-        this.path = (String) wrap(() -> dir.toFile().getCanonicalPath());
+        this.path = (String) wrapEx(() -> dir.toFile().getCanonicalPath());
         // TODO ensure dir exists / gets created
         open();
     }
@@ -55,7 +55,7 @@ public final class KVStore implements StoreOps {
         flushOptionsNoWait = new FlushOptions();
         flushOptionsNoWait.setWaitForFlush(false);
         txnDbOptions = new TransactionDBOptions();
-        txnDb = (TransactionDB) wrap(() -> TransactionDB.open(options, txnDbOptions, path));
+        txnDb = (TransactionDB) wrapEx(() -> TransactionDB.open(options, txnDbOptions, path));
         txnOpts = new TransactionOptions();
         open = true;
     }
@@ -66,8 +66,8 @@ public final class KVStore implements StoreOps {
             return;
         }
         open = false;
-        wrap(() -> syncWAL());
-        wrap(() -> flush());
+        ignoreEx(() -> syncWAL());
+        ignoreEx(() -> flush());
         close(txnDb);
         close(txnDbOptions);
         close(txnOpts);
@@ -209,7 +209,7 @@ public final class KVStore implements StoreOps {
         Object get() throws Exception;
     }
 
-    private static Object wrap(ThrowingSupplier block) {
+    private static Object wrapEx(ThrowingSupplier block) {
         try {
             return block.get();
         } catch (Exception e) {
@@ -217,7 +217,7 @@ public final class KVStore implements StoreOps {
         }
     }
 
-    private static void wrap(Runnable block) {
+    private static void ignoreEx(Runnable block) {
         try {
             block.run();
         } catch (Exception ignore) {
