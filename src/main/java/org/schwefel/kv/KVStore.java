@@ -213,6 +213,7 @@ public final class KVStore implements StoreOps {
         try {
             return block.get();
         } catch (Exception e) {
+            logger.log(Level.WARNING, "", e);
             throw new StoreException(e);
         }
     }
