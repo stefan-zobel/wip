@@ -1,6 +1,7 @@
 package org.schwefel.kv;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -9,7 +10,6 @@ import org.rocksdb.FlushOptions;
 import org.rocksdb.Options;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksObject;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
 import org.rocksdb.TransactionOptions;
@@ -28,10 +28,12 @@ public class KVStore implements StoreOps {
     private WriteOptions writeOptions;
     private ReadOptions readOptions;
     private FlushOptions flushOptions;
-    private final Path dir;
+    private final Path dir; // XXX ??
+    private final String path;
 
     public KVStore(Path dir) {
         this.dir = Objects.requireNonNull(dir);
+        this.path = (String) wrap(() -> dir.toFile().getCanonicalPath());
         // TODO ensure dir exists / gets created
         open();
     }
@@ -45,8 +47,9 @@ public class KVStore implements StoreOps {
         readOptions = new ReadOptions();
         flushOptions = new FlushOptions();
         txnDbOptions = new TransactionDBOptions();
-        txnDb = (TransactionDB) wrap(() -> TransactionDB.open(options, txnDbOptions, dir.toFile().getCanonicalPath()));
+        txnDb = (TransactionDB) wrap(() -> TransactionDB.open(options, txnDbOptions, path));
         txnOpts = new TransactionOptions();
+        open = true;
     }
 
     @Override
@@ -75,42 +78,58 @@ public class KVStore implements StoreOps {
 
     @Override
     public synchronized void put(byte[] key, byte[] value) {
+        Objects.requireNonNull(key, "key cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public synchronized void putIfAbsent(byte[] key, byte[] value) {
-        // TODO Auto-generated method stub
-
+        Objects.requireNonNull(key, "key cannot be null");
+        validateOpen();
+        if (get(key) == null) {
+            put(key, value);
+        }
     }
 
     @Override
     public synchronized byte[] get(byte[] key) {
+        Objects.requireNonNull(key, "key cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public synchronized void delete(byte[] key) {
+        Objects.requireNonNull(key, "key cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public synchronized void deleteRange(byte[] beginKey, byte[] endKey) {
+        Objects.requireNonNull(beginKey, "beginKey cannot be null");
+        Objects.requireNonNull(endKey, "endKey cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public synchronized void update(byte[] key, byte[] value) {
+        Objects.requireNonNull(key, "key cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public synchronized void writeBatch(Batch batch) {
+        Objects.requireNonNull(batch, "batch cannot be null");
+        validateOpen();
         // TODO Auto-generated method stub
 
     }
@@ -131,6 +150,12 @@ public class KVStore implements StoreOps {
     @Override
     public boolean isOpen() {
         return open;
+    }
+
+    private void validateOpen() {
+        if (!isOpen()) {
+            throw new StoreException("KVStore " + path + " is closed");
+        }
     }
 
     @Override
@@ -155,10 +180,10 @@ public class KVStore implements StoreOps {
     }
 
     private static interface ThrowingSupplier {
-        RocksObject get() throws Exception;
+        Object get() throws Exception;
     }
 
-    private static RocksObject wrap(ThrowingSupplier block) {
+    private static Object wrap(ThrowingSupplier block) {
         try {
             return block.get();
         } catch (Exception e) {
@@ -172,5 +197,12 @@ public class KVStore implements StoreOps {
         } catch (Exception e) {
             logger.log(Level.INFO, "", e);
         }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        KVStore kvs = new KVStore(Paths.get("D:/Temp/rocksdb_database"));
+        kvs.putIfAbsent(new byte[] { 1, 2, 3, 4 }, new byte[] { 1, 2, 3, 4 });
+        kvs.close();
+        Thread.sleep(3000L);
     }
 }
