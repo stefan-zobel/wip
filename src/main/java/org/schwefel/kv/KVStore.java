@@ -28,6 +28,7 @@ public class KVStore implements StoreOps {
     private WriteOptions writeOptions;
     private ReadOptions readOptions;
     private FlushOptions flushOptions;
+    private FlushOptions flushOptionsNoWait;
     private final Path dir; // XXX ??
     private final String path;
 
@@ -46,6 +47,9 @@ public class KVStore implements StoreOps {
         writeOptions = new WriteOptions();
         readOptions = new ReadOptions();
         flushOptions = new FlushOptions();
+        flushOptions.setWaitForFlush(true);
+        flushOptionsNoWait = new FlushOptions();
+        flushOptionsNoWait.setWaitForFlush(false);
         txnDbOptions = new TransactionDBOptions();
         txnDb = (TransactionDB) wrap(() -> TransactionDB.open(options, txnDbOptions, path));
         txnOpts = new TransactionOptions();
@@ -66,6 +70,7 @@ public class KVStore implements StoreOps {
         close(writeOptions);
         close(readOptions);
         close(flushOptions);
+        close(flushOptionsNoWait);
         close(options);
         txnDb = null;
         txnDbOptions = null;
@@ -73,6 +78,7 @@ public class KVStore implements StoreOps {
         writeOptions = null;
         readOptions = null;
         flushOptions = null;
+        flushOptionsNoWait = null;
         options = null;
     }
 
@@ -169,6 +175,17 @@ public class KVStore implements StoreOps {
         }
     }
 
+    @Override
+    public void flushNoWait() {
+        if (isOpen()) {
+            try {
+                txnDb.flush(flushOptionsNoWait);
+            } catch (RocksDBException e) {
+                throw new StoreException(e);
+            }
+        }
+    }
+
     private static void close(AutoCloseable ac) {
         if (ac != null) {
             try {
@@ -194,14 +211,15 @@ public class KVStore implements StoreOps {
     private static void wrap(Runnable block) {
         try {
             block.run();
-        } catch (Exception e) {
-            logger.log(Level.INFO, "", e);
+        } catch (Exception ignore) {
+            logger.log(Level.INFO, "", ignore);
         }
     }
 
     public static void main(String[] args) throws InterruptedException {
         KVStore kvs = new KVStore(Paths.get("D:/Temp/rocksdb_database"));
         kvs.putIfAbsent(new byte[] { 1, 2, 3, 4 }, new byte[] { 1, 2, 3, 4 });
+        kvs.flushNoWait();
         kvs.close();
         Thread.sleep(3000L);
     }

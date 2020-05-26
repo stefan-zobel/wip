@@ -1,4 +1,4 @@
 /**
- * schwefel - a dumbed-down RocksDB wrapper.
+ * schwefel - a dumbed-down RocksDB wrapper
  */
 package org.schwefel.kv;

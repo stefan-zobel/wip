@@ -2,7 +2,7 @@ package org.schwefel.kv;
 
 public class StoreException extends RuntimeException {
 
-    private static final long serialVersionUID = 7935298121550955744L;
+    private static final long serialVersionUID = 7962018615170643417L;
 
     public StoreException() {
     }
