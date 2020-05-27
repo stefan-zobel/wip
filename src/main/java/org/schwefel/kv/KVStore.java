@@ -23,6 +23,8 @@ public final class KVStore implements StoreOps {
     private static final Logger logger = Logger.getLogger(KVStore.class.getName());
 
     private volatile boolean open = false;
+    private long totalSinceLastFsync = 0L;
+    private long lastSync;
 
     private TransactionDB txnDb;
     private TransactionDBOptions txnDbOptions;
@@ -58,6 +60,7 @@ public final class KVStore implements StoreOps {
         txnDb = (TransactionDB) wrapEx(() -> TransactionDB.open(options, txnDbOptions, path));
         txnOpts = new TransactionOptions();
         open = true;
+        lastSync = System.currentTimeMillis();
     }
 
     @Override
@@ -88,65 +91,96 @@ public final class KVStore implements StoreOps {
 
     @Override
     public synchronized void put(byte[] key, byte[] value) {
+        long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
 
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.putTimeNanos.accept(delta);
     }
 
     @Override
     public synchronized void putIfAbsent(byte[] key, byte[] value) {
+        long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
         if (get(key) == null) {
             put(key, value);
         }
+
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta); // XXX ??? double counting?
+        stats.putTimeNanos.accept(delta); // XXX ??? double counting?
     }
 
     @Override
     public synchronized byte[] get(byte[] key) {
+        long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
-        return null;
+
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.getTimeNanos.accept(delta);
+        return null; // XXX
     }
 
     @Override
     public synchronized void delete(byte[] key) {
+        long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
 
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.deleteTimeNanos.accept(delta);
     }
 
     @Override
     public synchronized void deleteRange(byte[] beginKey, byte[] endKey) {
+        long start = System.nanoTime();
         Objects.requireNonNull(beginKey, "beginKey cannot be null");
         Objects.requireNonNull(endKey, "endKey cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
 
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.deleteTimeNanos.accept(delta);
     }
 
     @Override
     public synchronized void update(byte[] key, byte[] value) {
+        long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
 
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.mergeTimeNanos.accept(delta);
     }
 
     @Override
     public synchronized void writeBatch(Batch batch) {
+        long start = System.nanoTime();
         Objects.requireNonNull(batch, "batch cannot be null");
         validateOpen();
         // TODO Auto-generated method stub
 
+        long delta = System.nanoTime() - start;
+        stats.allOpsTimeNanos.accept(delta);
+        stats.batchTimeNanos.accept(delta);
     }
 
     @Override
     public synchronized void syncWAL() {
         if (isOpen()) {
+            long start = System.nanoTime();
             try {
                 if (txnDb.isOwningHandle()) {
                     txnDb.flushWal(true);
@@ -154,6 +188,9 @@ public final class KVStore implements StoreOps {
             } catch (RocksDBException e) {
                 throw new StoreException(e);
             }
+            long delta = System.nanoTime() - start;
+            stats.allOpsTimeNanos.accept(delta);
+            stats.walTimeNanos.accept(delta);
         }
     }
 
@@ -171,22 +208,30 @@ public final class KVStore implements StoreOps {
     @Override
     public synchronized void flush() {
         if (isOpen()) {
+            long start = System.nanoTime();
             try {
                 txnDb.flush(flushOptions);
             } catch (RocksDBException e) {
                 throw new StoreException(e);
             }
+            long delta = System.nanoTime() - start;
+            stats.allOpsTimeNanos.accept(delta);
+            stats.flushTimeNanos.accept(delta);
         }
     }
 
     @Override
     public synchronized void flushNoWait() {
         if (isOpen()) {
+            long start = System.nanoTime();
             try {
                 txnDb.flush(flushOptionsNoWait);
             } catch (RocksDBException e) {
                 throw new StoreException(e);
             }
+            long delta = System.nanoTime() - start;
+            stats.allOpsTimeNanos.accept(delta);
+            stats.flushTimeNanos.accept(delta);
         }
     }
 
