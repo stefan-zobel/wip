@@ -99,8 +99,9 @@ public final class KVStore implements StoreOps {
             put_(key, value);
         } catch (RocksDBException e) {
             throw new StoreException(e);
+        } finally {
+            stats.allOpsTimeNanos.accept(System.nanoTime() - start);
         }
-        stats.allOpsTimeNanos.accept(System.nanoTime() - start);
     }
 
     private void put_(byte[] key, byte[] value) throws RocksDBException {
@@ -128,11 +129,15 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
-        if (get(key) == null) {
-            put(key, value);
+        try {
+            if (get_(key) == null) {
+                put_(key, value);
+            }
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        } finally {
+            stats.allOpsTimeNanos.accept(System.nanoTime() - start);
         }
-        // XXX ??? double counting ?
-        stats.allOpsTimeNanos.accept(System.nanoTime() - start);
     }
 
     @Override
@@ -140,12 +145,22 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
+        try {
+            return get_(key);
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        } finally {
+            stats.allOpsTimeNanos.accept(System.nanoTime() - start);
+        }
+    }
 
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.getTimeNanos.accept(delta);
-        return null; // XXX
+    private byte[] get_(byte[] key) throws RocksDBException {
+        long start = System.nanoTime();
+        try {
+            return txnDb.get(readOptions, key);
+        } finally {
+            stats.getTimeNanos.accept(System.nanoTime() - start);
+        }
     }
 
     @Override
