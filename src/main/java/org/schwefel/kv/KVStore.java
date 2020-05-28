@@ -10,6 +10,7 @@ import org.rocksdb.FlushOptions;
 import org.rocksdb.Options;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.Transaction;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
 import org.rocksdb.TransactionOptions;
@@ -94,11 +95,32 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
+        try {
+            put_(key, value);
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        }
+        stats.allOpsTimeNanos.accept(System.nanoTime() - start);
+    }
 
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.putTimeNanos.accept(delta);
+    private void put_(byte[] key, byte[] value) throws RocksDBException {
+        long putStart = System.nanoTime();
+        try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
+            txn.put(key, value);
+            txn.commit();
+            ++totalSinceLastFsync;
+            stats.putTimeNanos.accept(System.nanoTime() - putStart);
+
+            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            }
+        }
     }
 
     @Override
@@ -109,10 +131,8 @@ public final class KVStore implements StoreOps {
         if (get(key) == null) {
             put(key, value);
         }
-
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta); // XXX ??? double counting?
-        stats.putTimeNanos.accept(delta); // XXX ??? double counting?
+        // XXX ??? double counting ?
+        stats.allOpsTimeNanos.accept(System.nanoTime() - start);
     }
 
     @Override
