@@ -219,11 +219,33 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
+        try {
+            update_(key, value);
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        } finally {
+            stats.allOpsTimeNanos.accept(System.nanoTime() - start);
+        }
+    }
 
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.mergeTimeNanos.accept(delta);
+    private void update_(byte[] key, byte[] value) throws RocksDBException {
+        long updStart = System.nanoTime();
+        try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
+            txn.merge(key, value);
+            txn.commit();
+            ++totalSinceLastFsync;
+            stats.mergeTimeNanos.accept(System.nanoTime() - updStart);
+
+            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            }
+        }
     }
 
     @Override
