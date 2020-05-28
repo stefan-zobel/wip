@@ -248,10 +248,11 @@ public final class KVStore implements StoreOps {
                 }
             } catch (RocksDBException e) {
                 throw new StoreException(e);
+            } finally {
+                long delta = System.nanoTime() - start;
+                stats.allOpsTimeNanos.accept(delta);
+                stats.walTimeNanos.accept(delta);
             }
-            long delta = System.nanoTime() - start;
-            stats.allOpsTimeNanos.accept(delta);
-            stats.walTimeNanos.accept(delta);
         }
     }
 
@@ -274,10 +275,11 @@ public final class KVStore implements StoreOps {
                 txnDb.flush(flushOptions);
             } catch (RocksDBException e) {
                 throw new StoreException(e);
+            } finally {
+                long delta = System.nanoTime() - start;
+                stats.allOpsTimeNanos.accept(delta);
+                stats.flushTimeNanos.accept(delta);
             }
-            long delta = System.nanoTime() - start;
-            stats.allOpsTimeNanos.accept(delta);
-            stats.flushTimeNanos.accept(delta);
         }
     }
 
@@ -289,10 +291,11 @@ public final class KVStore implements StoreOps {
                 txnDb.flush(flushOptionsNoWait);
             } catch (RocksDBException e) {
                 throw new StoreException(e);
+            } finally {
+                long delta = System.nanoTime() - start;
+                stats.allOpsTimeNanos.accept(delta);
+                stats.flushTimeNanos.accept(delta);
             }
-            long delta = System.nanoTime() - start;
-            stats.allOpsTimeNanos.accept(delta);
-            stats.flushTimeNanos.accept(delta);
         }
     }
 
