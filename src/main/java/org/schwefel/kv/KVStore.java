@@ -168,11 +168,33 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(key, "key cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
+        try {
+            delete_(key);
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        } finally {
+            stats.allOpsTimeNanos.accept(System.nanoTime() - start);
+        }
+    }
 
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.deleteTimeNanos.accept(delta);
+    private void delete_(byte[] key) throws RocksDBException {
+        long delStart = System.nanoTime();
+        try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
+            txn.delete(key);
+            txn.commit();
+            ++totalSinceLastFsync;
+            stats.deleteTimeNanos.accept(System.nanoTime() - delStart);
+
+            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
+                syncWAL();
+                lastSync = System.currentTimeMillis();
+                totalSinceLastFsync = 0L;
+            }
+        }
     }
 
     @Override
@@ -181,11 +203,15 @@ public final class KVStore implements StoreOps {
         Objects.requireNonNull(beginKey, "beginKey cannot be null");
         Objects.requireNonNull(endKey, "endKey cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
-
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.deleteTimeNanos.accept(delta);
+        try {
+            txnDb.deleteRange(writeOptions, beginKey, endKey);
+        } catch (RocksDBException e) {
+            throw new StoreException(e);
+        } finally {
+            long delta = System.nanoTime() - start;
+            stats.allOpsTimeNanos.accept(delta);
+            stats.deleteTimeNanos.accept(delta);
+        }
     }
 
     @Override
