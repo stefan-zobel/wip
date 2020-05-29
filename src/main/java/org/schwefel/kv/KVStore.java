@@ -109,18 +109,21 @@ public final class KVStore implements StoreOps {
         try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
             txn.put(key, value);
             txn.commit();
-            ++totalSinceLastFsync;
             stats.putTimeNanos.accept(System.nanoTime() - putStart);
+            occasionalWalSync();
+        }
+    }
 
-            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            }
+    private void occasionalWalSync() {
+        ++totalSinceLastFsync;
+        if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
+            syncWAL();
+            lastSync = System.currentTimeMillis();
+            totalSinceLastFsync = 0L;
+        } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
+            syncWAL();
+            lastSync = System.currentTimeMillis();
+            totalSinceLastFsync = 0L;
         }
     }
 
@@ -182,18 +185,8 @@ public final class KVStore implements StoreOps {
         try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
             txn.delete(key);
             txn.commit();
-            ++totalSinceLastFsync;
             stats.deleteTimeNanos.accept(System.nanoTime() - delStart);
-
-            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            }
+            occasionalWalSync();
         }
     }
 
@@ -233,18 +226,8 @@ public final class KVStore implements StoreOps {
         try (Transaction txn = txnDb.beginTransaction(writeOptions, txnOpts)) {
             txn.merge(key, value);
             txn.commit();
-            ++totalSinceLastFsync;
             stats.mergeTimeNanos.accept(System.nanoTime() - updStart);
-
-            if (System.currentTimeMillis() - lastSync >= FLUSH_TIME_WINDOW_MILLIS) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            } else if (totalSinceLastFsync % FLUSH_BATCH_SIZE == 0L) {
-                syncWAL();
-                lastSync = System.currentTimeMillis();
-                totalSinceLastFsync = 0L;
-            }
+            occasionalWalSync();
         }
     }
 
