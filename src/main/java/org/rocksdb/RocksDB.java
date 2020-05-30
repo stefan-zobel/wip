@@ -3241,7 +3241,7 @@ public class RocksDB extends RocksObject {
     final boolean changeLevel, final int targetLevel, final int targetPathId)
       throws RocksDBException {
     @SuppressWarnings("resource")
-	final CompactRangeOptions options = new CompactRangeOptions();
+    final CompactRangeOptions options = new CompactRangeOptions();
     options.setChangeLevel(changeLevel);
     options.setTargetLevel(targetLevel);
     options.setTargetPathId(targetPathId);
@@ -3329,7 +3329,7 @@ public class RocksDB extends RocksObject {
       final int targetLevel, final int targetPathId)
       throws RocksDBException {
     @SuppressWarnings("resource")
-	final CompactRangeOptions options = new CompactRangeOptions();
+    final CompactRangeOptions options = new CompactRangeOptions();
     options.setChangeLevel(changeLevel);
     options.setTargetLevel(targetLevel);
     options.setTargetPathId(targetPathId);
