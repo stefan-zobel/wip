@@ -109,7 +109,7 @@ public class WBWIRocksIterator
      * class; The class members are then modified
      * by calling {@link org.rocksdb.WBWIRocksIterator#entry()}
      */
-    private WriteEntry() {
+    /*package*/ WriteEntry() {
       key = new DirectSlice();
       value = new DirectSlice();
     }

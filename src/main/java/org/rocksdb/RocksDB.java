@@ -3240,7 +3240,8 @@ public class RocksDB extends RocksObject {
     /* @Nullable */ final ColumnFamilyHandle columnFamilyHandle,
     final boolean changeLevel, final int targetLevel, final int targetPathId)
       throws RocksDBException {
-    final CompactRangeOptions options = new CompactRangeOptions();
+    @SuppressWarnings("resource")
+	final CompactRangeOptions options = new CompactRangeOptions();
     options.setChangeLevel(changeLevel);
     options.setTargetLevel(targetLevel);
     options.setTargetPathId(targetPathId);
@@ -3327,7 +3328,8 @@ public class RocksDB extends RocksObject {
       final byte[] begin, final byte[] end, final boolean changeLevel,
       final int targetLevel, final int targetPathId)
       throws RocksDBException {
-    final CompactRangeOptions options = new CompactRangeOptions();
+    @SuppressWarnings("resource")
+	final CompactRangeOptions options = new CompactRangeOptions();
     options.setChangeLevel(changeLevel);
     options.setTargetLevel(targetLevel);
     options.setTargetPathId(targetPathId);
@@ -4212,6 +4214,7 @@ public class RocksDB extends RocksObject {
     return rangeSliceHandles;
   }
 
+  @SuppressWarnings("rawtypes")
   protected void storeOptionsInstance(DBOptionsInterface options) {
     options_ = options;
   }
@@ -4518,5 +4521,6 @@ public class RocksDB extends RocksObject {
   private native static void destroyDB(final String path,
       final long optionsHandle) throws RocksDBException;
 
+  @SuppressWarnings("rawtypes")
   protected DBOptionsInterface options_;
 }

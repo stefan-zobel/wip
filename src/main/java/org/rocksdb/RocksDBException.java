@@ -9,6 +9,7 @@ package org.rocksdb;
  * A RocksDBException encapsulates the error of an operation.  This exception
  * type is used to describe an internal error from the c++ rocksdb library.
  */
+@SuppressWarnings("serial")
 public class RocksDBException extends Exception {
 
   /* @Nullable */ private final Status status;

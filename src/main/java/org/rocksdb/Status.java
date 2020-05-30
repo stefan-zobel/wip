@@ -25,6 +25,7 @@ public class Status {
   /**
    * Intentionally private as this will be called from JNI
    */
+  @SuppressWarnings("unused")
   private Status(final byte code, final byte subCode, final String state) {
     this.code = Code.getCode(code);
     this.subCode = SubCode.getSubCode(subCode);

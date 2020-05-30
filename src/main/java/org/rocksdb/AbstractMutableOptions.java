@@ -247,6 +247,9 @@ public abstract class AbstractMutableOptions {
             value[i++] = Integer.parseInt(strInt);
           }
           return setIntArray(key, value);
+
+        case ENUM:
+          // fall through
       }
 
       throw new IllegalStateException(

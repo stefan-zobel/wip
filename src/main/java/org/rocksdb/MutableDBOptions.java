@@ -19,7 +19,7 @@ public class MutableDBOptions extends AbstractMutableOptions {
    *
    * See {@link #builder()} and {@link #parse(String)}.
    */
-  private MutableDBOptions(final String[] keys, final String[] values) {
+  /*package*/ MutableDBOptions(final String[] keys, final String[] values) {
     super(keys, values);
   }
 
@@ -119,7 +119,7 @@ public class MutableDBOptions extends AbstractMutableOptions {
       }
     }
 
-    private MutableDBOptionsBuilder() {
+    /*package*/ MutableDBOptionsBuilder() {
       super();
     }
 
