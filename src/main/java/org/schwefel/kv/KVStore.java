@@ -1,7 +1,7 @@
 package org.schwefel.kv;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,14 +36,12 @@ public final class KVStore implements StoreOps {
     private ReadOptions readOptions;
     private FlushOptions flushOptions;
     private FlushOptions flushOptionsNoWait;
-    private final Path dir; // XXX ??
     private final String path;
     private final Stats stats = new Stats();
 
     public KVStore(Path dir) {
-        this.dir = Objects.requireNonNull(dir);
-        this.path = (String) wrapEx(() -> dir.toFile().getCanonicalPath());
-        // TODO ensure dir exists / gets created
+        this.path = (String) wrapEx(() -> Objects.requireNonNull(dir).toFile().getCanonicalPath());
+        wrapEx(() -> Files.createDirectories(dir));
         open();
     }
 
