@@ -14,6 +14,7 @@ import org.rocksdb.Transaction;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
 import org.rocksdb.TransactionOptions;
+import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
 
 public final class KVStore implements StoreOps {
@@ -204,6 +205,7 @@ public final class KVStore implements StoreOps {
             long delta = System.nanoTime() - start;
             stats.allOpsTimeNanos.accept(delta);
             stats.deleteTimeNanos.accept(delta);
+            occasionalWalSync();
         }
     }
 
@@ -236,11 +238,19 @@ public final class KVStore implements StoreOps {
         long start = System.nanoTime();
         Objects.requireNonNull(batch, "batch cannot be null");
         validateOpen();
-        // TODO Auto-generated method stub
-
-        long delta = System.nanoTime() - start;
-        stats.allOpsTimeNanos.accept(delta);
-        stats.batchTimeNanos.accept(delta);
+        WriteBatch wb = ((BatchImpl) batch).cedeOwnership();
+        if (wb != null) {
+            try {
+                txnDb.write(writeOptions, wb);
+            } catch (RocksDBException e) {
+                throw new StoreException(e);
+            } finally {
+                close(wb);
+                long delta = System.nanoTime() - start;
+                stats.allOpsTimeNanos.accept(delta);
+                stats.batchTimeNanos.accept(delta);
+            }
+        }
     }
 
     @Override
@@ -305,6 +315,11 @@ public final class KVStore implements StoreOps {
     }
 
     @Override
+    public Batch createBatch() {
+        return new BatchImpl();
+    }
+
+    @Override
     public synchronized Stats getStats() {
         return stats;
     }
@@ -338,13 +353,5 @@ public final class KVStore implements StoreOps {
         } catch (Exception ignore) {
             logger.log(Level.INFO, "", ignore);
         }
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        KVStore kvs = new KVStore(Paths.get("D:/Temp/rocksdb_database"));
-        kvs.putIfAbsent(new byte[] { 1, 2, 3, 4 }, new byte[] { 1, 2, 3, 4 });
-        kvs.flushNoWait();
-        kvs.close();
-        Thread.sleep(3000L);
     }
 }

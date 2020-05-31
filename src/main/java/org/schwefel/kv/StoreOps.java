@@ -9,6 +9,7 @@ public interface StoreOps extends AutoCloseable {
     void delete(byte[] key);
     void deleteRange(byte[] beginKey, byte[] endKey);
     void update(byte[] key, byte[] value); // merge
+    Batch createBatch();
     void writeBatch(Batch batch);
 //  Tx startTx(); // ???
     void syncWAL();
