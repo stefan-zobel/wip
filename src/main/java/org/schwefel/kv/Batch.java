@@ -1,11 +1,9 @@
 package org.schwefel.kv;
 
-public interface Batch {
+public interface Batch extends AutoCloseable {
 
     void put(byte[] key, byte[] value);
     void delete(byte[] key);
     void deleteRange(byte[] beginKey, byte[] endKey);
-    void update(byte[] key, byte[] value); // merge
-    void syncWAL(); // ???
-    // boolean isOpen(); // ???
+    void update(byte[] key, byte[] value);
 }
