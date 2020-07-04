@@ -442,7 +442,7 @@ public class MutableColumnFamilyOptions
 
     @Override
     public CompressionType compressionType() {
-      return (CompressionType)getEnum(MiscOption.compression_type);
+      return (CompressionType) (Object) getEnum(MiscOption.compression_type);
     }
 
     @Override
