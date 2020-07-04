@@ -31,16 +31,6 @@ public final class IDGen {
         System.out.println(next(0L));
         System.out.println(next(1L));
         System.out.println(next(2L));
-        System.out.println();
-        System.out.println(next());
-        System.out.println(next());
-        System.out.println(next());
-        System.out.println(next());
-        System.out.println(next());
-        System.out.println();
-        for (int i = 0; i < 1000; ++i) {
-            System.out.println(next());
-        }
     }
 
     private IDGen() {
