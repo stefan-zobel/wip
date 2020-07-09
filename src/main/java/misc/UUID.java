@@ -5,7 +5,7 @@ import java.security.SecureRandom;
 /**
  * A couple of {@code UUID} generation mechanisms.
  */
-final class UUID {
+public final class UUID {
 
     private static final SecureRandom ng = new SecureRandom();
 
