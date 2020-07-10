@@ -1,4 +1,4 @@
-package ssl;
+package misc;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -8,7 +8,7 @@ import java.util.Arrays;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-class PBKDF2 {
+public class PBKDF2 {
 
     private static final String PRIV_1 = "@GSr:p\"[dZR6RU;B:s&;4P<3XHPl@\"|r9*Az w#:";
     private static final String PRIV_2 = ",k~m:@HXE-a%%7 c](8J|Yu{d\"`./DK_f'z }^'S";
@@ -21,7 +21,7 @@ class PBKDF2 {
             -51, 67, 55, 53, -28, -35, -92, -54, 37, -101, 57, 100, -128, 41, 24, 107, -25, -106, 73, -108, -110, -34,
             -102, -55, 74 };
 
-    private static final int KEY_LENGTH = 50;
+    private static final int KEY_LENGTH = 51;
 
     public static char[] getKey(String password) {
         String pwd = password;
@@ -33,10 +33,7 @@ class PBKDF2 {
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
             KeySpec spec = new PBEKeySpec(pwd.toCharArray(), SALT_64, ITERS, KEY_LENGTH * 8);
             byte[] encoded = skf.generateSecret(spec).getEncoded();
-            char[] ksPwd = new char[encoded.length];
-            for (int i = 0; i < ksPwd.length; ++i) {
-                ksPwd[i] = (char) (encoded[i] & 0xFF);
-            }
+            char[] ksPwd = Base64Codec.encodeToChar(encoded, false);
             Arrays.fill(encoded, (byte) 0);
             return ksPwd;
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
