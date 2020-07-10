@@ -12,7 +12,18 @@ public final class SSLSockets {
     private static final SSLContext ctx = new SimpleSSLContext().get();
 
     public static SSLSocket createSocket(String host, int port) {
+        return createSocket(host, port, null);
+    }
+
+    public static SSLServerSocket createServerSocket(int port) {
+        return createServerSocket(port, null);
+    }
+
+    public static SSLSocket createSocket(String host, int port, SSLContext ctx) {
         try {
+            if (ctx == null) {
+                ctx = SSLSockets.ctx;
+            }
             SSLSocket sock = (SSLSocket) ctx.getSocketFactory().createSocket(host, port);
 
             sock.setReuseAddress(true);
@@ -25,8 +36,11 @@ public final class SSLSockets {
         }
     }
 
-    public static SSLServerSocket createServerSocket(int port) {
+    public static SSLServerSocket createServerSocket(int port, SSLContext ctx) {
         try {
+            if (ctx == null) {
+                ctx = SSLSockets.ctx;
+            }
             SSLServerSocket sock = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket(port);
 
             sock.setReuseAddress(true);
