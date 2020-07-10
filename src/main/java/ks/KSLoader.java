@@ -53,7 +53,7 @@ public final class KSLoader {
         return "VpAovsDbxZdX+k3qed8hqEOeSqknJGT1uYanS69gZ2CBJ6oQuZSCGYky7n4WZGpWNWwR".toCharArray();
     }
 
-    private static char[] passPhrase(String password) {
+    public static char[] passPhrase(String password) {
         return PBKDF2.getKey(password);
     }
 }
