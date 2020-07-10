@@ -9,7 +9,7 @@ import javax.net.ssl.SSLSocket;
 
 public final class SSLSockets {
 
-    private static final SSLContext ctx = new SimpleSSLContext().get();
+    private static final SSLContext defaultCtx = new SimpleSSLContext().get();
 
     public static SSLSocket createSocket(String host, int port) {
         return createSocket(host, port, null);
@@ -22,7 +22,7 @@ public final class SSLSockets {
     public static SSLSocket createSocket(String host, int port, SSLContext ctx) {
         try {
             if (ctx == null) {
-                ctx = SSLSockets.ctx;
+                ctx = SSLSockets.defaultCtx;
             }
             SSLSocket sock = (SSLSocket) ctx.getSocketFactory().createSocket(host, port);
 
@@ -39,7 +39,7 @@ public final class SSLSockets {
     public static SSLServerSocket createServerSocket(int port, SSLContext ctx) {
         try {
             if (ctx == null) {
-                ctx = SSLSockets.ctx;
+                ctx = SSLSockets.defaultCtx;
             }
             SSLServerSocket sock = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket(port);
 
