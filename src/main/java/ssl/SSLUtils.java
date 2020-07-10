@@ -1,14 +1,13 @@
 package ssl;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 
 public final class SSLUtils {
 
@@ -56,11 +55,12 @@ public final class SSLUtils {
     }
 
     private static String getSafestProtocol_() {
-        try (SSLServerSocket sock = (SSLServerSocket) SSLServerSocketFactory.getDefault().createServerSocket(0)) {
-            sock.setReuseAddress(true);
-            safestSuites = Arrays.stream(sock.getSupportedCipherSuites()).filter(suite -> suites.contains(suite))
+        try {
+            SSLContext ctx = SSLContext.getDefault();
+            SSLParameters params = ctx.getSupportedSSLParameters();
+            safestSuites = Arrays.stream(params.getCipherSuites()).filter(suite -> suites.contains(suite))
                     .collect(Collectors.toList());
-            List<String> protos = Arrays.asList(sock.getSupportedProtocols());
+            List<String> protos = Arrays.asList(params.getProtocols());
             if (protos.contains(TLS_13)) {
                 return TLS_13;
             }
@@ -68,8 +68,8 @@ public final class SSLUtils {
                 return TLS_12;
             }
             throw new IllegalStateException("no acceptable protocol");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
     }
 
