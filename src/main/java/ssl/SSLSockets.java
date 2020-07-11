@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 
@@ -68,6 +69,9 @@ public final class SSLSockets {
             if (needClientAuth) {
                 sock.setNeedClientAuth(true);
             }
+            SSLParameters params = sock.getSSLParameters();
+            params.setUseCipherSuitesOrder(true);
+            sock.setSSLParameters(params);
 
             return sock;
         } catch (IOException e) {
