@@ -35,7 +35,7 @@ public final class KSLoader {
     public static KeyStore loadKeyStore(String password, Path file) {
         //@formatter:off
         try (InputStream is = Files.newInputStream(file);
-             BufferedInputStream bis = new BufferedInputStream(is, 16384)
+             BufferedInputStream bis = new BufferedInputStream(is, 1 << 14)
         )
         {
             KeyStore ks = KeyStore.getInstance("PKCS12");
