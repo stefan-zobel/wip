@@ -46,6 +46,7 @@ public final class SSLSockets {
             sock.setReuseAddress(true);
             sock.setEnabledProtocols(SSLUtils.allSafeProtocols());
             sock.setEnabledCipherSuites(SSLUtils.allSafeCipherSuites());
+            sock.setNeedClientAuth(true);
 
             return sock;
         } catch (IOException e) {
