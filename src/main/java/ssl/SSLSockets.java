@@ -42,9 +42,24 @@ public final class SSLSockets {
             }
             SSLSocket sock = (SSLSocket) ctx.getSocketFactory().createSocket(host, port);
 
-            sock.setReuseAddress(true);
             sock.setEnabledProtocols(SSLUtils.allSafeProtocols());
             sock.setEnabledCipherSuites(SSLUtils.allSafeCipherSuites());
+            sock.setReuseAddress(true);
+
+            return sock;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public static SSLSocket createSocket(String host, int port, SSLContext ctx, Protocol prot, Suite suite) {
+        checkCompatibility(prot, suite);
+        try {
+            SSLSocket sock = (SSLSocket) ctx.getSocketFactory().createSocket(host, port);
+
+            sock.setEnabledProtocols(new String[] { prot.toString() });
+            sock.setEnabledCipherSuites(new String[] { suite.toString() });
+            sock.setReuseAddress(true);
 
             return sock;
         } catch (IOException e) {
@@ -63,19 +78,46 @@ public final class SSLSockets {
             }
             SSLServerSocket sock = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket(port);
 
-            sock.setReuseAddress(true);
             sock.setEnabledProtocols(SSLUtils.allSafeProtocols());
             sock.setEnabledCipherSuites(SSLUtils.allSafeCipherSuites());
-            if (needClientAuth) {
-                sock.setNeedClientAuth(true);
-            }
-            SSLParameters params = sock.getSSLParameters();
-            params.setUseCipherSuitesOrder(true);
-            sock.setSSLParameters(params);
 
-            return sock;
+            return prepareServerSocket(sock, needClientAuth);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    public static SSLServerSocket createServerSocket(int port, SSLContext ctx, Protocol prot, Suite suite,
+            boolean needClientAuth) {
+        checkCompatibility(prot, suite);
+        try {
+            SSLServerSocket sock = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket(port);
+
+            sock.setEnabledProtocols(new String[] { prot.toString() });
+            sock.setEnabledCipherSuites(new String[] { suite.toString() });
+
+            return prepareServerSocket(sock, needClientAuth);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static SSLServerSocket prepareServerSocket(SSLServerSocket sock, boolean needClientAuth)
+            throws IOException {
+        if (needClientAuth) {
+            sock.setNeedClientAuth(true);
+        }
+        sock.setReuseAddress(true);
+        SSLParameters params = sock.getSSLParameters();
+        params.setUseCipherSuitesOrder(true);
+        sock.setSSLParameters(params);
+        return sock;
+    }
+
+    private static void checkCompatibility(Protocol prot, Suite suite) {
+        if (suite.isTLS13Suite() && Protocol.TLS_12 == prot) {
+            throw new IllegalArgumentException(suite.toString() + " as a " + Protocol.TLS_13.toString()
+                    + " cipher suite doesn't match with requested " + Protocol.TLS_12.toString() + " protocol");
         }
     }
 
