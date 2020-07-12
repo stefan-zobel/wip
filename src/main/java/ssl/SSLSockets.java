@@ -52,9 +52,16 @@ public final class SSLSockets {
         }
     }
 
+    public static SSLSocket createSocket(String host, int port, Protocol prot, Suite suite) {
+        return createSocket(host, port, null, prot, suite);
+    }
+
     public static SSLSocket createSocket(String host, int port, SSLContext ctx, Protocol prot, Suite suite) {
         checkCompatibility(prot, suite);
         try {
+            if (ctx == null) {
+                ctx = SSLSockets.defaultCtx;
+            }
             SSLSocket sock = (SSLSocket) ctx.getSocketFactory().createSocket(host, port);
 
             sock.setEnabledProtocols(new String[] { prot.toString() });
@@ -87,10 +94,17 @@ public final class SSLSockets {
         }
     }
 
+    public static SSLServerSocket createServerSocket(int port, Protocol prot, Suite suite, boolean needClientAuth) {
+        return createServerSocket(port, null, prot, suite, needClientAuth);
+    }
+
     public static SSLServerSocket createServerSocket(int port, SSLContext ctx, Protocol prot, Suite suite,
             boolean needClientAuth) {
         checkCompatibility(prot, suite);
         try {
+            if (ctx == null) {
+                ctx = SSLSockets.defaultCtx;
+            }
             SSLServerSocket sock = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket(port);
 
             sock.setEnabledProtocols(new String[] { prot.toString() });
