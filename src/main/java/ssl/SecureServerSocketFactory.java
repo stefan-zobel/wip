@@ -44,6 +44,7 @@ public class SecureServerSocketFactory extends SSLServerSocketFactory {
 
     /**
      * Returns the default SecureServerSocketFactory.
+     * Test mode. Do not use in production!
      *
      * @return the default {@code SecureServerSocketFactory}
      */

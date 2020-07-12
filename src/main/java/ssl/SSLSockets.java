@@ -27,10 +27,16 @@ public final class SSLSockets {
 
     private static final SSLContext defaultCtx = new SimpleSSLContext().get();
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public static SSLSocket createSocket(String host, int port) {
         return createSocket(host, port, null);
     }
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public static SSLServerSocket createServerSocket(int port) {
         return createServerSocket(port, null);
     }
@@ -52,6 +58,9 @@ public final class SSLSockets {
         }
     }
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public static SSLSocket createSocket(String host, int port, Protocol prot, Suite suite) {
         return createSocket(host, port, null, prot, suite);
     }
@@ -94,6 +103,9 @@ public final class SSLSockets {
         }
     }
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public static SSLServerSocket createServerSocket(int port, Protocol prot, Suite suite, boolean needClientAuth) {
         return createServerSocket(port, null, prot, suite, needClientAuth);
     }

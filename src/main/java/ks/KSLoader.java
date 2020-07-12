@@ -32,6 +32,9 @@ public final class KSLoader {
 
     private static final String KS_NAME = "ks.p12";
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public static KeyStore loadKeyStore() {
         try (InputStream is = KSLoader.class.getResourceAsStream(KS_NAME)) {
             if (is == null) {

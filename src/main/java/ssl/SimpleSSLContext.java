@@ -35,6 +35,9 @@ public final class SimpleSSLContext {
     private final SSLContext defaultCtx;
     private final SSLContext ctx;
 
+    /**
+     * Test mode. Do not use in production!
+     */
     public SimpleSSLContext() {
         ctx = null;
         try {
