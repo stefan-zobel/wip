@@ -19,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.util.Arrays;
+import java.util.Base64;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -48,7 +49,7 @@ public final class PBKDF2 {
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
             KeySpec spec = new PBEKeySpec(pwd.toCharArray(), SALT_64, ITERS, KEY_LENGTH * 8);
             byte[] encoded = skf.generateSecret(spec).getEncoded();
-            char[] ksPwd = Base64Codec.encodeToChar(encoded, false);
+            char[] ksPwd = Base64.getEncoder().encodeToString(encoded).toCharArray();
             Arrays.fill(encoded, (byte) 0);
             return ksPwd;
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
