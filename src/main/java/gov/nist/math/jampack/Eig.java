@@ -95,5 +95,7 @@ public final class Eig {
             }
         }
         X = Times.o(S.U, X);
+        S = null;
+        T = null;
     }
 }
