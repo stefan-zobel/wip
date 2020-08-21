@@ -203,8 +203,8 @@ public final class House {
         c2 = c2 - 1;
 
         for (j = c1; j <= c2; j++) {
-            v.re[j - c1] = 0;
-            v.im[j - c1] = 0;
+            v.re[j - c1] = 0.0;
+            v.im[j - c1] = 0.0;
         }
 
         for (i = r1; i <= r2; i++) {
