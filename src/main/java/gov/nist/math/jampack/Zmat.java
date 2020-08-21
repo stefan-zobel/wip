@@ -226,6 +226,23 @@ public final class Zmat {
     }
 
     /**
+     * Writes the (ii,jj) element of a Zmat.
+     * 
+     * @param ii
+     *            The row index of the element
+     * @param jj
+     *            The column index of the element
+     * @param real
+     *            The real part of the element
+     * @param imag
+     *            The imaginary part of the element
+     */
+    public void put(int ii, int jj, double real, double imag) {
+        re[ii - 1][jj - 1] = real;
+        im[ii - 1][jj - 1] = imag;
+    }
+
+    /**
      * Writes the zero-based (i,j)-element of a Zmat.
      * 
      * @param i
