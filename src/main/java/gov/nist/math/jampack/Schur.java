@@ -60,7 +60,7 @@ public final class Schur {
                 sd = Z.abs1(T.get(iu, iu - 1));
                 if (sd >= 1.0e-16 * d)
                     break;
-                T.put(iu, iu - 1, Z.ZERO);
+                T.put(iu, iu - 1, 0.0, 0.0);
                 iter = 0;
                 iu = iu - 1;
             }
@@ -80,7 +80,7 @@ public final class Schur {
                 il = il - 1;
             }
             if (il != 1) {
-                T.put(il, il - 1, Z.ZERO);
+                T.put(il, il - 1, 0.0, 0.0);
             }
 
             // Compute the shift.
