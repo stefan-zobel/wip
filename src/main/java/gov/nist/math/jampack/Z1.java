@@ -2,7 +2,7 @@ package gov.nist.math.jampack;
 
 /**
  * Z1 implements a one-dimensional array of complex numbers as a two arrays of
- * type double. The addressing is zero based. It is necessary to provided
+ * type double. The addressing is zero based. It is necessary to provide
  * one-dimensional complex arrays whose real and imaginary parts are contiguous
  * in storage.
  * 
