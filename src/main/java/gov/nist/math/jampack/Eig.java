@@ -74,8 +74,8 @@ public final class Eig {
                     double imjk = X.im(j, k);
                     double reij = T.re(i, j);
                     double imij = T.im(i, j);
-                    X.setRe(i, k, X.re(i, k) - reij * rejk + imij * imjk);
-                    X.setIm(i, k, X.im(i, k) - reij * imjk - imij * rejk);
+                    X.addRe(i, k, -reij * rejk + imij * imjk);
+                    X.addIm(i, k, -reij * imjk - imij * rejk);
                 }
 
                 z = T.get0(i, i);
