@@ -50,7 +50,8 @@ public final class Zdiagmat {
     /**
      * Constructs a Zdiagmat and initializes it to a Z1.
      * 
-     * @param val a Z1
+     * @param val
+     *            a Z1
      */
     public Zdiagmat(Z1 val) {
         order = val.re.length;
@@ -104,7 +105,8 @@ public final class Zdiagmat {
      * Constructs a Zdiagmat and initializes it to the principal diagonal of a
      * Zmat.
      * 
-     * @param A a Zmat
+     * @param A
+     *            a Zmat
      * @exception ZException
      *                Passed from below.
      */
@@ -115,7 +117,8 @@ public final class Zdiagmat {
     /**
      * Constructs a Zdiagmat and initializes it to another Zdiagmat.
      * 
-     * @param D a Zdiagmat
+     * @param D
+     *            a Zdiagmat
      */
     public Zdiagmat(Zdiagmat D) {
         order = D.order;
@@ -144,33 +147,75 @@ public final class Zdiagmat {
      * 
      * @param ii
      *            An integer
-     * @param val a Z
+     * @param val
+     *            a Z
      */
     public void put(int ii, Z val) {
         re[ii - 1] = val.re;
         im[ii - 1] = val.im;
     }
 
+    /**
+     * {@code return re[i]}
+     * 
+     * @param i
+     *            the index on the diagonal (zero based)
+     * @return the real part at i
+     */
     public double re(int i) {
         return re[i];
     }
 
+    /**
+     * {@code return im[i]}
+     * 
+     * @param i
+     *            i the index on the diagonal (zero based)
+     * @return the imaginary part at i
+     */
     public double im(int i) {
         return im[i];
     }
 
+    /**
+     * {@code re[i] = val}
+     * 
+     * @param i
+     *            i the index on the diagonal (zero based)
+     * @param val
+     *            the real value to set
+     */
     public void setRe(int i, double val) {
         re[i] = val;
     }
 
+    /**
+     * {@code im[i] = val}
+     * 
+     * @param i
+     *            i the index on the diagonal (zero based)
+     * @param val
+     *            the imaginary value to set
+     */
     public void setIm(int i, double val) {
         im[i] = val;
     }
 
+    /**
+     * {@code re = values}
+     * 
+     * @param values
+     *            the diagonal values to set
+     */
     public void setRe(double[] values) {
         re = values;
     }
 
+    /**
+     * Returns the order of this matrix.
+     * 
+     * @return the order of this matrix
+     */
     public int order() {
         return order;
     }
