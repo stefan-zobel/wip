@@ -11,10 +11,10 @@ public final class Zmat {
     boolean isPosSemiDefinite = false;
 
     /** The real part of the matrix */
-    private final double re[][];
+    private final double[][] re;
 
     /** The imaginary part of the matrix */
-    private final double im[][];
+    private final double[][] im;
 
     /** The number of rows */
     public final int nr;
@@ -33,7 +33,7 @@ public final class Zmat {
      * @exception ZException
      *                if the dimensions of re and im do not match
      */
-    public Zmat(double re[][], double im[][]) throws ZException {
+    public Zmat(double[][] re, double[][] im) throws ZException {
         nr = re.length;
         nc = re[0].length;
         if (nr != im.length || nc != im[0].length) {
@@ -52,7 +52,7 @@ public final class Zmat {
     /**
      * Creates a Zmat and initializes it to an array of class Z.
      */
-    public Zmat(Z A[][]) {
+    public Zmat(Z[][] A) {
         nr = A.length;
         nc = A[0].length;
         re = new double[nr][nc];
@@ -69,7 +69,7 @@ public final class Zmat {
      * Creates a Zmat and initializes its real part to to an array of class
      * double. The imaginary part is set to zero.
      */
-    public Zmat(double A[][]) {
+    public Zmat(double[][] A) {
         nr = A.length;
         nc = A[0].length;
         re = new double[nr][nc];
@@ -139,12 +139,6 @@ public final class Zmat {
         nc = ncol;
         re = new double[nr][nc];
         im = new double[nr][nc];
-        for (int i = 0; i < nr; i++) {
-            for (int j = 0; j < nc; j++) {
-                re[i][j] = 0.0;
-                im[i][j] = 0.0;
-            }
-        }
     }
 
     /**
@@ -317,7 +311,7 @@ public final class Zmat {
      * @param jj2
      *            The upper column index
      */
-    public Zmat get(int ii[], int jj1, int jj2) {
+    public Zmat get(int[] ii, int jj1, int jj2) {
         int nrow = ii.length;
         int ncol = jj2 - jj1 + 1;
         Zmat A = new Zmat(nrow, ncol);
@@ -342,7 +336,7 @@ public final class Zmat {
      * @param A
      *            The new value of the submatrix.
      */
-    public void put(int ii[], int jj1, int jj2, Zmat A) {
+    public void put(int[] ii, int jj1, int jj2, Zmat A) {
         int nrow = ii.length;
         int ncol = jj2 - jj1 + 1;
         for (int i = 0; i < nrow; i++) {
@@ -363,7 +357,7 @@ public final class Zmat {
      * @param jj
      *            Contains the column indices of the submatrix
      */
-    public Zmat get(int ii1, int ii2, int jj[]) {
+    public Zmat get(int ii1, int ii2, int[] jj) {
         int nrow = ii2 - ii1 + 1;
         int ncol = jj.length;
         Zmat A = new Zmat(nrow, ncol);
@@ -388,7 +382,7 @@ public final class Zmat {
      * @param A
      *            The new value of the submatrix
      */
-    public void put(int ii1, int ii2, int jj[], Zmat A) {
+    public void put(int ii1, int ii2, int[] jj, Zmat A) {
         int nrow = ii2 - ii1 + 1;
         int ncol = jj.length;
         for (int i = 0; i < nrow; i++) {
@@ -407,7 +401,7 @@ public final class Zmat {
      * @param jj
      *            Contains the column indices of the submatrix
      */
-    public Zmat get(int ii[], int jj[]) {
+    public Zmat get(int[] ii, int[] jj) {
         int nrow = ii.length;
         int ncol = jj.length;
         Zmat A = new Zmat(nrow, ncol);
@@ -431,7 +425,7 @@ public final class Zmat {
      * @param A
      *            The value of the new submatrix
      */
-    public void put(int ii[], int jj[], Zmat A) {
+    public void put(int[] ii, int[] jj, Zmat A) {
         int nrow = ii.length;
         int ncol = jj.length;
         for (int i = 0; i < nrow; i++) {
@@ -442,42 +436,130 @@ public final class Zmat {
         }
     }
 
+    /**
+     * {@code return re[i][j]}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @return the real part
+     */
     public double re(int i, int j) {
         return re[i][j];
     }
 
+    /**
+     * {@code return im[i][j]}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @return the imaginary part
+     */
     public double im(int i, int j) {
         return im[i][j];
     }
 
+    /**
+     * {@code re[i][j] += delta}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param delta
+     *            increment to add / subtract
+     */
     public void addRe(int i, int j, double delta) {
         re[i][j] += delta;
     }
 
+    /**
+     * {@code im[i][j] += delta}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param delta
+     *            increment to add / subtract
+     */
     public void addIm(int i, int j, double delta) {
         im[i][j] += delta;
     }
 
+    /**
+     * {@code re[i][j] *= scale}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param scale
+     *            multiplication factor
+     */
     public void scaleRe(int i, int j, double scale) {
         re[i][j] *= scale;
     }
 
+    /**
+     * {@code im[i][j] *= scale}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param scale
+     *            multiplication factor
+     */
     public void scaleIm(int i, int j, double scale) {
         im[i][j] *= scale;
     }
 
+    /**
+     * {@code re[i][j] = val}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param val
+     *            value to set
+     */
     public void setRe(int i, int j, double val) {
         re[i][j] = val;
     }
 
+    /**
+     * {@code im[i][j] = val}
+     * 
+     * @param i
+     *            row index (zero based)
+     * @param j
+     *            column index (zero based)
+     * @param val
+     *            value to set
+     */
     public void setIm(int i, int j, double val) {
         im[i][j] = val;
     }
 
+    /**
+     * Returns the number of rows of this matrix.
+     * 
+     * @return the number of rows
+     */
     public int rows() {
         return nr;
     }
 
+    /**
+     * Returns the number of columns of this matrix.
+     * 
+     * @return the number of columns
+     */
     public int cols() {
         return nc;
     }
