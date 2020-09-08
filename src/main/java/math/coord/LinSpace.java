@@ -350,8 +350,10 @@ public final class LinSpace {
         private double current;
         private final double last;
         private final double delta;
+        private final int total;
 
         DblIt(int numberOfPoints, double start, double stop, double spacing) {
+            total = numberOfPoints;
             remaining = numberOfPoints;
             current = start;
             last = stop;
@@ -361,6 +363,14 @@ public final class LinSpace {
         @Override
         public boolean hasNext() {
             return remaining > 0;
+        }
+
+        @Override
+        public int nextIndex() {
+            if (remaining > 0) {
+                return total - remaining + 1;
+            }
+            throw new NoSuchElementException("exhausted");
         }
 
         @Override

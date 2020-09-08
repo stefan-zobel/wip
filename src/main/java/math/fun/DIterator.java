@@ -19,5 +19,8 @@ public interface DIterator {
 
     public boolean hasNext();
 
+    /** Note that indexes are 1-based! */
+    public int nextIndex();
+
     public double next();
 }
