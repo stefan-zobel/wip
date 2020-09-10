@@ -63,7 +63,7 @@ public class ExactDMD {
         return omega;
     }
 
-    public ComplexMatrixD getTime0() {
+    public ComplexMatrixD getConstantVector() {
         return b;
     }
 
