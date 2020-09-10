@@ -15,6 +15,8 @@
  */
 package dmd.examples;
 
+import java.util.Arrays;
+
 import math.coord.LinSpace;
 import math.fun.DIterator;
 import net.jamu.complex.Zd;
@@ -22,15 +24,13 @@ import net.jamu.complex.ZdImpl;
 import net.jamu.matrix.ComplexMatrixD;
 import net.jamu.matrix.EvdComplexD;
 import net.jamu.matrix.Matrices;
+import net.jamu.matrix.MatrixD;
 import net.jamu.matrix.SvdEconComplexD;
 
 /**
- * Dynamic mode decomposition MATLAB code example presented on YouTube by
- * {@code Nathan Kutz} rewritten in Java.
- * 
- * @see https://www.youtube.com/watch?v=KAau5TBU0Sc
+ * A DMD example with complex-conjugate eigenvalues and real-valued data.
  */
-public class Example1 {
+public class Example2 {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -50,7 +50,7 @@ public class Example1 {
         LinSpace ti = LinSpace.linspace(t_start, t_end, t_num);
 
         // build data 'measurements' matrix
-        ComplexMatrixD X = Matrices.createComplexD(xi.size(), ti.size());
+        MatrixD X_ = Matrices.createD(xi.size(), ti.size());
 
         for (DIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
             int colIdx = tIt.nextIndex() - 1;
@@ -58,13 +58,20 @@ public class Example1 {
             for (DIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
                 int rowIdx = xIt.nextIndex() - 1;
                 Zd z = f(xIt.next(), t);
-                X.set(rowIdx, colIdx, z.re(), z.im());
+                // copy only the real part
+                X_.set(rowIdx, colIdx, z.re());
             }
         }
 
         // create time snapshots from measurements matrix
-        ComplexMatrixD X1 = X.selectConsecutiveColumns(X.startCol(), X.endCol() - 1);
-        ComplexMatrixD X2 = X.selectConsecutiveColumns(X.startCol() + 1, X.endCol());
+        MatrixD X1_ = X_.selectConsecutiveColumns(X_.startCol(), X_.endCol() - 1);
+        MatrixD X2_ = X_.selectConsecutiveColumns(X_.startCol() + 1, X_.endCol());
+
+        // copy snapshots into complex matrices
+        // (from here on everything is done in the complex domain)
+        ComplexMatrixD X1 = Matrices.convertToComplex(X1_);
+        ComplexMatrixD X2 = Matrices.convertToComplex(X2_);
+        ComplexMatrixD X = Matrices.convertToComplex(X_);
 
         // step 1 of exact DMD algorithm
         SvdEconComplexD svd = X1.svdEcon();
@@ -140,19 +147,21 @@ public class Example1 {
 
     // merged spatio-temporal signal
     private static Zd f(double x, double t) {
-        return f1(x, t).add(f2(x, t));
+        return f1a(x, t).add(f2a(x, t));
     }
 
     // first spatio-temporal pattern
-    private static Zd f1(double x, double t) {
-        Zd z = new ZdImpl(0.0, 2.3 * t);
-        return z.exp().scale(sech(x + 3.0));
+    private static Zd f1a(double x, double t) {
+        Zd zt = new ZdImpl(0.1, 2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x + 3.0), Math.tanh(x));
+        return zt.mul(zx);
     }
 
     // second spatio-temporal pattern
-    private static Zd f2(double x, double t) {
-        Zd z = new ZdImpl(0.0, 2.8 * t);
-        return z.exp().scale(2.0).scale(sech(x) * Math.tanh(x));
+    private static Zd f2a(double x, double t) {
+        Zd zt = new ZdImpl(0.1, -2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x - 3.0), -Math.tanh(x));
+        return zt.mul(zx);
     }
 
     private static Zd expOmegaT(double omegaR, double omegaI, double t) {
