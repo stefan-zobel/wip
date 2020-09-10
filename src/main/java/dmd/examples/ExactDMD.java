@@ -15,7 +15,7 @@ public class ExactDMD {
     private final MatrixD data;
     private final double deltaT;
 
-    // TODO
+    // the rank can either be computed or set via the constructor
     private int rank = 0;
     // eigenvalues in the subspace
     private Zd[] eigenValues;
@@ -23,8 +23,8 @@ public class ExactDMD {
     private ComplexMatrixD phi;
     // omega contains the eigenvalues of the fitted linear system
     private ComplexMatrixD omega;
-    // initial condition at time 0
-    private ComplexMatrixD time0;
+    // constant vector evaluated via the initial condition at time 0
+    private ComplexMatrixD b;
 
     public ExactDMD(MatrixD data, double deltaT) {
         if (deltaT <= 0.0) {
@@ -64,7 +64,7 @@ public class ExactDMD {
     }
 
     public ComplexMatrixD getTime0() {
-        return time0;
+        return b;
     }
 
     public MatrixD getData() {
@@ -94,8 +94,8 @@ public class ExactDMD {
         // omega contains the eigenvalues of the fitted linear system
         omega = computeOmega(eigenValues, deltaT);
 
-        // initial condition (vector b) at time 0
-        time0 = computeInitialCondition(data, rank, phi);
+        // vector b via initial condition at time 0
+        b = computeInitialCondition(data, rank, phi);
     }
 
     public MatrixD predict(double timeFrom, double timeTo, int numberOfPredictions) {
@@ -116,7 +116,7 @@ public class ExactDMD {
             newOmega = recomputeOmega(newOmega, deltaT, dt);
         }
         // create time dynamics matrix (b * e^omega*t)
-        ComplexMatrixD timeDynamics = createTimeDynamicsMatrix(newOmega, rank, time0, timeFrom, timeTo,
+        ComplexMatrixD timeDynamics = createTimeDynamicsMatrix(newOmega, rank, b, timeFrom, timeTo,
                 numberOfPredictions);
         // spatio-temporal prediction
         return phi.times(timeDynamics).toRealMatrix();
@@ -213,27 +213,27 @@ public class ExactDMD {
         return Sr.inverse();
     }
 
-    private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD time0,
+    private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD b,
             double tStart, double tEnd, int tNum) {
         // time dynamics matrix (b * e^omega*t)
         ComplexMatrixD timeDynamics = Matrices.createComplexD(rank, tNum);
         double dt = (tNum == 1) ? 0.0 : (tEnd - tStart) / (tNum - 1);
         ZdImpl omg = new ZdImpl(0.0);
         ZdImpl expOmg_k = new ZdImpl(0.0);
-        ZdImpl time0_k = new ZdImpl(0.0);
+        ZdImpl b_k = new ZdImpl(0.0);
         for (int i = 1; i <= tNum; ++i) {
             int colIdx = i - 1;
             double t = (i == tNum) ? tEnd : tStart + colIdx * dt;
             for (int k = 0; k < rank; ++k) {
                 omega.get(k, k, omg);
                 expOmegaT(omg.re(), omg.im(), t, expOmg_k);
-                time0.get(k, 0, time0_k);
-                double time0_k_re = time0_k.re();
-                double time0_k_im = time0_k.im();
+                b.get(k, 0, b_k);
+                double b_k_re = b_k.re();
+                double b_k_im = b_k.im();
                 double expOmg_k_re = expOmg_k.re();
                 double expOmg_k_im = expOmg_k.im();
-                double re = time0_k_re * expOmg_k_re - time0_k_im * expOmg_k_im;
-                double im = time0_k_im * expOmg_k_re + time0_k_re * expOmg_k_im;
+                double re = b_k_re * expOmg_k_re - b_k_im * expOmg_k_im;
+                double im = b_k_im * expOmg_k_re + b_k_re * expOmg_k_im;
                 timeDynamics.set(k, colIdx, re, im);
             }
         }
