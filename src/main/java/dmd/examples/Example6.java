@@ -1,0 +1,254 @@
+/*
+ * Copyright 2020 Stefan Zobel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package dmd.examples;
+
+import math.coord.LinSpace;
+import math.fun.DIterator;
+import net.jamu.complex.Zd;
+import net.jamu.complex.ZdImpl;
+import net.jamu.matrix.ComplexMatrixD;
+import net.jamu.matrix.EvdComplexD;
+import net.jamu.matrix.Matrices;
+import net.jamu.matrix.MatrixD;
+import net.jamu.matrix.SvdEconD;
+
+/**
+ * Partially refactored version of example 5.
+ */
+public class Example6 {
+
+    static final double x_start = -10.0;
+    static final double x_end = 10.0;
+    static final int x_num = 400;
+
+    static final double t_start = 0.0;
+    static final double t_end = 4.0 * Math.PI;
+    static final int t_num = 200;
+
+    // space (TODO)
+    static final LinSpace xi = LinSpace.linspace(x_start, x_end, x_num);
+    // time (TODO)
+    static final LinSpace ti = LinSpace.linspace(t_start, t_end, t_num);
+
+    public static void main(String[] args) {
+
+        // build data 'measurements' matrix
+        MatrixD data = setupMeasurementsMatrix();
+
+        // step 1 of exact DMD algorithm
+        SvdEconD svd = computeSvd(data);
+
+        // estimate rank truncation from SVD
+        final int rank = estimateRank(svd);
+
+        // step 4: get back into high-dimensional space
+        // Modes.Phi contains the modes of the fitted linear system and
+        // Modes.eigs contains the eigenvalues in the subspace
+        Modes modes = computeModesAndEigenvalues(data, svd, rank);
+
+        // omega contains the eigenvalues of the fitted linear system
+        ComplexMatrixD omega = computeOmega(modes.eigs, getDeltaT());
+
+        // b = initial condition at time 0
+        ComplexMatrixD b = computeInitialCondition(data, rank, modes.Phi);
+
+        // time dynamics matrix (b * e^omega*t)
+        ComplexMatrixD time_dynamics = createTimeDynamicsMatrix(omega, rank, b, t_start, t_end, t_num);
+
+        // spatio-temporal reconstruction
+        ComplexMatrixD X_dmd = modes.Phi.times(time_dynamics);
+        // convert measurements data to complex matrix for better comparison
+        ComplexMatrixD X = Matrices.convertToComplex(data);
+
+        System.out.println("reconstructed:" + X_dmd);
+        System.out.println("original     :" + X);
+
+        // compare Frobenius norms for approximate equality
+        double normDmd = X_dmd.normF();
+        double normData = X.normF();
+        System.out.println("reconstructed: " + normDmd);
+        System.out.println("original     : " + normData);
+    }
+
+    private static int estimateRank(SvdEconD svd) {
+        // TODO
+        return 2;
+    }
+
+    private static double getDeltaT() {
+        // TODO: remove dependency on ti
+        return ti.spacing();
+    }
+
+    private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD time0,
+            double tStart, double tEnd, int tNum) {
+        // time dynamics matrix (b * e^omega*t)
+        ComplexMatrixD timeDynamics = Matrices.createComplexD(rank, tNum);
+        double dt = (tNum == 1) ? 0.0 : (tEnd - tStart) / (tNum - 1);
+        ZdImpl omg = new ZdImpl(0.0);
+        ZdImpl expOmg_k = new ZdImpl(0.0);
+        ZdImpl time0_k = new ZdImpl(0.0);
+        for (int i = 1; i <= tNum; ++i) {
+            int colIdx = i - 1;
+            double t = (i == tNum) ? tEnd : tStart + colIdx * dt;
+            for (int k = 0; k < rank; ++k) {
+                omega.get(k, k, omg);
+                expOmegaT(omg.re(), omg.im(), t, expOmg_k);
+                time0.get(k, 0, time0_k);
+                double time0_k_re = time0_k.re();
+                double time0_k_im = time0_k.im();
+                double expOmg_k_re = expOmg_k.re();
+                double expOmg_k_im = expOmg_k.im();
+                double re = time0_k_re * expOmg_k_re - time0_k_im * expOmg_k_im;
+                double im = time0_k_im * expOmg_k_re + time0_k_re * expOmg_k_im;
+                timeDynamics.set(k, colIdx, re, im);
+            }
+        }
+        return timeDynamics;
+    }
+
+    private static void expOmegaT(double omegaR, double omegaI, double t, ZdImpl out) {
+        omegaR = t * omegaR;
+        omegaI = t * omegaI;
+        double expRe = Math.exp(omegaR);
+        omegaR = expRe * Math.cos(omegaI);
+        omegaI = expRe * Math.sin(omegaI);
+        out.setRe(omegaR);
+        out.setIm(omegaI);
+    }
+
+    private static ComplexMatrixD computeInitialCondition(MatrixD data, int rank, ComplexMatrixD modes) {
+        // compute initial condition at time 0
+        MatrixD firstCol = data.selectConsecutiveColumns(data.startCol(), data.startCol());
+        ComplexMatrixD x1 = firstCol.toComplexMatrix();
+        return modes.solve(x1, Matrices.createComplexD(rank, x1.numColumns()));
+    }
+
+    private static ComplexMatrixD computeOmega(Zd[] eigs, double dt) {
+        // omega contains the eigenvalues of the fitted linear system
+        ComplexMatrixD omega = Matrices.createComplexD(eigs.length, eigs.length);
+        for (int i = 0; i < eigs.length; ++i) {
+            Zd z = eigs[i].copy();
+            z.ln().scale(1.0 / dt);
+            omega.set(i, i, z.re(), z.im());
+        }
+        return omega;
+    }
+
+    private static Modes computeModesAndEigenvalues(MatrixD data, SvdEconD svd, int rank) {
+        // create the second time-shifted snapshot
+        MatrixD snapshot = getSecondSnapshot(data);
+        // pull out Sigma inverse for low-dimensional subspace
+        MatrixD sigmaTruncInverse = getSigmaTruncatedInverse(svd, rank);
+        EvdTruncated decomposed = decompose(snapshot, svd, rank, sigmaTruncInverse);
+        // create Modes
+        Modes modes = new Modes();
+        modes.eigs = decomposed.eigs;
+        // copy the second snapshot into complex matrix
+        ComplexMatrixD X2 = Matrices.convertToComplex(snapshot);
+        // step 4: get back into high-dimensional space
+        // Phi contains the modes of the fitted linear system
+        modes.Phi = X2.times(decomposed.Vr).times(sigmaTruncInverse).times(decomposed.eigenvecs);
+        return modes;
+    }
+
+    private static EvdTruncated decompose(MatrixD snapshot, SvdEconD svd, int rank, MatrixD sigmaTruncInverse) {
+        MatrixD U = svd.getU();
+        MatrixD Vt = svd.getVt();
+        // pull out U / V for low-dimensional subspace
+        MatrixD Ur = U.selectConsecutiveColumns(U.startCol(), rank - 1);
+        MatrixD Vr = Vt.transpose().selectConsecutiveColumns(Vt.startCol(), rank - 1);
+        EvdTruncated summary = new EvdTruncated();
+        summary.Vr = Vr;
+        // step 2: similarity-transform in the low-rank subspace
+        // ATilde takes us from one snapshot to the next in the low-rank
+        // subspace (from here on everything is done in the complex domain)
+        ComplexMatrixD ATilde = Ur.transpose().times(snapshot).times(Vr).times(sigmaTruncInverse).toComplexMatrix();
+        // step 3: compute the 'rank' eigenvalues / eigenvectors in the subspace
+        EvdComplexD evd = ATilde.evd(true);
+        summary.eigenvecs = evd.getEigenvectors();
+        summary.eigs = evd.getEigenvalues();
+        return summary;
+    }
+
+    private static MatrixD getSigmaTruncatedInverse(SvdEconD svd, int rank) {
+        double[] S = svd.getS();
+        // pull out low-dimensional subspace
+        MatrixD Sr = Matrices.createD(rank, rank);
+        for (int i = Sr.startRow(); i <= Sr.endRow(); ++i) {
+            Sr.set(i, i, S[i]);
+        }
+        return Sr.inverse();
+    }
+
+    private static MatrixD getSecondSnapshot(MatrixD data) {
+        // create the second time-shifted snapshot
+        return data.selectConsecutiveColumns(data.startCol() + 1, data.endCol());
+    }
+
+    private static SvdEconD computeSvd(MatrixD data) {
+        // create first snapshot from measurements matrix
+        MatrixD X1_ = data.selectConsecutiveColumns(data.startCol(), data.endCol() - 1);
+        // step 1 of exact DMD algorithm
+        return X1_.svdEcon();
+    }
+
+    private static MatrixD setupMeasurementsMatrix() {
+        // build data 'measurements' matrix
+        MatrixD X_ = Matrices.createD(xi.size(), ti.size());
+
+        for (DIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
+            int colIdx = tIt.nextIndex() - 1;
+            double t = tIt.next();
+            for (DIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
+                int rowIdx = xIt.nextIndex() - 1;
+                Zd z = f(xIt.next(), t);
+                // copy only the real part
+                X_.set(rowIdx, colIdx, z.re());
+            }
+        }
+
+        return X_;
+    }
+
+    // merged spatio-temporal signal
+    private static Zd f(double x, double t) {
+        return f1a(x, t).add(f2a(x, t));
+    }
+
+    // first spatio-temporal pattern
+    private static Zd f1a(double x, double t) {
+        Zd zt = new ZdImpl(0.1, 2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x + 3.0), Math.tanh(x));
+        return zt.mul(zx);
+    }
+
+    // second spatio-temporal pattern
+    private static Zd f2a(double x, double t) {
+        Zd zt = new ZdImpl(0.1, -2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x - 3.0), -Math.tanh(x));
+        return zt.mul(zx);
+    }
+
+    private static double sech(double y) {
+        return 1.0 / Math.cosh(y);
+    }
+
+    @SuppressWarnings("unused")
+    private static double cosh(double y) {
+        return Math.cosh(y);
+    }
+}
