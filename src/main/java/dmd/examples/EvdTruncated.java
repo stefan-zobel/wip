@@ -4,7 +4,7 @@ import net.jamu.complex.Zd;
 import net.jamu.matrix.ComplexMatrixD;
 import net.jamu.matrix.MatrixD;
 
-public class EvdTruncated {
+/* package */ class EvdTruncated {
 
     // truncated singular vectors V
     MatrixD Vr;
