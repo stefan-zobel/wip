@@ -98,38 +98,14 @@ public class ExactDMD {
         b = computeInitialCondition(data, rank, phi);
     }
 
-    public MatrixD predict(double timeFrom, double timeTo, int numberOfPredictions) {
-        if (timeTo < timeFrom) {
-            throw new IllegalArgumentException("timeTo < timeFrom: " + timeTo + " < " + timeFrom);
-        }
+    public MatrixD predict(double timeFrom, int numberOfPredictions) {
         if (numberOfPredictions < 1) {
             throw new IllegalArgumentException("numberOfPredictions < 1: " + numberOfPredictions);
         }
-        if (timeTo == timeFrom && numberOfPredictions != 1) {
-            throw new IllegalArgumentException(
-                    "timeTo == timeFrom but numberOfPredictions != 1: " + numberOfPredictions);
-        }
-        double dt = (numberOfPredictions == 1) ? 0.0 : (timeTo - timeFrom) / (numberOfPredictions - 1);
-        ComplexMatrixD newOmega = omega;
-        // recompute omega if necessary
-        if (dt != deltaT && dt != 0.0) {
-            newOmega = recomputeOmega(newOmega, deltaT, dt);
-        }
         // create time dynamics matrix (b * e^omega*t)
-        ComplexMatrixD timeDynamics = createTimeDynamicsMatrix(newOmega, rank, b, timeFrom, timeTo,
-                numberOfPredictions);
+        ComplexMatrixD timeDynamics = createTimeDynamicsMatrix(omega, rank, b, timeFrom, numberOfPredictions, deltaT);
         // spatio-temporal prediction
         return phi.times(timeDynamics).toRealMatrix();
-    }
-
-    private static ComplexMatrixD recomputeOmega(ComplexMatrixD analysisOmega, double analysisDeltaT,
-            double newDeltaT) {
-        ComplexMatrixD newOmega = analysisOmega.copy();
-        newOmega.scaleInplace(analysisDeltaT, 0.0);
-        if (newDeltaT != 1.0) {
-            newOmega.scaleInplace(1.0 / newDeltaT, 0.0);
-        }
-        return newOmega;
     }
 
     private static int estimateRank(SvdEconD svd) {
@@ -214,16 +190,15 @@ public class ExactDMD {
     }
 
     private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD b,
-            double tStart, double tEnd, int tNum) {
+            double tStart, int tNum, double dt) {
         // time dynamics matrix (b * e^omega*t)
         ComplexMatrixD timeDynamics = Matrices.createComplexD(rank, tNum);
-        double dt = (tNum == 1) ? 0.0 : (tEnd - tStart) / (tNum - 1);
         ZdImpl omg = new ZdImpl(0.0);
         ZdImpl expOmg_k = new ZdImpl(0.0);
         ZdImpl b_k = new ZdImpl(0.0);
+        double t = tStart;
         for (int i = 1; i <= tNum; ++i) {
             int colIdx = i - 1;
-            double t = (i == tNum) ? tEnd : tStart + colIdx * dt;
             for (int k = 0; k < rank; ++k) {
                 omega.get(k, k, omg);
                 expOmegaT(omg.re(), omg.im(), t, expOmg_k);
@@ -236,6 +211,7 @@ public class ExactDMD {
                 double im = b_k_im * expOmg_k_re + b_k_re * expOmg_k_im;
                 timeDynamics.set(k, colIdx, re, im);
             }
+            t += dt;
         }
         return timeDynamics;
     }

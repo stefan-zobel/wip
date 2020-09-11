@@ -33,7 +33,7 @@ public class Example7 {
 
     static final double t_start = 0.0;
     static final double t_end = 4.0 * Math.PI;
-    static final int t_num = 601;
+    static final int t_num = 600;
 
     // space dimension
     static final LinSpace xi = LinSpace.linspace(x_start, x_end, x_num);
@@ -53,7 +53,7 @@ public class Example7 {
         ExactDMD dmd = new ExactDMD(data, deltaT, rank).compute();
 
         // predict the same interval that was used to compute the DMD
-        MatrixD pred = dmd.predict(t_start, t_end, t_num);
+        MatrixD pred = dmd.predict(t_start, t_num);
 
         System.out.println("reconstructed:" + pred);
         System.out.println("original     :" + data);
@@ -64,14 +64,15 @@ public class Example7 {
         System.out.println("reconstructed: " + normDmd);
         System.out.println("original     : " + normData);
 
-        // now attempt to predict the future from 4PI to 5PI with the same stepsize
-        int t_num = 151;
+        // now attempt to predict the future starting from 4.0 * PI for t_num
+        // predictions with the same stepsize
+        int t_num = 100;
         double t_start = t_end;
-        double t_end = t_start + 1.0 * Math.PI;
-        deltaT = (t_num == 1) ? 0.0 : (t_end - t_start) / (t_num - 1);
+        double t_end = t_start + dmd.getDeltaT() * (t_num - 1);
+        deltaT = (t_num == 1) ? dmd.getDeltaT() : (t_end - t_start) / (t_num - 1);
         System.out.println("\ndeltaT: " + deltaT);
 
-        MatrixD fut = dmd.predict(t_start, t_end, t_num);
+        MatrixD fut = dmd.predict(t_start, t_num);
         System.out.println("future       :" + fut);
 
         // setup a LinSpace corresponding to the prediction interval
