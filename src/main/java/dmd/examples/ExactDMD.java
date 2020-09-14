@@ -108,9 +108,8 @@ public class ExactDMD {
         return phi.times(timeDynamics).toRealMatrix();
     }
 
-    private static int estimateRank(SvdEconD svd) {
-        // TODO
-        return 2;
+    private int estimateRank(SvdEconD svd) {
+        return SVHT.threshold(data, svd.getS());
     }
 
     private static SvdEconD computeSvd(MatrixD data) {
