@@ -62,7 +62,9 @@ public class Example8 {
         double normData = data.normF();
         System.out.println("reconstructed: " + normDmd);
         System.out.println("original     : " + normData);
-        System.out.println(RelativeError.compute(data, pred));
+        MatrixD relErr = RelativeError.compute(data, pred);
+        System.out.println(relErr);
+        System.out.println(RelativeError.avgRelErrorOverall(relErr));
 
         // now attempt to predict the future starting from 4.0 * PI for t_num
         // predictions with the same stepsize
@@ -85,7 +87,9 @@ public class Example8 {
         double normRea = newData.normF();
         System.out.println("predicted    : " + normPred);
         System.out.println("realized     : " + normRea);
-        System.out.println(RelativeError.compute(newData, fut));
+        relErr = RelativeError.compute(newData, fut);
+        System.out.println(relErr);
+        System.out.println(RelativeError.avgRelErrorOverall(relErr));
     }
 
     private static MatrixD setupMeasurementsMatrix(LinSpace time) {

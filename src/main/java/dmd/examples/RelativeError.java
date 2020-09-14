@@ -22,6 +22,14 @@ public class RelativeError {
         return avgRelErrorPerColumn;
     }
 
+    public static double avgRelErrorOverall(MatrixD avgRelErrorPerColumn) {
+        double avgErr = 0.0;
+        for (int i = 0; i < avgRelErrorPerColumn.numColumns(); ++i) {
+            avgErr += avgRelErrorPerColumn.get(0, i);
+        }
+        return avgErr / avgRelErrorPerColumn.numColumns();
+    }
+
     private RelativeError() {
         throw new AssertionError();
     }
