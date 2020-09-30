@@ -22,7 +22,11 @@ import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;
 
 /**
- * Adaptive Randomized Range Finder (Algorithm 4.2).
+ * Adaptive Randomized Range Finder.
+ * <p>
+ * Algorithm 4.2 from Nathan Halko, Per-Gunnar Martinsson, and Joel A Tropp.
+ * Finding structure with randomness: Probabilistic algorithms for constructing
+ * approximate matrix decompositions. SIAM review, 53(2):217–288, 2011.
  */
 public class AdaRangeFinder {
 
