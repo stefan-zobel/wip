@@ -479,19 +479,35 @@ final class ImmutableCollections {
 
     static final class ListN<E> extends AbstractImmutableList<E> implements Serializable {
 
-        static final List<?> EMPTY_LIST = new ListN<Object>();
+        static final List<?> EMPTY_LIST = new ListN<Object>(new Object[0]);
 
         private final E[] elements;
 
+        private ListN(E[] array) {
+            elements = array;
+        }
+
+        // creates a new internal array, and checks and rejects null elements
         @SafeVarargs
-        ListN(E... input) {
+        static <E> List<E> fromArray(E... input) {
             // copy and check manually to avoid TOCTOU
             @SuppressWarnings("unchecked")
             E[] tmp = (E[]) new Object[input.length]; // implicit nullcheck of input
             for (int i = 0; i < input.length; i++) {
                 tmp[i] = Objects.requireNonNull(input[i]);
             }
-            elements = tmp;
+            return new ListN<>(tmp);
+        }
+
+        // Avoids creating a new array, but checks and rejects null elements.
+        // Declared with Object... arg so that varargs calls don't accidentally
+        // create an array of a subtype.
+        @SuppressWarnings("unchecked")
+        static <E> List<E> fromTrustedArray(Object... input) {
+            for (Object o : input) {
+                Objects.requireNonNull(o);
+            }
+            return new ListN<>((E[]) input);
         }
 
         @Override
