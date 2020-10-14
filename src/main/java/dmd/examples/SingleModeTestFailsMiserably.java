@@ -68,6 +68,7 @@ public class SingleModeTestFailsMiserably {
         MatrixD relErr = RelativeError.compute(data, pred);
         System.out.println(relErr);
         System.out.println(RelativeError.avgRelErrorOverall(relErr));
+        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(data, pred, 1.0e-3));
 
         // now attempt to predict the future starting from 4.0 * PI for t_num
         // predictions with the same stepsize
@@ -96,6 +97,7 @@ public class SingleModeTestFailsMiserably {
         relErr = RelativeError.compute(newData, fut);
         System.out.println(relErr);
         System.out.println(RelativeError.avgRelErrorOverall(relErr));
+        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(newData, fut, 1.0e-3));
     }
 
     private static MatrixD setupMeasurementsMatrix(LinSpace time) {
