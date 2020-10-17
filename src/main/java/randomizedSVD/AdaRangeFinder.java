@@ -31,7 +31,7 @@ import net.jamu.matrix.MatrixD;
 public class AdaRangeFinder {
 
     private static final int r = 10;
-    private static final double bound = 1.0 / (10.0 * Math.sqrt(2.0 / Math.PI));
+    private static final double BOUND = 1.0 / (10.0 * Math.sqrt(2.0 / Math.PI));
 
     private final MatrixD A;
     private final MatrixD I;
@@ -75,8 +75,8 @@ public class AdaRangeFinder {
 
         shift(vectors, q, Q);
 
-        // we implicitly set epsilon = 1
-        while (max > bound) {
+        // we implicitly set epsilon == 1
+        while (max > BOUND) {
 
             MatrixD x = I.minus(Q.times(Q.transpose()));
             y = vectors.get(0);
