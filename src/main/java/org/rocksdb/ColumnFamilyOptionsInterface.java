@@ -438,6 +438,41 @@ public interface ColumnFamilyOptionsInterface<T extends ColumnFamilyOptionsInter
   CompressionOptions compressionOptions();
 
   /**
+   * If non-nullptr, use the specified factory for a function to determine the
+   * partitioning of sst files. This helps compaction to split the files
+   * on interesting boundaries (key prefixes) to make propagation of sst
+   * files less write amplifying (covering the whole key space).
+   * @param factory The factory reference
+   * @return the reference of the current options.
+   */
+  T setSstPartitionerFactory(SstPartitionerFactory factory);
+
+  /**
+   * Get SST partitioner factory
+   *
+   * @return SST partitioner factory
+   */
+  SstPartitionerFactory sstPartitionerFactory();
+
+  /**
+   * Compaction concurrent thread limiter for the column family.
+   * If non-nullptr, use given concurrent thread limiter to control
+   * the max outstanding compaction tasks. Limiter can be shared with
+   * multiple column families across db instances.
+   *
+   * @param concurrentTaskLimiter The compaction thread limiter.
+   * @return the reference of the current options.
+   */
+  T setCompactionThreadLimiter(ConcurrentTaskLimiter concurrentTaskLimiter);
+
+  /**
+   * Get compaction thread limiter
+   *
+   * @return Compaction thread limiter
+   */
+  ConcurrentTaskLimiter compactionThreadLimiter();
+
+  /**
    * Default memtable memory budget used with the following methods:
    *
    * <ol>

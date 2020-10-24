@@ -91,6 +91,7 @@ public class Options extends RocksObject
     this.compressionOptions_ = other.compressionOptions_;
     this.rowCache_ = other.rowCache_;
     this.writeBufferManager_ = other.writeBufferManager_;
+    this.compactionThreadLimiter_ = other.compactionThreadLimiter_;
   }
 
   @Override
@@ -1808,6 +1809,31 @@ public class Options extends RocksObject
     return atomicFlush(nativeHandle_);
   }
 
+  @Override
+  public Options setSstPartitionerFactory(SstPartitionerFactory sstPartitionerFactory) {
+    setSstPartitionerFactory(nativeHandle_, sstPartitionerFactory.nativeHandle_);
+    this.sstPartitionerFactory_ = sstPartitionerFactory;
+    return this;
+  }
+
+  @Override
+  public SstPartitionerFactory sstPartitionerFactory() {
+    return sstPartitionerFactory_;
+  }
+
+  @Override
+  public Options setCompactionThreadLimiter(final ConcurrentTaskLimiter compactionThreadLimiter) {
+    setCompactionThreadLimiter(nativeHandle_, compactionThreadLimiter.nativeHandle_);
+    this.compactionThreadLimiter_ = compactionThreadLimiter;
+    return this;
+  }
+
+  @Override
+  public ConcurrentTaskLimiter compactionThreadLimiter() {
+    assert (isOwningHandle());
+    return this.compactionThreadLimiter_;
+  }
+
   private native static long newOptions();
   private native static long newOptions(long dbOptHandle,
       long cfOptHandle);
@@ -2178,6 +2204,9 @@ public class Options extends RocksObject
   private native void setAtomicFlush(final long handle,
       final boolean atomicFlush);
   private native boolean atomicFlush(final long handle);
+  private native void setSstPartitionerFactory(long nativeHandle_, long newFactoryHandle);
+  private static native void setCompactionThreadLimiter(
+      final long nativeHandle_, final long newLimiterHandle);
 
   // instance variables
   // NOTE: If you add new member variables, please update the copy constructor above!
@@ -2196,4 +2225,6 @@ public class Options extends RocksObject
   private Cache rowCache_;
   private WalFilter walFilter_;
   private WriteBufferManager writeBufferManager_;
+  private SstPartitionerFactory sstPartitionerFactory_;
+  private ConcurrentTaskLimiter compactionThreadLimiter_;
 }
