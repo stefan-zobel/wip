@@ -66,6 +66,7 @@ public class Example8 {
         System.out.println(relErr);
         System.out.println(RelativeError.avgRelErrorOverall(relErr));
         System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(data, pred));
+        System.out.println("Matrices.distance: " + Matrices.distance(data, pred));
 
         // now attempt to predict the future starting from 4.0 * PI for t_num
         // predictions with the same stepsize
@@ -92,6 +93,7 @@ public class Example8 {
         System.out.println(relErr);
         System.out.println(RelativeError.avgRelErrorOverall(relErr));
         System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(newData, fut, 1.0e-7));
+        System.out.println("Matrices.distance: " + Matrices.distance(newData, fut));
     }
 
     private static MatrixD setupMeasurementsMatrix(LinSpace time) {
