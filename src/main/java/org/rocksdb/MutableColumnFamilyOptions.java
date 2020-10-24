@@ -18,7 +18,7 @@ public class MutableColumnFamilyOptions
    *
    * See {@link #builder()} and {@link #parse(String)}.
    */
-  private MutableColumnFamilyOptions(final String[] keys,
+  /*package*/ MutableColumnFamilyOptions(final String[] keys,
       final String[] values) {
     super(keys, values);
   }
@@ -166,7 +166,7 @@ public class MutableColumnFamilyOptions
       }
     }
 
-    private MutableColumnFamilyOptionsBuilder() {
+    /*package*/ MutableColumnFamilyOptionsBuilder() {
       super();
     }
 

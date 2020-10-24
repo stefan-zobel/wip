@@ -1846,7 +1846,7 @@ public class Transaction extends RocksObject {
     private final String key;
     private final long[] transactionIds;
 
-    private WaitingTransactions(final long columnFamilyId, final String key,
+    /*package*/ WaitingTransactions(final long columnFamilyId, final String key,
         final long[] transactionIds) {
       this.columnFamilyId = columnFamilyId;
       this.key = key;

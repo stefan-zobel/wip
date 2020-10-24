@@ -17,7 +17,7 @@ public abstract class MutableOptionValue<T> {
       extends MutableOptionValue<T> {
     protected final T value;
 
-    private MutableOptionValueObject(final T value) {
+    /*package*/ MutableOptionValueObject(final T value) {
       this.value = value;
     }
 
