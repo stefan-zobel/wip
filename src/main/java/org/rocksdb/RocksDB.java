@@ -59,13 +59,13 @@ public class RocksDB extends RocksObject {
           if (compressionType.getLibraryName() != null) {
             System.loadLibrary(compressionType.getLibraryName());
           }
-        } catch (UnsatisfiedLinkError e) {
+        } catch (final UnsatisfiedLinkError e) {
           // since it may be optional, we ignore its loading failure here.
         }
       }
       try {
         NativeLibraryLoader.getInstance().loadLibrary(tmpDir);
-      } catch (IOException e) {
+      } catch (final IOException e) {
         libraryLoaded.set(LibraryState.NOT_LOADED);
         throw new RuntimeException("Unable to load the RocksDB shared library",
             e);
@@ -4694,7 +4694,7 @@ public class RocksDB extends RocksObject {
       return getMajor() + "." + getMinor() + "." + getPatch();
     }
 
-    /*package*/ static Version fromEncodedVersion(int encodedVersion) {
+    private static Version fromEncodedVersion(int encodedVersion) {
       final byte patch = (byte) (encodedVersion & 0xff);
       encodedVersion >>= 8;
       final byte minor = (byte) (encodedVersion & 0xff);

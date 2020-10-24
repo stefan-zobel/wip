@@ -6,6 +6,7 @@
 package org.rocksdb;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -301,7 +302,7 @@ public class TransactionDB extends RocksDB
     private final String waitingKey;
     private final boolean exclusive;
 
-    /*package*/ DeadlockInfo(final long transactionID, final long columnFamilyId,
+    private DeadlockInfo(final long transactionID, final long columnFamilyId,
       final String waitingKey, final boolean exclusive) {
       this.transactionID = transactionID;
       this.columnFamilyId = columnFamilyId;

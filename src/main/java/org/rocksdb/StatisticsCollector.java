@@ -20,10 +20,10 @@ import java.util.concurrent.TimeUnit;
  * provided in constructor) reference has been disposed.</p>
  */
 public class StatisticsCollector {
-  /*package*/ final List<StatsCollectorInput> _statsCollectorInputList;
+  private final List<StatsCollectorInput> _statsCollectorInputList;
   private final ExecutorService _executorService;
-  /*package*/ final int _statsCollectionInterval;
-  /*package*/ volatile boolean _isRunning = true;
+  private final int _statsCollectionInterval;
+  private volatile boolean _isRunning = true;
 
   /**
    * Constructor for statistics collector.

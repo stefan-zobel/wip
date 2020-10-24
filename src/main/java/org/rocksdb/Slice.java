@@ -34,6 +34,7 @@ public class Slice extends AbstractSlice<byte[]> {
    * Slice objects through this, they are not creating underlying C++ Slice
    * objects, and so there is nothing to free (dispose) from Java.</p>
    */
+  @SuppressWarnings("unused")
   private Slice() {
     super();
   }
