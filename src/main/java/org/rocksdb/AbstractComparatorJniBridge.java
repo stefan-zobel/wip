@@ -38,7 +38,8 @@ class AbstractComparatorJniBridge {
      *
      * @return the result of the comparison
      */
-    private static int compareInternal(
+    @SuppressWarnings("unused")
+	private static int compareInternal(
             final AbstractComparator comparator,
             final ByteBuffer a, final int aLen,
             final ByteBuffer b, final int bLen) {
@@ -83,7 +84,8 @@ class AbstractComparatorJniBridge {
      * @return either {@code startLen} if the start key is unchanged, otherwise
      *     the new length of the start key
      */
-    private static int findShortestSeparatorInternal(
+    @SuppressWarnings("unused")
+	private static int findShortestSeparatorInternal(
             final AbstractComparator comparator,
             final ByteBuffer start, final int startLen,
             final ByteBuffer limit, final int limitLen) {
@@ -113,7 +115,8 @@ class AbstractComparatorJniBridge {
      *
      * @return either keyLen if the key is unchanged, otherwise the new length of the key
      */
-    private static int findShortSuccessorInternal(
+    @SuppressWarnings("unused")
+	private static int findShortSuccessorInternal(
             final AbstractComparator comparator,
             final ByteBuffer key, final int keyLen) {
         if (keyLen != -1) {
