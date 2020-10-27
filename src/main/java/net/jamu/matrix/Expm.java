@@ -1043,7 +1043,7 @@ public final class Expm {
         };
     //@formatter:on
 
-    // TODO
+    // coefficients for the double-precision degree 18 Taylor polynomial T18
     private static final double a11_t18d = -0.100365581030144620014614939405;
     private static final double a21_t18d = -0.00802924648241156960116919515244;
     private static final double a31_t18d = -0.000892138498045729955685466128049;
@@ -1065,7 +1065,7 @@ public final class Expm {
     private static final double b34_t18d = -0.0169364939002081717191385115723;
     private static final double b64_t18d = -0.0000140086798182036159794363205726;
 
-    // TODO
+    // coefficients for the single-precision degree 18 Taylor polynomial T18
     private static final float a11_t18f = (float) a11_t18d;
     private static final float a21_t18f = (float) a21_t18d;
     private static final float a31_t18f = (float) a31_t18d;
@@ -1087,7 +1087,7 @@ public final class Expm {
     private static final float b34_t18f = (float) b34_t18d;
     private static final float b64_t18f = (float) b64_t18d;
 
-    // TODO
+    // coefficients for the double-precision degree 12 Taylor polynomial T12
     private static final double a01_t12d = -0.0186023205146205532243437300433;
     private static final double a02_t12d = 4.60000000000000000000000000000;
     private static final double a03_t12d = 0.211693118299809442949323323336;
@@ -1104,7 +1104,7 @@ public final class Expm {
     private static final double a33_t12d = 0.0107862779315792425026320640108;
     private static final double a34_t12d = -0.00675951846863086359778560766482;
 
-    // TODO
+    // coefficients for the single-precision degree 12 Taylor polynomial T12
     private static final float a01_t12f = (float) a01_t12d;
     private static final float a02_t12f = (float) a02_t12d;
     private static final float a03_t12f = (float) a03_t12d;
@@ -1121,7 +1121,7 @@ public final class Expm {
     private static final float a33_t12f = (float) a33_t12d;
     private static final float a34_t12f = (float) a34_t12d;
 
-    // TODO
+    // coefficients for the double-precision degree 8 Taylor polynomial T8
     private static final double sqrt177 = Math.sqrt(177.0);
     private static final double x3_t8d = 2.0 / 3.0;
     private static final double a1_t8d = 1.0 / 88.0 * (1.0 + sqrt177) * x3_t8d;
@@ -1132,7 +1132,7 @@ public final class Expm {
     private static final double c2_t8d = (11.0 * (-9.0 + sqrt177)) / (5040.0 * x3_t8d);
     private static final double c4_t8d = -((-89.0 + sqrt177) / (5040.0 * (x3_t8d * x3_t8d)));
 
-    // TODO
+    // coefficients for the single-precision degree 8 Taylor polynomial T8
     private static final float x3_t8f = (float) x3_t8d;
     private static final float a1_t8f = (float) a1_t8d;
     private static final float a2_t8f = (float) a2_t8d;
