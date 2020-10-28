@@ -18,7 +18,15 @@ package net.jamu.matrix;
 import java.util.Arrays;
 
 /**
- * TODO (work in progress)
+ * A Java port of the MATLAB <b>expm2.m</b> source code available online at
+ * http://www.gicas.uji.es/Research/MatrixExp.html
+ * <p>
+ * Compare the paper "Bader, P.; Blanes, S.; Casas, F.: Computing the Matrix
+ * Exponential with an Optimized Taylor Polynomial Approximation. Mathematics
+ * 2019, 7, 1174." for the implementation approach.
+ * <p>
+ * 
+ * @see https://doi.org/10.3390/math7121174
  */
 public final class Expm {
 
@@ -265,25 +273,17 @@ public final class Expm {
             throw new IllegalStateException("norm too small");
         }
         double adaptedNorm = norm / theta_d_max;
-        int floorLog2 = Math.getExponent(adaptedNorm);
-        // adjust floorLog2 if adaptedNorm is a power of 2
-        if (doubleIsPositivePowerOfTwo(adaptedNorm)) {
-            floorLog2 -= 1;
-        }
-        return floorLog2;
+        int ceilLog2 = (int) Math.ceil(Math.log(adaptedNorm) / Math.log(2.0));
+        return ceilLog2;
     }
 
     private static int getScaleF(float norm) {
         if (norm <= theta_f_max) {
             throw new IllegalStateException("norm too small");
         }
-        float adaptedNorm = (float) ((double) norm / theta_f_max);
-        int floorLog2 = Math.getExponent(adaptedNorm);
-        // adjust floorLog2 if adaptedNorm is a power of 2
-        if (floatIsPositivePowerOfTwo(adaptedNorm)) {
-            floorLog2 -= 1;
-        }
-        return floorLog2;
+        double adaptedNorm = (double) norm / theta_f_max;
+        int ceilLog2 = (int) Math.ceil(Math.log(adaptedNorm) / Math.log(2.0));
+        return ceilLog2;
     }
 
     private static MatrixD getTaylorApproximant(MatrixD A, int order) {
@@ -982,14 +982,6 @@ public final class Expm {
         ComplexMatrixF E = Matrices.identityComplexF(A.numRows());
         E = E.addInplace(A);
         return E;
-    }
-
-    private static boolean doubleIsPositivePowerOfTwo(double d) {
-        return (d >= 1.0) && !Double.isInfinite(d) && ((Double.doubleToLongBits(d) & 0x000fffffffffffffL) == 0L);
-    }
-
-    private static boolean floatIsPositivePowerOfTwo(float f) {
-        return (f >= 1.0f) && !Float.isInfinite(f) && ((Float.floatToIntBits(f) & 0x007fffff) == 0);
     }
 
     private static boolean isDoubleScalingRequired(double norm) {
