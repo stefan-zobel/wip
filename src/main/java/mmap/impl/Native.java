@@ -21,7 +21,7 @@ public final class Native {
     public static final long UNSAFE_COPY_THRESHOLD = 1024L * 1024L;
 
     public static boolean isWindows() {
-        return System.getProperty("os.name").contains("Windows");
+        return IS_WINDOWS;
     }
 
     public static Unsafe unsafe() {
@@ -122,6 +122,7 @@ public final class Native {
     private static final Unsafe U = UnsafeAccess.unsafe;
     private static final int PAGE_SIZE = U.pageSize();
     private static final boolean UNALIGNED;
+    private static final boolean IS_WINDOWS;
     private static final Method RESERVE_MEMORY;
     private static final Method UNRESERVE_MEMORY;
     static {
@@ -136,6 +137,7 @@ public final class Native {
             Method unreserveMemory = clsNioBits.getDeclaredMethod("unreserveMemory", Long.TYPE, Integer.TYPE);
             unreserveMemory.setAccessible(true);
             UNRESERVE_MEMORY = unreserveMemory;
+            IS_WINDOWS = System.getProperty("os.name").contains("Windows");
         } catch (Throwable t) {
             throw new ExceptionInInitializerError(t);
         }
