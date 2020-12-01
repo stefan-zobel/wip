@@ -3,6 +3,7 @@ package mmap.impl;
 import java.lang.reflect.Field;
 import sun.misc.Unsafe;
 
+@SuppressWarnings("restriction")
 class UnsafeAccess {
 
     static final Unsafe unsafe;

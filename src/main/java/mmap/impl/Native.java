@@ -7,6 +7,7 @@ import sun.misc.Unsafe;
  * Access to processor and memory-system properties, control of the amount of
  * direct memory a process can access and some native array helper methods.
  */
+@SuppressWarnings("restriction")
 public final class Native {
 
     // These numbers represent the point at which we have empirically
