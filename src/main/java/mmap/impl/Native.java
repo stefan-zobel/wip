@@ -20,6 +20,10 @@ public final class Native {
     // during a large copy
     public static final long UNSAFE_COPY_THRESHOLD = 1024L * 1024L;
 
+    public static boolean isWindows() {
+        return System.getProperty("os.name").contains("Windows");
+    }
+
     public static Unsafe unsafe() {
         return U;
     }
