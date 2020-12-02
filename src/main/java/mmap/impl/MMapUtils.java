@@ -67,7 +67,12 @@ public final class MMapUtils {
     public static void force(FileDescriptor fd, long address, long index, long length) {
         // force writeback via file descriptor
         long offset = mappingOffset(address, index);
-        force0(getFileDescriptor(fd), mappingAddress(address, offset, index), mappingLength(offset, length));
+        // only the Windows implementation of 'force0()' needs the raw fd
+        long rawfd = 0L;
+        if (Native.isWindows()) {
+            rawfd = getFileDescriptor(fd);
+        }
+        force0(rawfd, mappingAddress(address, offset, index), mappingLength(offset, length));
     }
 
     // native methods
