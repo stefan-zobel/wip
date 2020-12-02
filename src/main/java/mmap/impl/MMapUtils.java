@@ -32,12 +32,15 @@ public final class MMapUtils {
         long length = mappingLength(offset, size);
         load0(mappingAddress(address, offset), length);
 
+        long count = Native.pageCount(length);
+        if (count > Integer.MAX_VALUE) {
+            return;
+        }
         // Read a byte from each page to bring it into memory. A checksum
         // is computed as we go along to prevent the compiler from otherwise
         // considering the loop as dead code.
         Unsafe U = Native.unsafe();
         int ps = Native.pageSize();
-        long count = Native.pageCount(length);
         long a = mappingAddress(address, offset);
         byte x = 0;
         for (long i = 0L; i < count; i++) {
