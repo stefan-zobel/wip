@@ -91,8 +91,7 @@ public final class MMapUtils {
 
     // Returns the distance (in bytes) of the buffer element
     // identified by index from the largest page aligned address of
-    // the mapping less than or equal to the element address. Computed
-    // each time to avoid storing in every direct buffer.
+    // the mapping less than or equal to the element address.
     private static long mappingOffset(long address, long index) {
         int ps = Native.pageSize();
         long indexAddress = address + index;
