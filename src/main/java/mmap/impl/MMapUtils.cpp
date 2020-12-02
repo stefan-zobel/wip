@@ -141,7 +141,7 @@ Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
     // VirtualUnlock removes such pages from the working set,
     // sets last error to ERROR_NOT_LOCKED, and returns FALSE.
     // Calling VirtualUnlock on a range of memory that is not locked
-    // releases the pages from the process's working set.
+    // releases the pages from the process's working set
     VirtualUnlock((LPVOID) a, (SIZE_T) length);
 
 #else /* Linux / Unix */
@@ -167,11 +167,16 @@ Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
 #if defined (_WIN64)
-    HANDLE fileHandle = jlong_to_ptr(fd);
+    HANDLE fileHandle = (HANDLE) jlong_to_ptr(fd);
     // TODO: ...
 
 #else /* Linux / Unix */
-    // TODO: ...
+
+    void* a = jlong_to_ptr(address);
+    int result = msync(a, (size_t) length, MS_SYNC);
+    if (result == -1) {
+        // TODO: throw "msync failed"
+    }
 
 #endif /* (_WIN64) */
 }
