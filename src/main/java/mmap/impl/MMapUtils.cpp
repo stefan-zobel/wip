@@ -105,10 +105,22 @@ Java_mmap_impl_MMapUtils_load0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
 #if defined (_WIN64)
-    // TODO: ...
+
+    WIN32_MEMORY_RANGE_ENTRY range = {(PVOID) jlong_to_ptr(address), (SIZE_T) length};
+    // PrefetchVirtualMemory returns non-zero on success
+    int result = PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
+    if (result == 0) {
+        // TODO: shouldn't that be ignored??
+    }
 
 #else /* Linux / Unix */
-    // TODO: ...
+
+    char* a = (char *) jlong_to_ptr(address);
+    int result = madvise((caddr_t) a, (size_t) length, MADV_WILLNEED);
+    if (result == -1) {
+        // TODO: throw "madvise MADV_WILLNEED failed"
+        // TODO: shouldn't that be ignored??
+    }
 
 #endif /* (_WIN64) */
 }
