@@ -116,7 +116,7 @@ public final class Cleaner extends PhantomReference<Object> {
         }
         try {
             thunk.run();
-        } catch (final Throwable x) {
+        } catch (Throwable x) {
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 public Void run() {
                     if (System.err != null) {
