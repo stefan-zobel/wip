@@ -115,25 +115,49 @@ public final class Native {
         }
     }
 
-    public static void copyFromCharArray(Object src, long srcPos, long dstAddr, long length) {
+    public static void copySwapFromCharArray(Object src, long srcPos, long dstAddr, long length) {
         copyFromShortArray(src, srcPos, dstAddr, length);
     }
 
-    public static void copyToCharArray(long srcAddr, Object dst, long dstPos, long length) {
+    public static void copySwapToCharArray(long srcAddr, Object dst, long dstPos, long length) {
         copyToShortArray(srcAddr, dst, dstPos, length);
     }
 
-    public static native void copyFromShortArray(Object src, long srcPos, long dstAddr, long length);
+    public static void copySwapFromShortArray(Object src, long srcPos, long dstAddr, long length) {
+        copyFromShortArray(src, srcPos, dstAddr, length);
+    }
 
-    public static native void copyToShortArray(long srcAddr, Object dst, long dstPos, long length);
+    public static void copySwapToShortArray(long srcAddr, Object dst, long dstPos, long length) {
+        copyToShortArray(srcAddr, dst, dstPos, length);
+    }
 
-    public static native void copyFromIntArray(Object src, long srcPos, long dstAddr, long length);
+    public static void copySwapFromIntArray(Object src, long srcPos, long dstAddr, long length) {
+        copyFromIntArray(src, srcPos, dstAddr, length);
+    }
 
-    public static native void copyToIntArray(long srcAddr, Object dst, long dstPos, long length);
+    public static void copySwapToIntArray(long srcAddr, Object dst, long dstPos, long length) {
+        copyToIntArray(srcAddr, dst, dstPos, length);
+    }
 
-    public static native void copyFromLongArray(Object src, long srcPos, long dstAddr, long length);
+    public static void copySwapFromLongArray(Object src, long srcPos, long dstAddr, long length) {
+        copyFromLongArray(src, srcPos, dstAddr, length);
+    }
 
-    public static native void copyToLongArray(long srcAddr, Object dst, long dstPos, long length);
+    public static void copySwapToLongArray(long srcAddr, Object dst, long dstPos, long length) {
+        copyToLongArray(srcAddr, dst, dstPos, length);
+    }
+
+    private static native void copyFromShortArray(Object src, long srcPos, long dstAddr, long length);
+
+    private static native void copyToShortArray(long srcAddr, Object dst, long dstPos, long length);
+
+    private static native void copyFromIntArray(Object src, long srcPos, long dstAddr, long length);
+
+    private static native void copyToIntArray(long srcAddr, Object dst, long dstPos, long length);
+
+    private static native void copyFromLongArray(Object src, long srcPos, long dstAddr, long length);
+
+    private static native void copyToLongArray(long srcAddr, Object dst, long dstPos, long length);
 
     private Native() {
         throw new AssertionError();
