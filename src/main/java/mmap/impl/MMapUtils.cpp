@@ -167,8 +167,40 @@ Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
 #if defined (_WIN64)
-    HANDLE fileHandle = (HANDLE) jlong_to_ptr(fd);
-    // TODO: ...
+
+    void* a = jlong_to_ptr(address);
+    /*
+     * FlushViewOfFile can fail with ERROR_LOCK_VIOLATION if the memory
+     * system is writing dirty pages to disk. As there is no way to
+     * synchronize the flushing then we retry a limited number of times.
+     */
+    int retry = 0;
+    BOOL result = 0;
+    do {
+        result = FlushViewOfFile(a, (SIZE_T) length);
+        if ((result != 0) || (GetLastError() != ERROR_LOCK_VIOLATION)) {
+            break;
+        }
+        retry++;
+    } while (retry < 3);
+
+    /**
+     * FlushViewOfFile only initiates the writing of dirty pages to the
+     * disk cache so we have to call FlushFileBuffers to ensure they are
+     * physically written to the disk
+     */
+    if (result != 0 && fd != 0) {
+        HANDLE fileHandle = (HANDLE) jlong_to_ptr(fd);
+        result = FlushFileBuffers(fileHandle);
+        if (result == 0 && GetLastError() == ERROR_ACCESS_DENIED) {
+            // this is a read-only mapping
+            result = 1;
+        }
+    }
+
+    if (result == 0) {
+        // TODO: throw "force0() failed" ??
+    }
 
 #else /* Linux / Unix */
 
