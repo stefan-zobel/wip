@@ -115,6 +115,26 @@ public final class Native {
         }
     }
 
+    public static void copyFromCharArray(Object src, long srcPos, long dstAddr, long length) {
+        copyFromShortArray(src, srcPos, dstAddr, length);
+    }
+
+    public static void copyToCharArray(long srcAddr, Object dst, long dstPos, long length) {
+        copyToShortArray(srcAddr, dst, dstPos, length);
+    }
+
+    public static native void copyFromShortArray(Object src, long srcPos, long dstAddr, long length);
+
+    public static native void copyToShortArray(long srcAddr, Object dst, long dstPos, long length);
+
+    public static native void copyFromIntArray(Object src, long srcPos, long dstAddr, long length);
+
+    public static native void copyToIntArray(long srcAddr, Object dst, long dstPos, long length);
+
+    public static native void copyFromLongArray(Object src, long srcPos, long dstAddr, long length);
+
+    public static native void copyToLongArray(long srcAddr, Object dst, long dstPos, long length);
+
     private Native() {
         throw new AssertionError();
     }
