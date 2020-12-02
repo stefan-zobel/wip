@@ -82,7 +82,7 @@ Java_mmap_impl_MMapUtils_isLoaded0(JNIEnv* env, jclass,
     }
 
     jboolean loaded = JNI_TRUE;
-    for (int i = 0; i < numPages; i++) {
+    for (int i = 0; i < numPages; ++i) {
         if (vec[i] == 0) {
             loaded = JNI_FALSE;
             break;
@@ -115,7 +115,7 @@ Java_mmap_impl_MMapUtils_load0(JNIEnv* env, jclass,
 
 #else /* Linux / Unix */
 
-    char* a = (char *) jlong_to_ptr(address);
+    char* a = (char*) jlong_to_ptr(address);
     int result = madvise((caddr_t) a, (size_t) length, MADV_WILLNEED);
     if (result == -1) {
         // TODO: throw "madvise MADV_WILLNEED failed"
@@ -135,10 +135,23 @@ Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
 #if defined (_WIN64)
-    // TODO: ...
+
+    void* a = jlong_to_ptr(address);
+    // If any of the pages in the specified range are not locked,
+    // VirtualUnlock removes such pages from the working set,
+    // sets last error to ERROR_NOT_LOCKED, and returns FALSE.
+    // Calling VirtualUnlock on a range of memory that is not locked
+    // releases the pages from the process's working set.
+    VirtualUnlock((LPVOID) a, (SIZE_T) length);
 
 #else /* Linux / Unix */
-    // TODO: ...
+
+    char* a = (char*) jlong_to_ptr(address);
+    int result = madvise((caddr_t) a, (size_t) length, MADV_DONTNEED);
+    if (result == -1) {
+        // TODO: throw "madvise MADV_DONTNEED failed"
+        // TODO: shouldn't that be ignored??
+    }
 
 #endif /* (_WIN64) */
 }
