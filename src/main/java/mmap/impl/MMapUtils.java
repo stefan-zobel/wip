@@ -17,7 +17,11 @@ public final class MMapUtils {
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
-        return isLoaded0(mappingAddress(address, offset), length, Native.pageCount(length));
+        long pageCount = Native.pageCount(length);
+        if (pageCount > Integer.MAX_VALUE) {
+            return false;
+        }
+        return isLoaded0(mappingAddress(address, offset), length, pageCount);
     }
 
     public static void load(long address, long size) {
