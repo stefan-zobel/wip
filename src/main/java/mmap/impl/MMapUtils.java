@@ -26,7 +26,7 @@ public final class MMapUtils {
     // (irrespective of whether the pages have been loaded or not)!
     public static boolean isLoaded(long address, long size) {
         if ((address == 0L) || (size == 0L)) {
-            return true;
+            return false;
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
@@ -43,14 +43,13 @@ public final class MMapUtils {
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
-        boolean success = load0(mappingAddress(address, offset), length);
-        if (!success) {
+        if (!load0(mappingAddress(address, offset), length)) {
             return false;
         }
 
         long count = Native.pageCount(length);
         if (count > Integer.MAX_VALUE) {
-            return true;
+            return false;
         }
         // Read a byte from each page to bring it into memory. A checksum
         // is computed as we go along to prevent the compiler from otherwise
