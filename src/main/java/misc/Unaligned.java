@@ -247,6 +247,24 @@ public final class Unaligned {
         putCharUnaligned(o, offset, convEndian(bigEndian, x));
     }
 
+    // -- Swapping --
+
+    public static short swap(short x) {
+        return Short.reverseBytes(x);
+    }
+
+    public static char swap(char x) {
+        return Character.reverseBytes(x);
+    }
+
+    public static int swap(int x) {
+        return Integer.reverseBytes(x);
+    }
+
+    public static long swap(long x) {
+        return Long.reverseBytes(x);
+    }
+
     // These methods construct integers from bytes.  The byte ordering
     // is the native endianness of this platform.
     private static long makeLong(byte i0, byte i1, byte i2, byte i3, byte i4, byte i5, byte i6, byte i7) {
