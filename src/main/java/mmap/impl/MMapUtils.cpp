@@ -70,14 +70,12 @@ Java_mmap_impl_MMapUtils_isLoaded0(JNIEnv* env, jclass,
     mincore_vec_t* vec = (mincore_vec_t*) malloc(numPages);
 
     if (vec == NULL) {
-        // TODO: throw "out-of-memory"
         return JNI_FALSE;
     }
 
     int result = mincore(a, len, vec);
     if (result == -1) {
         free(vec);
-        // TODO: throw "mincore failed"
         return JNI_FALSE;
     }
 
@@ -98,9 +96,9 @@ Java_mmap_impl_MMapUtils_isLoaded0(JNIEnv* env, jclass,
 /*
  * Class:     mmap_impl_MMapUtils
  * Method:    load0
- * Signature: (JJ)V
+ * Signature: (JJ)Z
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_mmap_impl_MMapUtils_load0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
@@ -110,17 +108,18 @@ Java_mmap_impl_MMapUtils_load0(JNIEnv* env, jclass,
     // PrefetchVirtualMemory returns non-zero on success
     int result = PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
     if (result == 0) {
-        // TODO: shouldn't that be ignored??
+        return JNI_FALSE;
     }
+    return JNI_TRUE;
 
 #else /* Linux / Unix */
 
     char* a = (char*) jlong_to_ptr(address);
     int result = madvise((caddr_t) a, (size_t) length, MADV_WILLNEED);
     if (result == -1) {
-        // TODO: throw "madvise MADV_WILLNEED failed"
-        // TODO: shouldn't that be ignored??
+        return JNI_FALSE;
     }
+    return JNI_TRUE;
 
 #endif /* (_WIN64) */
 }
@@ -128,9 +127,9 @@ Java_mmap_impl_MMapUtils_load0(JNIEnv* env, jclass,
 /*
  * Class:     mmap_impl_MMapUtils
  * Method:    unload0
- * Signature: (JJ)V
+ * Signature: (JJ)Z
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
   jlong address,
   jlong length) {
@@ -142,16 +141,23 @@ Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
     // sets last error to ERROR_NOT_LOCKED, and returns FALSE.
     // Calling VirtualUnlock on a range of memory that is not locked
     // releases the pages from the process's working set
-    VirtualUnlock((LPVOID) a, (SIZE_T) length);
+    BOOL result = VirtualUnlock((LPVOID) a, (SIZE_T) length);
+    if ((result != 0) && (GetLastError() == ERROR_NOT_LOCKED)) {
+        return JNI_TRUE;
+    }
+    if (result == 0) {
+        return JNI_TRUE;
+    }
+    return JNI_FALSE;
 
 #else /* Linux / Unix */
 
     char* a = (char*) jlong_to_ptr(address);
     int result = madvise((caddr_t) a, (size_t) length, MADV_DONTNEED);
     if (result == -1) {
-        // TODO: throw "madvise MADV_DONTNEED failed"
-        // TODO: shouldn't that be ignored??
+        return JNI_FALSE;
     }
+    return JNI_TRUE;
 
 #endif /* (_WIN64) */
 }
@@ -159,9 +165,9 @@ Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
 /*
  * Class:     mmap_impl_MMapUtils
  * Method:    force0
- * Signature: (JJJ)V
+ * Signature: (JJJ)Z
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
   jlong fd,
   jlong address,
@@ -199,16 +205,18 @@ Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
     }
 
     if (result == 0) {
-        // TODO: throw "force0() failed" ??
+        return JNI_FALSE;
     }
+    return JNI_TRUE;
 
 #else /* Linux / Unix */
 
     void* a = jlong_to_ptr(address);
     int result = msync(a, (size_t) length, MS_SYNC);
     if (result == -1) {
-        // TODO: throw "msync failed"
+        return JNI_FALSE;
     }
+    return JNI_TRUE;
 
 #endif /* (_WIN64) */
 }

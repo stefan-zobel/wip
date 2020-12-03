@@ -11,6 +11,8 @@ import java.lang.reflect.Field;
 @SuppressWarnings("restriction")
 public final class MMapUtils {
 
+    // Note that on Windows this will always return false
+    // (irrespective of whether the pages have been loaded or not)!
     public static boolean isLoaded(long address, long size) {
         if ((address == 0L) || (size == 0L)) {
             return true;
@@ -24,17 +26,20 @@ public final class MMapUtils {
         return isLoaded0(mappingAddress(address, offset), length, pageCount);
     }
 
-    public static void load(long address, long size) {
+    public static boolean load(long address, long size) {
         if ((address == 0L) || (size == 0L)) {
-            return;
+            return false;
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
-        load0(mappingAddress(address, offset), length);
+        boolean success = load0(mappingAddress(address, offset), length);
+        if (!success) {
+            return false;
+        }
 
         long count = Native.pageCount(length);
         if (count > Integer.MAX_VALUE) {
-            return;
+            return true;
         }
         // Read a byte from each page to bring it into memory. A checksum
         // is computed as we go along to prevent the compiler from otherwise
@@ -50,21 +55,22 @@ public final class MMapUtils {
         if (unused != 0) {
             unused = x;
         }
+        return true;
     }
 
     // not used, but a potential target for a store, see load() for details.
     private static byte unused;
 
-    public static void unload(long address, long size) {
+    public static boolean unload(long address, long size) {
         if ((address == 0L) || (size == 0L)) {
-            return;
+            return false;
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
-        unload0(mappingAddress(address, offset), length);
+        return unload0(mappingAddress(address, offset), length);
     }
 
-    public static void force(FileDescriptor fd, long address, long index, long length) {
+    public static boolean force(FileDescriptor fd, long address, long index, long length) {
         // force writeback via file descriptor
         long offset = mappingOffset(address, index);
         // only the Windows implementation of 'force0()' needs the raw fd
@@ -72,18 +78,18 @@ public final class MMapUtils {
         if (Native.isWindows()) {
             rawfd = getFileDescriptor(fd);
         }
-        force0(rawfd, mappingAddress(address, offset, index), mappingLength(offset, length));
+        return force0(rawfd, mappingAddress(address, offset, index), mappingLength(offset, length));
     }
 
     // native methods
 
     private static native boolean isLoaded0(long address, long length, long pageCount);
 
-    private static native void load0(long address, long length);
+    private static native boolean load0(long address, long length);
 
-    private static native void unload0(long address, long length);
+    private static native boolean unload0(long address, long length);
 
-    private static native void force0(long fd, long address, long length);
+    private static native boolean force0(long fd, long address, long length);
 
     // utility methods
 
