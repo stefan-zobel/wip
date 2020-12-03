@@ -11,6 +11,17 @@ import java.lang.reflect.Field;
 @SuppressWarnings("restriction")
 public final class MMapUtils {
 
+    public static boolean loadAndVerifyIsLoaded(long address, long size) {
+        if (load(address, size)) {
+            if (Native.isWindows()) {
+                // isLoaded() would always return false
+                return true;
+            }
+            return isLoaded(address, size);
+        }
+        return false;
+    }
+
     // Note that on Windows this will always return false
     // (irrespective of whether the pages have been loaded or not)!
     public static boolean isLoaded(long address, long size) {
