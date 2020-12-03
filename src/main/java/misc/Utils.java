@@ -280,4 +280,46 @@ public final class Utils {
         }
         return fromIndex;
     }
+
+    /**
+     * Ensures that the object referenced by the given reference remains
+     * <em>strongly reachable</em>, regardless of any prior actions of the
+     * program that might otherwise cause the object to become unreachable;
+     * thus, the referenced object is not reclaimable by garbage collection at
+     * least until after the invocation of this method.
+     * <p>
+     * This method is applicable only when reclamation may have visible effects,
+     * which is possible for objects with finalizers (See <a
+     * href="https://docs.oracle.com/javase/specs/jls/se8/html/jls-12.html#jls-12.6">
+     * Section 12.6 17 of <cite>The Java&trade; Language
+     * Specification</cite></a>) that are implemented in ways that rely on
+     * ordering control for correctness.
+     * <p>
+     * The garbage collector may reclaim an object even if a field of that
+     * object is still in use, so long as the object has otherwise become
+     * unreachable. In the typical case, the field is a long integer
+     * representing a "native" C++ pointer. When the object is reclaimed the C++
+     * object referenced by the field is deleted in the object's
+     * <em>finalize()</em> method.
+     * <p>
+     * As an example, consider the code sequence
+     * {@code long p = o.pointer; foo(p);} where {@code foo()} is probably a
+     * static method. If obtaining the pointer field from {@code o} was the last
+     * reference to {@code o} then {@code o} may now be found to be unreachable
+     * and reclaimed after the initial assignment is executed. But the original
+     * state associated with {@code p} may still be needed by {@code foo()}. If
+     * the <em>finalize()</em> method deallocates native objects needed by
+     * native calls invoked by {@code foo()}, this can introduce (rare and hard
+     * to test for) native heap corruption.
+     * 
+     * @param ref
+     *            the reference. If {@code null}, this method has no effect.
+     */
+    public static void reachabilityFence(Object ref) {
+        // This should be good enough for most practical purposes, though strictly
+        // speaking it doesn't provide full guarantees preventing GC
+        if (ref != null && ref.getClass() == null) {
+            throw new IllegalStateException();
+        }
+    }
 }
