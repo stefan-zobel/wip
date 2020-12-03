@@ -53,7 +53,7 @@ extern "C" {
 
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyFromShortArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapFromShortArray(JNIEnv* env, jobject,
   jobject src,
   jlong srcPos,
   jlong dstAddr,
@@ -61,10 +61,8 @@ Java_mmap_impl_Native_copyFromShortArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jshort *srcShort, *dstShort, *endShort;
-    jshort tmpShort;
 
-    dstShort = (jshort*) jlong_to_ptr(dstAddr);
+    jshort* dstShort = (jshort*) jlong_to_ptr(dstAddr);
 
     while (length > 0) {
 
@@ -76,10 +74,10 @@ Java_mmap_impl_Native_copyFromShortArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, src);
 
-        srcShort = (jshort*) (bytes + srcPos);
-        endShort = srcShort + (size / sizeof(jshort));
+        jshort* srcShort = (jshort*) (bytes + srcPos);
+        jshort* endShort = srcShort + (size / sizeof(jshort));
         while (srcShort < endShort) {
-          tmpShort = *srcShort++;
+          jshort tmpShort = *srcShort++;
           *dstShort++ = SWAPSHORT(tmpShort);
         }
 
@@ -92,7 +90,7 @@ Java_mmap_impl_Native_copyFromShortArray(JNIEnv* env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyToShortArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapToShortArray(JNIEnv* env, jobject,
   jlong srcAddr,
   jobject dst,
   jlong dstPos,
@@ -100,10 +98,8 @@ Java_mmap_impl_Native_copyToShortArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jshort *srcShort, *dstShort, *endShort;
-    jshort tmpShort;
 
-    srcShort = (jshort*) jlong_to_ptr(srcAddr);
+    jshort* srcShort = (jshort*) jlong_to_ptr(srcAddr);
 
     while (length > 0) {
 
@@ -115,10 +111,10 @@ Java_mmap_impl_Native_copyToShortArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, dst);
 
-        dstShort = (jshort*) (bytes + dstPos);
-        endShort = srcShort + (size / sizeof(jshort));
+        jshort* dstShort = (jshort*) (bytes + dstPos);
+        jshort* endShort = srcShort + (size / sizeof(jshort));
         while (srcShort < endShort) {
-            tmpShort = *srcShort++;
+            jshort tmpShort = *srcShort++;
             *dstShort++ = SWAPSHORT(tmpShort);
         }
 
@@ -131,7 +127,7 @@ Java_mmap_impl_Native_copyToShortArray(JNIEnv* env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyFromIntArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapFromIntArray(JNIEnv* env, jobject,
   jobject src,
   jlong srcPos,
   jlong dstAddr,
@@ -139,10 +135,8 @@ Java_mmap_impl_Native_copyFromIntArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jint *srcInt, *dstInt, *endInt;
-    jint tmpInt;
 
-    dstInt = (jint*) jlong_to_ptr(dstAddr);
+    jint* dstInt = (jint*) jlong_to_ptr(dstAddr);
 
     while (length > 0) {
 
@@ -154,10 +148,10 @@ Java_mmap_impl_Native_copyFromIntArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, src);
 
-        srcInt = (jint*) (bytes + srcPos);
-        endInt = srcInt + (size / sizeof(jint));
+        jint* srcInt = (jint*) (bytes + srcPos);
+        jint* endInt = srcInt + (size / sizeof(jint));
         while (srcInt < endInt) {
-            tmpInt = *srcInt++;
+            jint tmpInt = *srcInt++;
             *dstInt++ = SWAPINT(tmpInt);
         }
 
@@ -170,7 +164,7 @@ Java_mmap_impl_Native_copyFromIntArray(JNIEnv* env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyToIntArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapToIntArray(JNIEnv* env, jobject,
   jlong srcAddr,
   jobject dst,
   jlong dstPos,
@@ -178,10 +172,8 @@ Java_mmap_impl_Native_copyToIntArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jint *srcInt, *dstInt, *endInt;
-    jint tmpInt;
 
-    srcInt = (jint*) jlong_to_ptr(srcAddr);
+    jint* srcInt = (jint*) jlong_to_ptr(srcAddr);
 
     while (length > 0) {
 
@@ -193,10 +185,10 @@ Java_mmap_impl_Native_copyToIntArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, dst);
 
-        dstInt = (jint*) (bytes + dstPos);
-        endInt = srcInt + (size / sizeof(jint));
+        jint* dstInt = (jint*) (bytes + dstPos);
+        jint* endInt = srcInt + (size / sizeof(jint));
         while (srcInt < endInt) {
-            tmpInt = *srcInt++;
+            jint tmpInt = *srcInt++;
             *dstInt++ = SWAPINT(tmpInt);
         }
 
@@ -209,7 +201,7 @@ Java_mmap_impl_Native_copyToIntArray(JNIEnv* env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyFromLongArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapFromLongArray(JNIEnv* env, jobject,
   jobject src,
   jlong srcPos,
   jlong dstAddr,
@@ -217,10 +209,8 @@ Java_mmap_impl_Native_copyFromLongArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jlong *srcLong, *dstLong, *endLong;
-    jlong tmpLong;
 
-    dstLong = (jlong*) jlong_to_ptr(dstAddr);
+    jlong* dstLong = (jlong*) jlong_to_ptr(dstAddr);
 
     while (length > 0) {
 
@@ -232,10 +222,10 @@ Java_mmap_impl_Native_copyFromLongArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, src);
 
-        srcLong = (jlong*) (bytes + srcPos);
-        endLong = srcLong + (size / sizeof(jlong));
+        jlong* srcLong = (jlong*) (bytes + srcPos);
+        jlong* endLong = srcLong + (size / sizeof(jlong));
         while (srcLong < endLong) {
-            tmpLong = *srcLong++;
+            jlong tmpLong = *srcLong++;
             *dstLong++ = SWAPLONG(tmpLong);
         }
 
@@ -248,7 +238,7 @@ Java_mmap_impl_Native_copyFromLongArray(JNIEnv* env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_mmap_impl_Native_copyToLongArray(JNIEnv* env, jobject,
+Java_mmap_impl_Native_copySwapToLongArray(JNIEnv* env, jobject,
   jlong srcAddr,
   jobject dst,
   jlong dstPos,
@@ -256,10 +246,8 @@ Java_mmap_impl_Native_copyToLongArray(JNIEnv* env, jobject,
 
     jbyte* bytes;
     size_t size;
-    jlong *srcLong, *dstLong, *endLong;
-    jlong tmpLong;
 
-    srcLong = (jlong*) jlong_to_ptr(srcAddr);
+    jlong* srcLong = (jlong*) jlong_to_ptr(srcAddr);
 
     while (length > 0) {
 
@@ -271,10 +259,10 @@ Java_mmap_impl_Native_copyToLongArray(JNIEnv* env, jobject,
 
         GETCRITICAL(bytes, env, dst);
 
-        dstLong = (jlong*) (bytes + dstPos);
-        endLong = srcLong + (size / sizeof(jlong));
+        jlong* dstLong = (jlong*) (bytes + dstPos);
+        jlong* endLong = srcLong + (size / sizeof(jlong));
         while (srcLong < endLong) {
-            tmpLong = *srcLong++;
+            jlong tmpLong = *srcLong++;
             *dstLong++ = SWAPLONG(tmpLong);
         }
 
