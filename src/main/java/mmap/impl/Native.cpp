@@ -68,10 +68,11 @@ Java_mmap_impl_Native_copyFromShortArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, src);
 
@@ -106,10 +107,11 @@ Java_mmap_impl_Native_copyToShortArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, dst);
 
@@ -144,10 +146,11 @@ Java_mmap_impl_Native_copyFromIntArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, src);
 
@@ -182,10 +185,11 @@ Java_mmap_impl_Native_copyToIntArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, dst);
 
@@ -220,10 +224,11 @@ Java_mmap_impl_Native_copyFromLongArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, src);
 
@@ -258,10 +263,11 @@ Java_mmap_impl_Native_copyToLongArray(JNIEnv* env, jobject,
 
     while (length > 0) {
 
-        if (length > MBYTE)
+        if (length > MBYTE) {
             size = MBYTE;
-        else
-            size = (size_t)length;
+        } else {
+            size = (size_t) length;
+        }
 
         GETCRITICAL(bytes, env, dst);
 
