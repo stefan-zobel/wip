@@ -12,7 +12,7 @@ import java.lang.reflect.Field;
 public final class MMapUtils {
 
     public static boolean loadAndVerifyIsLoaded(long address, long size) {
-        if (load(address, size)) {
+        if (loadAdvise(address, size)) {
             if (Native.isWindows()) {
                 // isLoaded() would always return false
                 return true;
@@ -37,33 +37,37 @@ public final class MMapUtils {
         return isLoaded0(mappingAddress(address, offset), length, pageCount);
     }
 
-    public static boolean load(long address, long size) {
+    public static boolean loadAdvise(long address, long size) {
         if ((address == 0L) || (size == 0L)) {
             return false;
         }
         long offset = mappingOffset(address);
         long length = mappingLength(offset, size);
-        if (!load0(mappingAddress(address, offset), length)) {
-            return false;
-        }
+        return load0(mappingAddress(address, offset), length);
+    }
 
-        long count = Native.pageCount(length);
-        if (count > Integer.MAX_VALUE) {
-            return false;
-        }
-        // Read a byte from each page to bring it into memory. A checksum
-        // is computed as we go along to prevent the compiler from otherwise
-        // considering the loop as dead code.
-        Unsafe U = Native.unsafe();
-        int ps = Native.pageSize();
-        long a = mappingAddress(address, offset);
-        byte x = 0;
-        for (long i = 0L; i < count; i++) {
-            x ^= U.getByte(a);
-            a += ps;
-        }
-        if (unused != 0) {
-            unused = x;
+    public static boolean loadEnforce(long address, long size) {
+        if (!loadAdvise(address, size)) {
+            long offset = mappingOffset(address);
+            long length = mappingLength(offset, size);
+            long count = Native.pageCount(length);
+            if (count > Integer.MAX_VALUE) {
+                return false;
+            }
+            // Read a byte from each page to bring it into memory. A checksum
+            // is computed as we go along to prevent the compiler from otherwise
+            // considering the loop as dead code.
+            Unsafe U = Native.unsafe();
+            int ps = Native.pageSize();
+            long a = mappingAddress(address, offset);
+            byte x = 0;
+            for (long i = 0L; i < count; i++) {
+                x ^= U.getByte(a);
+                a += ps;
+            }
+            if (unused != 0) {
+                unused = x;
+            }
         }
         return true;
     }
