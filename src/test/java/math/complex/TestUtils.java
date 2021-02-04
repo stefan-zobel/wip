@@ -120,24 +120,6 @@ public final class TestUtils {
         }
     }
 
-    // log of root mean square error
-    public static double log10RmsError(ComplexArray expected, ComplexArray actual) {
-        double[] xreal = expected.re();
-        double[] ximag = expected.im();
-        double[] yreal = actual.re();
-        double[] yimag = actual.im();
-        int n = xreal.length;
-        double err = Math.pow(10.0, -99.0 * 2.0);
-        for (int i = 0; i < n; ++i) {
-            double real = xreal[i] - yreal[i];
-            double imag = ximag[i] - yimag[i];
-            err += real * real + imag * imag;
-        }
-        // calculate root mean square (RMS) error
-        err = Math.sqrt(err / Math.max(n, 1));
-        return Math.log10(err);
-    }
-
     // each individual double lies in [-1, 1)
     public static double[] randomData(int length) {
         double[] rand = new double[length];
