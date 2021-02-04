@@ -14,6 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * Any changes, bugfixes or additions made by the maintainers
+ * of the https://github.com/stefan-zobel/FFT library are
+ * licensed under the Apache License, Version 2.0, as explained
+ * at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package math.complex;
 
 /**

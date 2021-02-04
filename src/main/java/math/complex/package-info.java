@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 /**
- * Base functionality for computations with complex numbers. 
+ * Fast Fourier transform (FFT) using the Cooley–Tukey algorithm for
+ * power-of-two sizes and Bluestein's algorithm for non-power-of-two sizes.
  */
 package math.complex;

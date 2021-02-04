@@ -20,6 +20,12 @@
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
+/*
+ * Any changes, bugfixes or additions made by the maintainers
+ * of the https://github.com/stefan-zobel/FFT library are
+ * licensed under the Apache License, Version 2.0, as explained
+ * at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package math.complex;
 
 import static org.junit.Assert.*;
