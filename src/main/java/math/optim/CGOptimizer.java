@@ -342,17 +342,11 @@ public final class CGOptimizer {
             if ((bx - u) * (u - cx) > 0.0) {
                 fu = func.valueAt(u);
                 if (fu < fc) {
-                    // Ax = new Double(bx);
-                    // Bx = new Double(u);
-                    // Cx = new Double(cx);
                     bracketing[0] = bx;
                     bracketing[1] = u;
                     bracketing[2] = cx;
                     return;
                 } else if (fu > fb) {
-                    // Ax = new Double(ax);
-                    // Bx = new Double(bx);
-                    // Cx = new Double(u);
                     bracketing[0] = ax;
                     bracketing[1] = bx;
                     bracketing[2] = u;
@@ -384,9 +378,6 @@ public final class CGOptimizer {
             fb = fc;
             fc = fu;
         }
-        // Ax = new Double(ax);
-        // Bx = new Double(bx);
-        // Cx = new Double(cx);
         bracketing[0] = ax;
         bracketing[1] = bx;
         bracketing[2] = cx;
@@ -395,7 +386,6 @@ public final class CGOptimizer {
     private static double dbrent(OneDimDiffFunction func, double ax, double bx,
             double cx) {
         // constants
-        final boolean dbVerbose = false;
         final int ITMAX = 100;
         final double TOL = 1.0e-4;
 
@@ -417,10 +407,6 @@ public final class CGOptimizer {
             double tol1 = TOL * fabs(x);
             double tol2 = 2.0 * tol1;
             if (fabs(x - xm) <= (tol2 - 0.5 * (b - a))) {
-                if (dbVerbose) {
-                    System.err
-                            .println("dbrent returning because min is cornered");
-                }
                 return x;
             }
             double u;
@@ -472,10 +458,6 @@ public final class CGOptimizer {
                 u = x + sign(tol1, d);
                 fu = func.valueAt(u);
                 if (fu > fx) {
-                    if (dbVerbose) {
-                        System.err
-                                .println("dbrent returning because derivative is broken");
-                    }
                     return x;
                 }
             }
@@ -519,10 +501,7 @@ public final class CGOptimizer {
         if (fx < func.valueAt(0.0)) {
             return x;
         }
-        if (dbVerbose) {
-            System.err
-                    .println("Warning: exiting dbrent because ITMAX exceeded!");
-        }
+
         return 0.0;
     }
 
