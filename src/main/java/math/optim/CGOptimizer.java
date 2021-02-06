@@ -208,8 +208,8 @@ public final class CGOptimizer {
             }
 
             // check convergence
-            if (2.0 * fabs(fp2 - fp) <= functionTolerance
-                    * (fabs(fp2) + fabs(fp) + EPS)) {
+            if (2.0 * Math.abs(fp2 - fp) <= functionTolerance
+                    * (Math.abs(fp2) + Math.abs(fp) + EPS)) {
                 // convergence
                 if (!CHECK_SIMPLE_GD_CONVERGENCE || simpleGDStep || SIMPLE_GD) {
                     return new DMultiFunctionEval(p, sign * fp2, iter);
@@ -313,7 +313,6 @@ public final class CGOptimizer {
         // inputs
         double ax = bracketing[0];
         double fa = func.valueAt(ax);
-
         double bx = bracketing[1];
         double fb = func.valueAt(bx);
 
@@ -336,7 +335,7 @@ public final class CGOptimizer {
             double r = (bx - ax) * (fb - fc);
             double q = (bx - cx) * (fb - fa);
             double u = bx - ((bx - cx) * q - (bx - ax) * r)
-                    / (2.0 * sign(fmax(fabs(q - r), TINY), q - r));
+                    / (2.0 * sign(Math.max(Math.abs(q - r), TINY), q - r));
             double fu;
             double ulim = bx + GLIMIT * (cx - bx);
             if ((bx - u) * (u - cx) > 0.0) {
@@ -404,13 +403,13 @@ public final class CGOptimizer {
         double dw = dx;
         for (int iteration = 0; iteration < ITMAX; iteration++) {
             double xm = 0.5 * (a + b);
-            double tol1 = TOL * fabs(x);
+            double tol1 = TOL * Math.abs(x);
             double tol2 = 2.0 * tol1;
-            if (fabs(x - xm) <= (tol2 - 0.5 * (b - a))) {
+            if (Math.abs(x - xm) <= (tol2 - 0.5 * (b - a))) {
                 return x;
             }
             double u;
-            if (fabs(e) > tol1) {
+            if (Math.abs(e) > tol1) {
                 double d1 = 2.0 * (b - a);
                 double d2 = d1;
                 if (dw != dx) {
@@ -427,13 +426,13 @@ public final class CGOptimizer {
                 e = d;
                 if (ok1 || ok2) {
                     if (ok1 && ok2) {
-                        d = (fabs(d1) < fabs(d2) ? d1 : d2);
+                        d = (Math.abs(d1) < Math.abs(d2) ? d1 : d2);
                     } else if (ok1) {
                         d = d1;
                     } else {
                         d = d2;
                     }
-                    if (fabs(d) <= fabs(0.5 * olde)) {
+                    if (Math.abs(d) <= Math.abs(0.5 * olde)) {
                         u = x + d;
                         if (u - a < tol2 || b - u < tol2) {
                             d = sign(tol1, xm - x);
@@ -451,7 +450,7 @@ public final class CGOptimizer {
                 d = 0.5 * e;
             }
             double fu;
-            if (fabs(d) >= tol1) {
+            if (Math.abs(d) >= tol1) {
                 u = x + d;
                 fu = func.valueAt(u);
             } else {
@@ -505,24 +504,10 @@ public final class CGOptimizer {
         return 0.0;
     }
 
-    private static double fabs(double x) {
-        if (x < 0.0) {
-            return -x;
-        }
-        return x;
-    }
-
-    private static double fmax(double x, double y) {
-        if (x < y) {
-            return y;
-        }
-        return x;
-    }
-
     private static double sign(double x, double y) {
         if (y >= 0.0) {
-            return fabs(x);
+            return Math.abs(x);
         }
-        return -fabs(x);
+        return -Math.abs(x);
     }
 }
