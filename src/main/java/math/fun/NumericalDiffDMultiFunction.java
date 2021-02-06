@@ -26,13 +26,10 @@ package math.fun;
 public abstract class NumericalDiffDMultiFunction implements
         DiffDMultiFunction {
 
-    /** The IEEE 754 machine epsilon from Cephes: (2^-53) */
-    private static final double MACH_EPS_DBL = 1.11022302462515654042e-16;
-
     protected final double diffScale;
 
     public NumericalDiffDMultiFunction() {
-        this(1.5 * Math.sqrt(MACH_EPS_DBL));
+        this(1.5 * Math.sqrt(MathConsts.MACH_EPS_DBL));
     }
 
     public NumericalDiffDMultiFunction(double diffScale) {
