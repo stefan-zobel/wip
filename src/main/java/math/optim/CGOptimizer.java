@@ -41,7 +41,6 @@ public final class CGOptimizer {
 
     private static final boolean SIMPLE_GD = false;
     private static final boolean CHECK_SIMPLE_GD_CONVERGENCE = true;
-    private static final boolean VERBOSE = false;
 
     // constants
     private static final double GOLD = 1.618034;
@@ -177,15 +176,8 @@ public final class CGOptimizer {
 
         // evaluate function
         double fp = function.apply(initial);
-        if (VERBOSE) {
-            System.err.println("Initial: " + fp);
-        }
         double[] xi = new double[dimension];
         function.derivativeAt(initial, xi);
-        if (VERBOSE) {
-            System.err.println("Initial at: " + arrayToString(initial));
-            System.err.println("Initial deriv: " + arrayToString(xi));
-        }
 
         // make some vectors
         double[] g = new double[dimension];
@@ -207,15 +199,8 @@ public final class CGOptimizer {
                 System.err.print("Iter " + iter + ' ');
             }
             // do a line min along descent direction
-            if (VERBOSE) {
-                System.err.println("Minimizing along " + arrayToString(xi));
-            }
             double[] p2 = lineMinimize(function, p, xi, bracketing);
             double fp2 = function.apply(p2);
-            if (VERBOSE) {
-                System.err.println("Result is " + fp2 + " after " + iter);
-                System.err.println("Result at " + arrayToString(p2));
-            }
 
             if (!silent) {
                 System.err.printf(" %s (delta: %s)\n", NF.format(fp2),
@@ -317,11 +302,6 @@ public final class CGOptimizer {
         // CHECK FOR END OF WORLD
         if (!(ax <= xx && xx <= bx) && !(bx <= xx && xx <= ax)) {
             System.err.println("Bad bracket order!");
-        }
-        if (VERBOSE) {
-            System.err.println("Bracketing found: " + ax + ' ' + xx + ' ' + bx);
-            System.err.println("Bracketing found: " + oneDim.valueAt(ax) + ' '
-                    + oneDim.valueAt(xx) + ' ' + oneDim.valueAt(bx));
         }
         // find the extreme point
         double xmin = dbrent(oneDim, ax, xx, bx);
@@ -544,25 +524,6 @@ public final class CGOptimizer {
                     .println("Warning: exiting dbrent because ITMAX exceeded!");
         }
         return 0.0;
-    }
-
-    private static String arrayToString(double[] x) {
-        int numToPrint = 5;
-        StringBuilder sb = new StringBuilder("(");
-        if (numToPrint > x.length) {
-            numToPrint = x.length;
-        }
-        for (int i = 0; i < numToPrint; i++) {
-            sb.append(x[i]);
-            if (i != x.length - 1) {
-                sb.append(", ");
-            }
-        }
-        if (numToPrint < x.length) {
-            sb.append("...");
-        }
-        sb.append(')');
-        return sb.toString();
     }
 
     private static double fabs(double x) {
