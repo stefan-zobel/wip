@@ -42,8 +42,6 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
     /**
      * The size of the DoubleArrayList (the number of elements it contains).
-     *
-     * @serial
      */
     int size;
 
