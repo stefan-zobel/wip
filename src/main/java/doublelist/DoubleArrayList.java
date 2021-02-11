@@ -1025,9 +1025,8 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         public boolean contains(double o) {
-            DIterator it = iterator();
-            while (it.hasNext()) {
-                if (o == it.next()) {
+            for (int i = 0; i < size(); ++i) {
+                if (o == get(i)) {
                     return true;
                 }
             }
