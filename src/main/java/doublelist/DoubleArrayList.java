@@ -82,13 +82,26 @@ public class DoubleArrayList implements DoubleList, Cloneable {
      *             if the specified array is null
      */
     public DoubleArrayList(double[] c) {
-        double[] a = c;
-        if ((size = a.length) != 0) {
-            elementData = Arrays.copyOf(a, size);
+        if ((size = c.length) != 0) {
+            elementData = Arrays.copyOf(c, size);
         } else {
             // replace with empty array.
             elementData = EMPTY_ELEMENTDATA;
         }
+    }
+
+    /**
+     * Constructs a list containing the elements of the specified list, in the
+     * order they are returned by the list's {@link DoubleList#toArray()}
+     * method.
+     *
+     * @param c
+     *            the list whose elements are to be placed into this list
+     * @throws NullPointerException
+     *             if the specified list is null
+     */
+    public DoubleArrayList(DoubleList c) {
+        this(c.toArray());
     }
 
     /**
@@ -159,18 +172,21 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         int oldCapacity = elementData.length;
         int newCapacity = oldCapacity + (oldCapacity >> 1);
         if (newCapacity - minCapacity <= 0) {
-            if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA)
+            if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
                 return Math.max(DEFAULT_CAPACITY, minCapacity);
-            if (minCapacity < 0) // overflow
+            }
+            if (minCapacity < 0) { // overflow
                 throw new OutOfMemoryError();
+            }
             return minCapacity;
         }
         return (newCapacity - MAX_ARRAY_SIZE <= 0) ? newCapacity : hugeCapacity(minCapacity);
     }
 
     private static int hugeCapacity(int minCapacity) {
-        if (minCapacity < 0) // overflow
+        if (minCapacity < 0) { // overflow
             throw new OutOfMemoryError();
+        }
         return (minCapacity > MAX_ARRAY_SIZE) ? Integer.MAX_VALUE : MAX_ARRAY_SIZE;
     }
 
@@ -334,8 +350,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         modCount++;
         final int s;
         double[] elementData;
-        if ((s = size) == (elementData = this.elementData).length)
+        if ((s = size) == (elementData = this.elementData).length) {
             elementData = grow();
+        }
         System.arraycopy(elementData, index, elementData, index + 1, s - index);
         elementData[index] = element;
         size = s + 1;
@@ -438,8 +455,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
         int hashCode = 1;
         for (int i = from; i < to; i++) {
-            Object e = es[i];
-            hashCode = 31 * hashCode + (e == null ? 0 : e.hashCode());
+            hashCode = 31 * hashCode + Double.hashCode(es[i]);
         }
         return hashCode;
     }
@@ -453,9 +469,11 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         final int size = this.size;
         int i = 0;
         found: {
-            for (; i < size; i++)
-                if (o == es[i])
+            for (; i < size; i++) {
+                if (o == es[i]) {
                     break found;
+                }
+            }
             return false;
         }
         fastRemove(es, i);
@@ -492,12 +510,14 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         double[] a = c.toArray();
         modCount++;
         int numNew = a.length;
-        if (numNew == 0)
+        if (numNew == 0) {
             return false;
+        }
         double[] elementData;
         final int s;
-        if (numNew > (elementData = this.elementData).length - (s = size))
+        if (numNew > (elementData = this.elementData).length - (s = size)) {
             elementData = grow(s + numNew);
+        }
         System.arraycopy(a, 0, elementData, s, numNew);
         size = s + numNew;
         return true;
@@ -513,16 +533,19 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         double[] a = c.toArray();
         modCount++;
         int numNew = a.length;
-        if (numNew == 0)
+        if (numNew == 0) {
             return false;
+        }
         double[] elementData;
         final int s;
-        if (numNew > (elementData = this.elementData).length - (s = size))
+        if (numNew > (elementData = this.elementData).length - (s = size)) {
             elementData = grow(s + numNew);
+        }
 
         int numMoved = s - index;
-        if (numMoved > 0)
+        if (numMoved > 0) {
             System.arraycopy(elementData, index, elementData, index + numNew, numMoved);
+        }
         System.arraycopy(a, 0, elementData, index, numNew);
         size = s + numNew;
         return true;
@@ -559,8 +582,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
      * A version of rangeCheck used by add and addAll.
      */
     private void rangeCheckForAdd(int index) {
-        if (index > size || index < 0)
+        if (index > size || index < 0) {
             throw new IndexOutOfBoundsException(outOfBoundsMsg(index));
+        }
     }
 
     /**
@@ -601,16 +625,20 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         int r;
         // Optimize for initial run of survivors
         for (r = from;; r++) {
-            if (r == end)
+            if (r == end) {
                 return false;
-            if (c.contains(es[r]) != complement)
+            }
+            if (c.contains(es[r]) != complement) {
                 break;
+            }
         }
         int w = r++;
         try {
-            for (double e; r < end; r++)
-                if (c.contains(e = es[r]) == complement)
+            for (double e; r < end; r++) {
+                if (c.contains(e = es[r]) == complement) {
                     es[w++] = e;
+                }
+            }
         } catch (Throwable ex) {
             // Preserve behavioral compatibility with AbstractCollection,
             // even if c.contains() throws.
@@ -668,18 +696,21 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         public double next() {
             checkForComodification();
             int i = cursor;
-            if (i >= size)
+            if (i >= size) {
                 throw new NoSuchElementException();
+            }
             double[] elementData = DoubleArrayList.this.elementData;
-            if (i >= elementData.length)
+            if (i >= elementData.length) {
                 throw new ConcurrentModificationException();
+            }
             cursor = i + 1;
             return elementData[lastRet = i];
         }
 
         public void remove() {
-            if (lastRet < 0)
+            if (lastRet < 0) {
                 throw new IllegalStateException();
+            }
             checkForComodification();
 
             try {
@@ -699,10 +730,12 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             int i = cursor;
             if (i < size) {
                 final double[] es = elementData;
-                if (i >= es.length)
+                if (i >= es.length) {
                     throw new ConcurrentModificationException();
-                for (; i < size && modCount == expectedModCount; i++)
+                }
+                for (; i < size && modCount == expectedModCount; i++) {
                     action.accept(elementAt(es, i));
+                }
                 // update once at end to reduce heap write traffic
                 cursor = i;
                 lastRet = i - 1;
@@ -711,8 +744,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         final void checkForComodification() {
-            if (modCount != expectedModCount)
+            if (modCount != expectedModCount) {
                 throw new ConcurrentModificationException();
+            }
         }
     }
 
@@ -740,18 +774,21 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         public double previous() {
             checkForComodification();
             int i = cursor - 1;
-            if (i < 0)
+            if (i < 0) {
                 throw new NoSuchElementException();
+            }
             double[] elementData = DoubleArrayList.this.elementData;
-            if (i >= elementData.length)
+            if (i >= elementData.length) {
                 throw new ConcurrentModificationException();
+            }
             cursor = i;
             return elementData[lastRet = i];
         }
 
         public void set(double e) {
-            if (lastRet < 0)
+            if (lastRet < 0) {
                 throw new IllegalStateException();
+            }
             checkForComodification();
 
             try {
@@ -843,14 +880,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             }
 
             public void remove() {
-                if (lastRet < 0)
+                if (lastRet < 0) {
                     throw new IllegalStateException();
+                }
                 checkForComodification();
 
                 try {
                     AbstractDoubleList.this.remove(lastRet);
-                    if (lastRet < cursor)
+                    if (lastRet < cursor) {
                         cursor--;
+                    }
                     lastRet = -1;
                     expectedModCount = modCount;
                 } catch (IndexOutOfBoundsException e) {
@@ -859,8 +898,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             }
 
             final void checkForComodification() {
-                if (modCount != expectedModCount)
+                if (modCount != expectedModCount) {
                     throw new ConcurrentModificationException();
+                }
             }
         }
 
@@ -895,8 +935,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             }
 
             public void set(double e) {
-                if (lastRet < 0)
+                if (lastRet < 0) {
                     throw new IllegalStateException();
+                }
                 checkForComodification();
 
                 try {
@@ -927,8 +968,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         private void rangeCheckForAdd(int index) {
-            if (index < 0 || index > size())
+            if (index < 0 || index > size()) {
                 throw new IndexOutOfBoundsException(outOfBoundsMsg(index));
+            }
         }
 
         public DListIterator listIterator() {
@@ -975,17 +1017,20 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
         public boolean containsAll(DoubleList c) {
             for (int i = 0; i < c.size(); ++i) {
-                if (!contains(c.get(i)))
+                if (!contains(c.get(i))) {
                     return false;
+                }
             }
             return true;
         }
 
         public boolean contains(double o) {
             DIterator it = iterator();
-            while (it.hasNext())
-                if (o == it.next())
+            while (it.hasNext()) {
+                if (o == it.next()) {
                     return true;
+                }
+            }
             return false;
         }
     }
@@ -1065,8 +1110,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         public boolean addAll(int index, DoubleList c) {
             rangeCheckForAdd(index);
             int cSize = c.size();
-            if (cSize == 0)
+            if (cSize == 0) {
                 return false;
+            }
             checkForComodification();
             root.addAll(offset + index, c);
             updateSizeAndModCount(cSize);
@@ -1085,8 +1131,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             checkForComodification();
             int oldSize = root.size;
             boolean modified = root.batchRemove(c, complement, offset, offset + size);
-            if (modified)
+            if (modified) {
                 updateSizeAndModCount(root.size - oldSize);
+            }
             return modified;
         }
 
@@ -1151,11 +1198,13 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 public double next() {
                     checkForComodification();
                     int i = cursor;
-                    if (i >= SubList.this.size)
+                    if (i >= SubList.this.size) {
                         throw new NoSuchElementException();
+                    }
                     double[] elementData = root.elementData;
-                    if (offset + i >= elementData.length)
+                    if (offset + i >= elementData.length) {
                         throw new ConcurrentModificationException();
+                    }
                     cursor = i + 1;
                     return elementData[offset + (lastRet = i)];
                 }
@@ -1167,11 +1216,13 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 public double previous() {
                     checkForComodification();
                     int i = cursor - 1;
-                    if (i < 0)
+                    if (i < 0) {
                         throw new NoSuchElementException();
+                    }
                     double[] elementData = root.elementData;
-                    if (offset + i >= elementData.length)
+                    if (offset + i >= elementData.length) {
                         throw new ConcurrentModificationException();
+                    }
                     cursor = i;
                     return elementData[offset + (lastRet = i)];
                 }
@@ -1182,10 +1233,12 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                     int i = cursor;
                     if (i < size) {
                         final double[] es = root.elementData;
-                        if (offset + i >= es.length)
+                        if (offset + i >= es.length) {
                             throw new ConcurrentModificationException();
-                        for (; i < size && root.modCount == expectedModCount; i++)
+                        }
+                        for (; i < size && root.modCount == expectedModCount; i++) {
                             action.accept(elementAt(es, offset + i));
+                        }
                         // update once at end to reduce heap write traffic
                         cursor = i;
                         lastRet = i - 1;
@@ -1202,8 +1255,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 }
 
                 public void remove() {
-                    if (lastRet < 0)
+                    if (lastRet < 0) {
                         throw new IllegalStateException();
+                    }
                     checkForComodification();
 
                     try {
@@ -1217,8 +1271,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 }
 
                 public void set(double e) {
-                    if (lastRet < 0)
+                    if (lastRet < 0) {
                         throw new IllegalStateException();
+                    }
                     checkForComodification();
 
                     try {
@@ -1243,8 +1298,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 }
 
                 final void checkForComodification() {
-                    if (root.modCount != expectedModCount)
+                    if (root.modCount != expectedModCount) {
                         throw new ConcurrentModificationException();
+                    }
                 }
             };
         }
@@ -1255,8 +1311,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         private void rangeCheckForAdd(int index) {
-            if (index < 0 || index > this.size)
+            if (index < 0 || index > this.size) {
                 throw new IndexOutOfBoundsException(outOfBoundsMsg(index));
+            }
         }
 
         private String outOfBoundsMsg(int index) {
@@ -1264,8 +1321,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         private void checkForComodification() {
-            if (root.modCount != modCount)
+            if (root.modCount != modCount) {
                 throw new ConcurrentModificationException();
+            }
         }
 
         private void updateSizeAndModCount(int sizeChange) {
@@ -1307,10 +1365,10 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                     int hi = getFence(), i = index;
                     if (i < hi) {
                         index = i + 1;
-                        double e = root.elementData[i];
-                        action.accept(e);
-                        if (root.modCount != expectedModCount)
+                        action.accept(root.elementData[i]);
+                        if (root.modCount != expectedModCount) {
                             throw new ConcurrentModificationException();
+                        }
                         return true;
                     }
                     return false;
@@ -1325,15 +1383,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                         if ((hi = fence) < 0) {
                             mc = modCount;
                             hi = offset + size;
-                        } else
+                        } else {
                             mc = expectedModCount;
+                        }
                         if ((i = index) >= 0 && (index = hi) <= a.length) {
                             for (; i < hi; ++i) {
-                                double e = a[i];
-                                action.accept(e);
+                                action.accept(a[i]);
                             }
-                            if (lst.modCount == mc)
+                            if (lst.modCount == mc) {
                                 return;
+                            }
                         }
                     }
                     throw new ConcurrentModificationException();
@@ -1358,10 +1417,12 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         final int expectedModCount = modCount;
         final double[] es = elementData;
         final int size = this.size;
-        for (int i = 0; modCount == expectedModCount && i < size; i++)
+        for (int i = 0; modCount == expectedModCount && i < size; i++) {
             action.accept(elementAt(es, i));
-        if (modCount != expectedModCount)
+        }
+        if (modCount != expectedModCount) {
             throw new ConcurrentModificationException();
+        }
     }
 
     /**
@@ -1402,15 +1463,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         public boolean tryAdvance(DoubleConsumer action) {
-            if (action == null)
+            if (action == null) {
                 throw new NullPointerException();
+            }
             int hi = getFence(), i = index;
             if (i < hi) {
                 index = i + 1;
-                double e = elementData[i];
-                action.accept(e);
-                if (modCount != expectedModCount)
+                action.accept(elementData[i]);
+                if (modCount != expectedModCount) {
                     throw new ConcurrentModificationException();
+                }
                 return true;
             }
             return false;
@@ -1419,21 +1481,23 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         public void forEachRemaining(DoubleConsumer action) {
             int i, hi, mc; // hoist accesses and checks from loop
             double[] a;
-            if (action == null)
+            if (action == null) {
                 throw new NullPointerException();
+            }
             if ((a = elementData) != null) {
                 if ((hi = fence) < 0) {
                     mc = modCount;
                     hi = size;
-                } else
+                } else {
                     mc = expectedModCount;
+                }
                 if ((i = index) >= 0 && (index = hi) <= a.length) {
                     for (; i < hi; ++i) {
-                        double e = a[i];
-                        action.accept(e);
+                        action.accept(a[i]);
                     }
-                    if (modCount == mc)
+                    if (modCount == mc) {
                         return;
+                    }
                 }
             }
             throw new ConcurrentModificationException();
@@ -1451,8 +1515,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     public void sort() {
         final int expectedModCount = modCount;
         Arrays.sort(elementData, 0, size);
-        if (modCount != expectedModCount)
+        if (modCount != expectedModCount) {
             throw new ConcurrentModificationException();
+        }
         modCount++;
     }
 
@@ -1463,11 +1528,14 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     }
 
     static void subListRangeCheck(int fromIndex, int toIndex, int size) {
-        if (fromIndex < 0)
+        if (fromIndex < 0) {
             throw new IndexOutOfBoundsException("fromIndex = " + fromIndex);
-        if (toIndex > size)
+        }
+        if (toIndex > size) {
             throw new IndexOutOfBoundsException("toIndex = " + toIndex);
-        if (fromIndex > toIndex)
+        }
+        if (fromIndex > toIndex) {
             throw new IllegalArgumentException("fromIndex(" + fromIndex + ") > toIndex(" + toIndex + ")");
+        }
     }
 }
