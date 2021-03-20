@@ -65,7 +65,7 @@ public class Kueue {
     }
 
     public void close() {
-        // TODO: wrong, can't close if we have more than one family
+        // TODO: wrong, can't close if we use more than one family!
         ops.close();
     }
 
@@ -73,7 +73,7 @@ public class Kueue {
      * Signals a waiting take. Called only from put.
      */
     private void signalNotEmpty() {
-        final ReentrantLock takeLock = this.takeLock;
+        ReentrantLock takeLock = this.takeLock;
         takeLock.lock();
         try {
             notEmpty.signal();
@@ -89,8 +89,7 @@ public class Kueue {
         AtomicLong count = this.count;
         putLock.lock();
         try {
-            byte[] key = maxKey.next();
-            ops.put(id, key, value);
+            ops.put(id, maxKey.next(), value);
             c = count.getAndIncrement();
         } catch (Throwable t) {
             maxKey.decrement();
@@ -119,10 +118,9 @@ public class Kueue {
                 c = count.getAndDecrement();
             }
             if (c > 1L) {
+                // signal other waiting takers
                 notEmpty.signal();
             }
-        } catch (Throwable t) {
-            throw t;
         } finally {
             takeLock.unlock();
         }
