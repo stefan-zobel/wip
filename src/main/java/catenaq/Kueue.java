@@ -15,8 +15,8 @@ import net.volcanite.util.Byte8Key;
  */
 public class Kueue {
 
-    private Byte8Key minKey = new Byte8Key();
-    private Byte8Key maxKey = new Byte8Key();
+    private Byte8Key minKey = new Byte8Key(Byte8Key.minKey());
+    private Byte8Key maxKey = new Byte8Key(Byte8Key.minKey());
 
     private final StoreOps ops;
     private final Kind id;
@@ -108,10 +108,10 @@ public class Kueue {
                 notEmpty.await();
             }
             value = ops.singleDeleteIfPresent(id, minKey.current());
-            minKey.increment();
             if (value != null) {
                 c = count.getAndDecrement();
             }
+            minKey.increment();
             if (c > 1L) {
                 // signal other waiting takers
                 notEmpty.signal();
