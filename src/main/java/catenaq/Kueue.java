@@ -64,11 +64,6 @@ public class Kueue {
         return !ops.isOpen();
     }
 
-    public void close() {
-        // TODO: wrong, can't close if we use more than one family!
-        ops.close();
-    }
-
     /**
      * Signals a waiting take. Called only from put.
      */

@@ -28,8 +28,6 @@ public class KueueThreadsTest {
 
             long end = System.currentTimeMillis();
 
-            shared.close();
-
             System.out.println("put & del took: " + (end - start) + " ms");
             System.out.println("average       : " + ((end - start) / (double) MSG_COUNT) + " ms / message");
             System.out.println("queue size    : " + shared.size());
