@@ -11,7 +11,7 @@ import org.schwefel.kv.StoreOps;
 import net.volcanite.util.Byte8Key;
 
 /**
- * A simple persistent embedded (in-process) FIFO queue.
+ * A simple disk-based embedded (in-process) FIFO queue.
  */
 public class Kueue {
 
@@ -34,8 +34,12 @@ public class Kueue {
         ops = Objects.requireNonNull(store, "store");
         id = store.getKindManagement().getOrCreateKind(Objects.requireNonNull(identifier, "identifier"));
         Byte8Key lastMax = maxKey;
-        byte[] currentMin = ops.findMinKey(id);
-        byte[] currentMax = ops.findMaxKey(id);
+        byte[] currentMin = null;
+        byte[] currentMax = null;
+        synchronized (ops) {
+            currentMin = ops.findMinKey(id);
+            currentMax = ops.findMaxKey(id);            
+        }
         if (currentMin != null) {
             minKey = new Byte8Key(currentMin);
         }
