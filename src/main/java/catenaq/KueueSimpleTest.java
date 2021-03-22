@@ -2,13 +2,6 @@ package catenaq;
 
 import java.nio.file.Paths;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-
-import org.schwefel.kv.ForEachKeyValue;
-import org.schwefel.kv.KVStore;
-import org.schwefel.kv.Kind;
-import org.schwefel.kv.StoreOps;
 
 public class KueueSimpleTest {
 
@@ -26,20 +19,10 @@ public class KueueSimpleTest {
         final int RUNS = 500_000;
         final String family = "Test-DB";
 
-        try (StoreOps store = new KVStore(Paths.get("D:/Temp/rocksdb_database"))) {
-            Kueue queue = new Kueue(store, family);
-            Kind id = store.getKindManagement().getKind(family);
+        try (KueueManager km = new KueueManager(Paths.get("D:/Temp/rocksdb_database"))) {
+            Kueue queue = km.get(family);
 
             System.out.println("queue size: " + queue.size());
-            AtomicInteger ai = new AtomicInteger();
-            ForEachKeyValue it = store.scanAll(id);
-            it.forEachRemaining(new BiConsumer<byte[], byte[]>() {
-                @Override
-                public void accept(byte[] t, byte[] u) {
-                    ai.incrementAndGet();
-                }
-            });
-            System.out.println("scan  size: " + ai.get());
 
             long start = System.currentTimeMillis();
             for (int i = 1; i <= RUNS; ++i) {

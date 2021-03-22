@@ -4,19 +4,16 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
 
-import org.schwefel.kv.KVStore;
-import org.schwefel.kv.StoreOps;
-
 public class KueueThreadsTest {
 
     public static void main(String[] args) throws InterruptedException {
         final int MSG_COUNT = 500_000;
         final String family = "Test-DB";
 
-        try (StoreOps store = new KVStore(Paths.get("D:/Temp/rocksdb_database"))) {
-            Kueue shared = new Kueue(store, family);
-            Producer p = new Producer(shared, MSG_COUNT);
-            Consumer c = new Consumer(shared, MSG_COUNT);
+        try (KueueManager km = new KueueManager(Paths.get("D:/Temp/rocksdb_database"))) {
+            Kueue kueue = km.get(family);
+            Producer p = new Producer(kueue, MSG_COUNT);
+            Consumer c = new Consumer(kueue, MSG_COUNT);
 
             long start = System.currentTimeMillis();
 
@@ -30,7 +27,7 @@ public class KueueThreadsTest {
 
             System.out.println("put & del took: " + (end - start) + " ms");
             System.out.println("average       : " + ((end - start) / (double) MSG_COUNT) + " ms / message");
-            System.out.println("queue size    : " + shared.size());
+            System.out.println("queue size    : " + kueue.size());
             System.out.println("done");
             System.out.flush();
         }

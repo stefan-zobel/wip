@@ -30,7 +30,7 @@ public class Kueue {
     /** Current number of messages */
     private final AtomicLong count;
 
-    public Kueue(StoreOps store, String identifier) {
+    /* package */ Kueue(StoreOps store, String identifier) {
         ops = Objects.requireNonNull(store, "store");
         id = store.getKindManagement().getOrCreateKind(Objects.requireNonNull(identifier, "identifier"));
         Byte8Key lastMax = maxKey;
