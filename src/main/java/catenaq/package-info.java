@@ -1,4 +1,4 @@
 /**
- * A simple disk-based embedded (in-process) FIFO queue 
+ * A simple RocksDB-based in-process durable queue 
  */
 package catenaq;

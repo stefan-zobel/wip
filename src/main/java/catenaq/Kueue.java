@@ -11,7 +11,7 @@ import org.schwefel.kv.StoreOps;
 import net.volcanite.util.Byte8Key;
 
 /**
- * A simple disk-based embedded (in-process) FIFO queue.
+ * A simple RocksDB-based in-process durable queue.
  */
 public class Kueue {
 
@@ -126,7 +126,7 @@ public class Kueue {
         return value;
     }
 
-    public boolean removeNextMessage(KueueMsgConsumer consumer) {
+    public boolean accept(KueueMsgConsumer consumer) {
         if (consumer == null) {
             return false;
         }
