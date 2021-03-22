@@ -125,4 +125,33 @@ public class Kueue {
         }
         return value;
     }
+
+    public boolean removeNextMessage(KueueMsgConsumer consumer) {
+        if (consumer == null) {
+            return false;
+        }
+        if (count.get() == 0L) {
+            return false;
+        }
+        ReentrantLock takeLock = this.takeLock;
+        takeLock.lock();
+        try {
+            byte[] key = minKey.current();
+            byte[] msg = ops.get(id, key);
+            if (msg != null) {
+                if (consumer.accept(msg)) {
+                    ops.singleDelete(id, key);
+                    if (count.getAndDecrement() > 1L) {
+                        // signal other waiting takers
+                        notEmpty.signal();
+                    }
+                    minKey.increment();
+                    return true;
+                }
+            }
+        } finally {
+            takeLock.unlock();
+        }
+        return false;
+    }
 }
