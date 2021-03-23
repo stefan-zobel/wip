@@ -71,6 +71,11 @@ import net.volcanite.util.Byte8Key;
         return !ops.isOpen();
     }
 
+    @Override
+    public String identifier() {
+        return id.name();
+    }
+
     /**
      * Signals a waiting take. Called only from put.
      */

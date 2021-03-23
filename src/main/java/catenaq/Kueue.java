@@ -11,5 +11,6 @@ public interface Kueue {
     long size();
     boolean isEmpty();
     boolean isClosed();
+    String identifier();
     void clear();
 }
