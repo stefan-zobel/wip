@@ -13,7 +13,7 @@ import net.volcanite.util.Byte8Key;
 /**
  * A simple RocksDB-based in-process durable queue.
  */
-public class KueueImpl implements Kueue {
+/* package */ class KueueImpl implements Kueue {
 
     private Byte8Key minKey = new Byte8Key(Byte8Key.minKey());
     private Byte8Key maxKey = new Byte8Key(Byte8Key.minKey());
