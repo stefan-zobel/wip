@@ -12,7 +12,7 @@ public final class KueueManager implements AutoCloseable {
 
     private final StoreOps ops;
     private final Path dir;
-    private final ConcurrentHashMap<String, Kueue> kueues = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, KueueImpl> kueues = new ConcurrentHashMap<>();
 
     public KueueManager(Path directory) {
         ops = new KVStore(Objects.requireNonNull(directory));
@@ -21,7 +21,7 @@ public final class KueueManager implements AutoCloseable {
 
     public Kueue get(String identifier) {
         if (!isClosed()) {
-            return kueues.computeIfAbsent(Objects.requireNonNull(identifier), id -> new Kueue(ops, id));
+            return kueues.computeIfAbsent(Objects.requireNonNull(identifier), id -> new KueueImpl(ops, id));
         }
         throw new IllegalStateException(KueueManager.class.getName() + " for " + getDirectory() + " is closed");
     }

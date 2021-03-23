@@ -35,9 +35,7 @@ public class KueueSimpleTest {
             System.out.println("queue size: " + queue.size());
             long count = queue.size();
             start = System.currentTimeMillis();
-            while (queue.size() > 0L) {
-                queue.take();
-            }
+            queue.clear();
             end = System.currentTimeMillis();
             System.out.println("queue size: " + queue.size());
             System.out.println("del took  : " + ((end - start) / (double) count) + " ms / message");
