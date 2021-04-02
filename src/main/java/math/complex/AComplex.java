@@ -84,4 +84,10 @@ abstract class AComplex implements IComplex {
         }
         return false;
     }
+
+    public final int hashCode() {
+        int h = 0x7FFFF + Double.hashCode(re());
+        h = ((h << 19) - h) + Double.hashCode(im());
+        return (h << 19) - h;
+    }
 }
