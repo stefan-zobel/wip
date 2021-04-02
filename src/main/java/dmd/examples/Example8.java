@@ -73,7 +73,7 @@ public class Example8 {
         int t_num = 100;
         double t_start = t_end;
         double t_end = t_start + dmd.getDeltaT() * (t_num - 1);
-        deltaT = (t_num == 1) ? dmd.getDeltaT() : (t_end - t_start) / (t_num - 1);
+        deltaT = (t_end - t_start) / (t_num - 1);
         System.out.println("\ndeltaT: " + deltaT);
 
         MatrixD fut = dmd.predict(t_start, t_num);
