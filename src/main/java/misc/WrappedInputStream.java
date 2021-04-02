@@ -152,6 +152,7 @@ public class WrappedInputStream extends InputStream {
     /**
      * @see java.io.InputStream#mark(int)
      */
+    @SuppressWarnings("lgtm[java/non-sync-override]")
     public void mark(int readlimit) {
         is.mark(readlimit);
     }
@@ -187,6 +188,7 @@ public class WrappedInputStream extends InputStream {
     /**
      * @see java.io.InputStream#reset()
      */
+    @SuppressWarnings("lgtm[java/non-sync-override]")
     public void reset() throws IOException {
         is.reset();
     }
