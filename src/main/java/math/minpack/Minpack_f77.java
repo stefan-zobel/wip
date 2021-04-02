@@ -536,7 +536,7 @@ to return a value, they need to be passed as arrays (here we
 place the actual value in location [1]).  For example, info
 is passed as info[].
 */
-    @SuppressWarnings({"lgtm[java/constant-loop-condition]", "lgtm[java/constant-comparison]"})
+    @SuppressWarnings("lgtm[java/constant-loop-condition]")
     public static void lmder_f77(Lmder_fcn nlls, int m, int n, double x[], double fvec[], double fjac[][], double ftol,
             double xtol, double gtol, int maxfev, double diag[], int mode, double factor, int nprint, int info[],
             int nfev[], int njev[], int ipvt[], double qtf[]) {
@@ -2313,7 +2313,7 @@ c     **********
 
 // Termination
 
-                if (iter == 0)
+                if (iter == 0) // "lgtm[java/constant-comparison]"
                     par[1] = zero;
                 return;
 
