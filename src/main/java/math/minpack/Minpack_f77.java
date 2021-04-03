@@ -2023,6 +2023,7 @@ c     **********
 *@param wa1      wa1 is a work array of length n.
 *@param wa2      wa2 is a work array of length n.
 */
+    @SuppressWarnings("lgtm[java/constant-loop-condition]")
     public static void lmpar_f77(int n, double r[][], int ipvt[], double diag[], double qtb[], double delta,
             double par[], double x[], double sdiag[], double wa1[], double wa2[]) {
 
@@ -2718,6 +2719,7 @@ c     **********
 *@param  qtf     An output array of length n which contains
 *                the first n elements of the vector (Q transpose)fvec.
 */
+    @SuppressWarnings("lgtm[java/constant-loop-condition]")
     public static void lmdif_f77(Lmdif_fcn nlls, int m, int n, double x[], double fvec[], double ftol, double xtol,
             double gtol, int maxfev, double epsfcn, double diag[], int mode, double factor, int nprint, int info[],
             int nfev[], double fjac[][], int ipvt[], double qtf[]) {
