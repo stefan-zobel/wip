@@ -314,6 +314,10 @@ public interface DoubleList {
      */
     Spliterator.OfDouble spliterator();
 
-//    int capacity(); // XXX
+    /**
+     * TODO
+     * @param val
+     * @return
+     */
     DoubleList plus(double val);
 }
