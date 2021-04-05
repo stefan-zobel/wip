@@ -313,4 +313,7 @@ public interface DoubleList {
      * @return a {@code Spliterator.OfDouble} over the elements in this list
      */
     Spliterator.OfDouble spliterator();
+
+//    int capacity(); // XXX
+    DoubleList plus(double val);
 }

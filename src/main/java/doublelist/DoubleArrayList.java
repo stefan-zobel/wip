@@ -57,19 +57,43 @@ public class DoubleArrayList implements DoubleList, Cloneable {
      */
     public DoubleArrayList(int initialCapacity) {
         if (initialCapacity > 0) {
-            this.elementData = new double[initialCapacity];
+            elementData = new double[initialCapacity];
         } else if (initialCapacity == 0) {
-            this.elementData = EMPTY_ELEMENTDATA;
+            elementData = EMPTY_ELEMENTDATA;
         } else {
             throw new IllegalArgumentException("Illegal Capacity: " + initialCapacity);
         }
     }
 
+	/**
+	 * Constructs a list with length {@code initialLength} where all elements
+	 * have {@code initialValue} as initial value.
+	 * 
+	 * @param initialLength
+	 *            the initial length of the list
+	 * @param initialValue
+	 *            the initial value of all elements in the list
+	 * @throws IllegalArgumentException
+	 *             if the specified initial length is negative
+	 */
+	public DoubleArrayList(int initialLength, double initialValue) {
+		if (initialLength > 0) {
+			double[] es = new double[initialLength];
+			Arrays.fill(es, initialValue);
+			elementData = es;
+			size = es.length;
+		} else if (initialLength == 0) {
+			elementData = EMPTY_ELEMENTDATA;
+		} else {
+			throw new IllegalArgumentException("Illegal Length: " + initialLength);
+		}
+	}
+
     /**
      * Constructs an empty list with an initial capacity of ten.
      */
     public DoubleArrayList() {
-        this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
+        elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
     }
 
     /**
@@ -1406,6 +1430,18 @@ public class DoubleArrayList implements DoubleList, Cloneable {
                 }
             };
         }
+
+        @Override
+        public DoubleList plus(double val) {
+            // TODO Auto-generated method stub
+            final double[] es = root.elementData;
+            final int start = offset;
+            final int end = start + size;
+            for (int i = start; i < end; ++i) {
+                es[i] += val;
+            }
+            return this;
+        }
     }
 
     /**
@@ -1518,6 +1554,17 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             throw new ConcurrentModificationException();
         }
         modCount++;
+    }
+
+    @Override
+    public DoubleList plus(double val) {
+        // TODO Auto-generated method stub
+        final double[] es = elementData;
+        final int end = size;
+        for (int i = 0; i < end; ++i) {
+            es[i] += val;
+        }
+        return this;
     }
 
     static void checkIndex(int index, int length) {
