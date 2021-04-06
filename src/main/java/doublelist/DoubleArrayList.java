@@ -1483,6 +1483,21 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             final double[] es = root.elementData;
             return (es[offset + index] += val);
         }
+
+        @Override
+        public String toString()  {
+            StringBuilder buf = new StringBuilder();
+            final double[] es = root.elementData;
+            final int start = offset;
+            final int end = start + size;
+            for (int i = start; i < end; ++i) {
+                buf.append(String.format(FORMAT_D, es[i]));
+                if (i < end - 1) {
+                    buf.append(", ");
+                }
+            }
+            return buf.toString();
+        }
     }
 
     /**
@@ -1642,6 +1657,20 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return (es[index] += val);
     }
 
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder();
+        final double[] es = elementData;
+        final int end = size;
+        for (int i = 0; i < end; ++i) {
+            buf.append(String.format(FORMAT_D, es[i]));
+            if (i < end - 1) {
+                buf.append(", ");
+            }
+        }
+        return buf.toString();
+    }
+
     static void checkIndex(int index, int length) {
         if (index < 0 || index >= length) {
             throw new IndexOutOfBoundsException(String.format("Index %d out-of-bounds for length %d", index, length));
@@ -1659,4 +1688,6 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             throw new IllegalArgumentException("fromIndex(" + fromIndex + ") > toIndex(" + toIndex + ")");
         }
     }
+
+    private static final String FORMAT_D = "%.12E";
 }
