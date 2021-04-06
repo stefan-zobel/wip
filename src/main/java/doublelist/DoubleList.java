@@ -315,6 +315,13 @@ public interface DoubleList {
     Spliterator.OfDouble spliterator();
 
     /**
+     * Assign the constant {@code val} to each element in this list.
+     * @param val the constant to assign
+     * @return this {@code DoubleList}
+     */
+    DoubleList assignConst(double val);
+
+    /**
      * Add the scalar {@code val} to each element in this list.
      * @param val the scalar to add
      * @return this {@code DoubleList}

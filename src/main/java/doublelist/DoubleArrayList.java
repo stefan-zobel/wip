@@ -1430,6 +1430,15 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         @Override
+        public DoubleList assignConst(double val) {
+            final int start = offset;
+            final int end = start + size;
+            Arrays.fill(root.elementData, start, end, val);
+            checkForComodification();
+            return this;
+        }
+
+        @Override
         public DoubleList plus(double val) {
             final double[] es = root.elementData;
             final int start = offset;
@@ -1567,29 +1576,39 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     }
 
     @Override
+    public DoubleList assignConst(double val) {
+        final int expectedModCount = modCount;
+        Arrays.fill(elementData, 0, size, val);
+        if (modCount == expectedModCount) {
+            return this;
+        }
+        throw new ConcurrentModificationException();
+    }
+
+    @Override
     public DoubleList plus(double val) {
-    	final int expectedModCount = modCount;
+        final int expectedModCount = modCount;
         final double[] es = elementData;
         final int end = size;
         for (int i = 0; i < end; ++i) {
             es[i] += val;
         }
         if (modCount == expectedModCount) {
-        	return this;
+            return this;
         }
         throw new ConcurrentModificationException();
     }
 
     @Override
     public DoubleList mul(double val) {
-    	final int expectedModCount = modCount;
+        final int expectedModCount = modCount;
         final double[] es = elementData;
         final int end = size;
         for (int i = 0; i < end; ++i) {
             es[i] *= val;
         }
         if (modCount == expectedModCount) {
-        	return this;
+            return this;
         }
         throw new ConcurrentModificationException();
     }
