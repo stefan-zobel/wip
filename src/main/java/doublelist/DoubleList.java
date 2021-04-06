@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021 Stefan Zobel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package doublelist;
 
 import java.util.Arrays;
@@ -316,22 +331,39 @@ public interface DoubleList {
 
     /**
      * Assign the constant {@code val} to each element in this list.
-     * @param val the constant to assign
+     * 
+     * @param val
+     *            the constant to assign
      * @return this {@code DoubleList}
      */
     DoubleList assignConst(double val);
 
     /**
      * Add the scalar {@code val} to each element in this list.
-     * @param val the scalar to add
+     * 
+     * @param val
+     *            the scalar to add
      * @return this {@code DoubleList}
      */
     DoubleList plus(double val);
 
     /**
      * Multiply each element in this list by the scalar {@code val}.
-     * @param val the scalar to multiply by
+     * 
+     * @param val
+     *            the scalar to multiply by
      * @return this {@code DoubleList}
      */
     DoubleList mul(double val);
+
+    /**
+     * Add the scalar {@code val} to the element at {@code index}.
+     * 
+     * @param index
+     *            index of the element to increment by {@code val}
+     * @param val
+     *            the scalar to add to the element
+     * @return the new value of the element after addition
+     */
+    double plusi(int index, double val);
 }
