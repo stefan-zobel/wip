@@ -1169,11 +1169,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             if (o == this) {
                 return true;
             }
-
             if (!(o instanceof DoubleList)) {
                 return false;
             }
-
             boolean equal = root.equalsRange((DoubleList) o, offset, offset + size);
             checkForComodification();
             return equal;
@@ -1439,6 +1437,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             for (int i = start; i < end; ++i) {
                 es[i] += val;
             }
+            checkForComodification();
             return this;
         }
     }
@@ -1557,12 +1556,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
     @Override
     public DoubleList plus(double val) {
+    	final int expectedModCount = modCount;
         final double[] es = elementData;
         final int end = size;
         for (int i = 0; i < end; ++i) {
             es[i] += val;
         }
-        return this;
+        if (modCount == expectedModCount) {
+        	return this;
+        }
+        throw new ConcurrentModificationException();
     }
 
     static void checkIndex(int index, int length) {

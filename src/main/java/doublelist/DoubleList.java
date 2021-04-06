@@ -315,9 +315,9 @@ public interface DoubleList {
     Spliterator.OfDouble spliterator();
 
     /**
-     * TODO
-     * @param val
-     * @return
+     * Add the scalar {@code val} to each element in this list.
+     * @param val the scalar to add
+     * @return this {@code DoubleList}
      */
     DoubleList plus(double val);
 }
