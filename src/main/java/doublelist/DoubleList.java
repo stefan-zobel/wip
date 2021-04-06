@@ -330,6 +330,21 @@ public interface DoubleList {
     Spliterator.OfDouble spliterator();
 
     /**
+     * Returns the offset of this list.
+     * 
+     * @return the offset of this list
+     */
+    int offset();
+
+    /**
+     * Returns the underlying as an escape hatch. Note that the underlying array
+     * may be the root array in the case of SubLists.
+     * 
+     * @return the underlying array
+     */
+    double[] getArrayUnsafe();
+
+    /**
      * Assign the constant {@code val} to each element in this list.
      * 
      * @param val
@@ -377,4 +392,24 @@ public interface DoubleList {
      * @return the new value of the element after multiplication
      */
     double muli(int index, double val);
+
+    /**
+     * Computes the dot product of this list and the given {@code list}.
+     * 
+     * @param list
+     *            a DoubleList which must have the same {@link #size()} as this
+     *            list
+     * @return the dot product of this list and and the given {@code list}
+     */
+    double dot(DoubleList list);
+
+    /**
+     * Computes the dot product of this list and the given {@code array}.
+     * 
+     * @param array
+     *            an array which must have the same length as this list's
+     *            {@link #size()}
+     * @return the dot product of this list and and the given {@code array}.
+     */
+    double dot(double[] array);
 }

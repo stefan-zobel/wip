@@ -1445,6 +1445,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         @Override
+        public int offset() {
+            return offset;
+        }
+
+        @Override
+        public double[] getArrayUnsafe() {
+            return root.getArrayUnsafe();
+        }
+
+        @Override
         public DoubleList assignConst(double val) {
             final int start = offset;
             final int end = start + size;
@@ -1489,6 +1499,30 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             checkIndex(index, size);
             final double[] es = root.elementData;
             return (es[offset + index] *= val);
+        }
+
+        @Override
+        public double dot(DoubleList list) {
+            if (size != Objects.requireNonNull(list, "list").size()) {
+                throw new IllegalArgumentException("incommensurate vector dimensions");
+            }
+            return dot(size, offset, root.elementData, list.offset(), list.getArrayUnsafe());
+        }
+
+        @Override
+        public double dot(double[] array) {
+            if (size != Objects.requireNonNull(array, "array").length) {
+                throw new IllegalArgumentException("incommensurate vector dimensions");
+            }
+            return dot(size, offset, root.elementData, 0, array);
+        }
+
+        private static double dot(int length, int aoff, double[] a, int boff, double[] b) {
+            double product = 0.0;
+            for (int i = 0; i < length; ++i) {
+                product += a[aoff + i] * b[boff + i];
+            }
+            return product;
         }
 
         @Override
@@ -1620,6 +1654,16 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     }
 
     @Override
+    public int offset() {
+        return 0;
+    }
+
+    @Override
+    public double[] getArrayUnsafe() {
+        return elementData;
+    }
+
+    @Override
     public DoubleList assignConst(double val) {
         final int expectedModCount = modCount;
         Arrays.fill(elementData, 0, size, val);
@@ -1669,6 +1713,30 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         checkIndex(index, size);
         final double[] es = elementData;
         return (es[index] *= val);
+    }
+
+    @Override
+    public double dot(DoubleList list) {
+        if (size != Objects.requireNonNull(list, "list").size()) {
+            throw new IllegalArgumentException("incommensurate vector dimensions");
+        }
+        return dot(size, elementData, list.getArrayUnsafe());
+    }
+
+    @Override
+    public double dot(double[] array) {
+        if (size != Objects.requireNonNull(array, "array").length) {
+            throw new IllegalArgumentException("incommensurate vector dimensions");
+        }
+        return dot(size, elementData, array);
+    }
+
+    private static double dot(int length, double[] a, double[] b) {
+        double product = 0.0;
+        for (int i = 0; i < length; ++i) {
+            product += a[i] * b[i];
+        }
+        return product;
     }
 
     @Override
