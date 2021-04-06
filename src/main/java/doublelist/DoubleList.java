@@ -366,4 +366,15 @@ public interface DoubleList {
      * @return the new value of the element after addition
      */
     double plusi(int index, double val);
+
+    /**
+     * Multiply the element at {@code index} by the scalar {@code val}.
+     * 
+     * @param index
+     *            index of the element to multiply by {@code val}
+     * @param val
+     *            the scalar to multiply by
+     * @return the new value of the element after multiplication
+     */
+    double muli(int index, double val);
 }

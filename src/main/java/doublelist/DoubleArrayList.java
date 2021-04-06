@@ -1485,6 +1485,13 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         @Override
+        public double muli(int index, double val) {
+            checkIndex(index, size);
+            final double[] es = root.elementData;
+            return (es[offset + index] *= val);
+        }
+
+        @Override
         public String toString()  {
             StringBuilder buf = new StringBuilder();
             final double[] es = root.elementData;
@@ -1655,6 +1662,13 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         checkIndex(index, size);
         final double[] es = elementData;
         return (es[index] += val);
+    }
+
+    @Override
+    public double muli(int index, double val) {
+        checkIndex(index, size);
+        final double[] es = elementData;
+        return (es[index] *= val);
     }
 
     @Override
