@@ -320,4 +320,11 @@ public interface DoubleList {
      * @return this {@code DoubleList}
      */
     DoubleList plus(double val);
+
+    /**
+     * Multiply each element in this list by the scalar {@code val}.
+     * @param val the scalar to multiply by
+     * @return this {@code DoubleList}
+     */
+    DoubleList mul(double val);
 }

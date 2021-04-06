@@ -1440,6 +1440,18 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             checkForComodification();
             return this;
         }
+
+        @Override
+        public DoubleList mul(double val) {
+            final double[] es = root.elementData;
+            final int start = offset;
+            final int end = start + size;
+            for (int i = start; i < end; ++i) {
+                es[i] *= val;
+            }
+            checkForComodification();
+            return this;
+        }
     }
 
     /**
@@ -1561,6 +1573,20 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         final int end = size;
         for (int i = 0; i < end; ++i) {
             es[i] += val;
+        }
+        if (modCount == expectedModCount) {
+        	return this;
+        }
+        throw new ConcurrentModificationException();
+    }
+
+    @Override
+    public DoubleList mul(double val) {
+    	final int expectedModCount = modCount;
+        final double[] es = elementData;
+        final int end = size;
+        for (int i = 0; i < end; ++i) {
+            es[i] *= val;
         }
         if (modCount == expectedModCount) {
         	return this;
