@@ -1720,7 +1720,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         if (size != Objects.requireNonNull(list, "list").size()) {
             throw new IllegalArgumentException("incommensurate vector dimensions");
         }
-        return dot(size, elementData, list.getArrayUnsafe());
+        return dot(size, elementData, list.offset(), list.getArrayUnsafe());
     }
 
     @Override
@@ -1728,13 +1728,13 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         if (size != Objects.requireNonNull(array, "array").length) {
             throw new IllegalArgumentException("incommensurate vector dimensions");
         }
-        return dot(size, elementData, array);
+        return dot(size, elementData, 0, array);
     }
 
-    private static double dot(int length, double[] a, double[] b) {
+    private static double dot(int length, double[] a, int boff, double[] b) {
         double product = 0.0;
         for (int i = 0; i < length; ++i) {
-            product += a[i] * b[i];
+            product += a[i] * b[boff + i];
         }
         return product;
     }
