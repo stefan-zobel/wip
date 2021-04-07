@@ -305,8 +305,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     }
 
     /**
-     * Returns a shallow copy of this {@code DoubleArrayList} instance. (The
-     * elements themselves are not copied.)
+     * Returns a deep copy of this {@code DoubleArrayList} instance.
      *
      * @return a clone of this {@code DoubleArrayList} instance
      */
