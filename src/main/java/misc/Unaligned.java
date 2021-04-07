@@ -16,9 +16,10 @@ public final class Unaligned {
      * null) from the memory address whose numerical value is the
      * given offset.  <p>
      *
-     * The specification of this method is the same as {@link
-     * #getLong(Object, long)} except that the offset does not need to
-     * have been obtained from {@link #objectFieldOffset} on the
+     * The specification of this method is the same as {@code
+     * sun.misc.Unsafe.getLong(Object, long)} except that the offset
+     * does not need to have been obtained from
+     * {@code sun.misc.Unsafe.objectFieldOffset()} on the
      * {@link java.lang.reflect.Field} of some Java field.  The value
      * in memory is raw data, and need not correspond to any Java
      * variable.  Unless <code>o</code> is null, the value accessed
@@ -133,9 +134,10 @@ public final class Unaligned {
     /**
      * Stores a value at some byte offset into a given Java object.
      * <p>
-     * The specification of this method is the same as {@link
-     * #getLong(Object, long)} except that the offset does not need to
-     * have been obtained from {@link #objectFieldOffset} on the
+     * The specification of this method is the same as {@code
+     * sun.misc.Unsafe.getLong(Object, long)} except that the offset does
+     * not need to have been obtained from
+     * {@code sun.misc.Unsafe.objectFieldOffset()} on the
      * {@link java.lang.reflect.Field} of some Java field.  The value
      * in memory is raw data, and need not correspond to any Java
      * variable.  The endianness of the value in memory is the
