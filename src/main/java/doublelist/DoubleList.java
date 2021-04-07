@@ -22,6 +22,8 @@ import java.util.function.DoubleConsumer;
 import java.util.stream.DoubleStream;
 import java.util.stream.StreamSupport;
 
+import math.fun.DForEachIterator;
+
 public interface DoubleList {
 
     default DoubleStream stream() {

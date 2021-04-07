@@ -23,6 +23,8 @@ import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.DoubleConsumer;
 
+import math.fun.DForEachIterator;
+
 /**
  * Resizable primitive double[] array implementation. This is essentially a
  * shameless stripped-down copy of {@link ArrayList} specialized for primitive

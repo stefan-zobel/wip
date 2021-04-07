@@ -15,6 +15,8 @@
  */
 package doublelist;
 
+import math.fun.DForEachIterator;
+
 public interface DListIterator extends DForEachIterator {
 
     boolean hasPrevious();
