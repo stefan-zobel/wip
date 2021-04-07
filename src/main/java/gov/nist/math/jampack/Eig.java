@@ -17,11 +17,11 @@ package gov.nist.math.jampack;
  * Eig implements the eigenvalue-vector decomposition of a square matrix.
  * Specifically given a diagonalizable matrix A, there is a non-singular matrix
  * X such that
- * 
- * <pre>
+ * <p>
+ * <code>
  *      D = X<sup>-1</sup> AX
- * </pre>
- * 
+ * </code>
+ * <p>
  * is diagonal. The columns of X are eigenvectors of A corresponding to the
  * diagonal elements of D. Eig implements X as a Zmat and D as a Zdiagmat.
  * <p>

@@ -34,7 +34,7 @@ public final class Z1 {
      * @param n
      *            a positive integer
      * @throws    ZException
-     *                Thrown if n<=0.
+     *                Thrown if n &lt;= 0.
      */
     public Z1(int n) throws ZException {
         if (n <= 0) {

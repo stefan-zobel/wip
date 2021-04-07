@@ -82,8 +82,8 @@ public final class Zdiagmat {
      * @param A
      *            The Zmat
      * @param k
-     *            The diagonal. For k=0 gives the princpal diagonal; k>0, the
-     *            kth superdiagonal; k<0, the kth subdiagonal.
+     *            The diagonal. For k = 0 gives the princpal diagonal; k &gt; 0, the
+     *            kth superdiagonal; k &lt; 0, the kth subdiagonal.
      * @throws    ZException
      *                Thrown for k to large or small.
      */
