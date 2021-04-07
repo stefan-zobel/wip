@@ -1561,7 +1561,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
         private static void muln(int length, int aoff, double[] a, int boff, double[] b) {
             for (int i = 0; i < length; ++i) {
-                a[aoff + i] += b[boff + i];
+                a[aoff + i] *= b[boff + i];
             }
         }
 
