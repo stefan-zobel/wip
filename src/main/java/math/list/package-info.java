@@ -16,4 +16,4 @@
 /**
  * Resizable primitive double[] array implementation.
  */
-package doublelist;
+package math.list;
