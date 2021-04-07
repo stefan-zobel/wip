@@ -54,6 +54,10 @@ public final class BetaFun {
      *                            -
      *                           | (alpha+beta)
      * </pre>
+     * 
+     * @param alpha the alpha parameter
+     * @param beta the beta parameter
+     * @return the value of the beta function
      */
     public static double beta(final double alpha, final double beta) {
         double y = alpha + beta;
@@ -75,6 +79,10 @@ public final class BetaFun {
 
     /**
      * Returns the natural logarithm of the beta function.
+     * 
+     * @param alpha the alpha parameter
+     * @param beta the beta parameter
+     * @return the value of the natural log of the beta function
      */
     public static double lnBeta(final double alpha, final double beta) {
         return GammaFun.lnGamma(alpha) + GammaFun.lnGamma(beta)
@@ -90,6 +98,10 @@ public final class BetaFun {
      *            the beta parameter of the beta distribution.
      * @param x
      *            the integration end point.
+     * @param alpha the alpha parameter
+     * @param beta the beta parameter
+     * @param x the upper integration bound
+     * @return the value of the incomplete beta function
      */
     public static double incompleteBeta(final double alpha, final double beta,
             final double x) {
@@ -207,6 +219,10 @@ public final class BetaFun {
      * Power series for incomplete beta integral.
      * <p/>
      * Use when b*x is small and x not too close to 1.
+     * 
+     * @param a the a parameter
+     * @param b the b parameter
+     * @return the value of the power series
      */
     private static double powerSeries(final double a, final double b,
             final double x) {

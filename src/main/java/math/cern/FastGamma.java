@@ -47,6 +47,9 @@ public final class FastGamma {
 
     /**
      * Returns a quick approximation of the gamma function <tt>gamma(x)</tt>.
+     * 
+     * @param x the value
+     * @return gamma(x)
      */
     public static double gamma(final double x) {
         return Math.exp(logGamma(x));
@@ -54,6 +57,9 @@ public final class FastGamma {
 
     /**
      * Returns a quick approximation of <tt>log(gamma(x))</tt>.
+     * 
+     * @param x the value
+     * @return log(gamma(x))
      */
     public static double logGamma(double x) {
         if (x <= 0.0 /* || x > 1.3e19 */) {
