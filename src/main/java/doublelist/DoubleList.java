@@ -412,4 +412,28 @@ public interface DoubleList {
      * @return the dot product of this list and and the given {@code array}.
      */
     double dot(double[] array);
+
+    /**
+     * Add the scalars from the given {@code list} to the elements in this list.
+     * Note that {@code list} doesn't have to have the same {@link #size()} as
+     * this list as the minimum of both list sizes is used to determine the
+     * number of scalars to add.
+     * 
+     * @param list
+     *            a DoubleList of scalars to add to this list
+     * @return this {@code DoubleList}
+     */
+    DoubleList plusn(DoubleList list);
+
+    /**
+     * Add the scalars from the given {@code array} to the elements in this
+     * list. Note that {@code array} doesn't have to have the same length as
+     * this list as the minimum of both lengths is used to determine the number
+     * of scalars to add.
+     * 
+     * @param array
+     *            an array of scalars to add to this list
+     * @return this {@code DoubleList}
+     */
+    DoubleList plusn(double[] array);
 }

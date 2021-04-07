@@ -1526,6 +1526,26 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         @Override
+        public DoubleList plusn(DoubleList list) {
+            int length = Math.min(size, Objects.requireNonNull(list, "list").size());
+            plusn(length, offset, root.elementData, list.offset(), list.getArrayUnsafe());
+            return this;
+        }
+
+        @Override
+        public DoubleList plusn(double[] array) {
+            int length = Math.min(size, Objects.requireNonNull(array, "array").length);
+            plusn(length, offset, root.elementData, 0, array);
+            return this;
+        }
+
+        private static void plusn(int length, int aoff, double[] a, int boff, double[] b) {
+            for (int i = 0; i < length; ++i) {
+                a[aoff + i] += b[boff + i];
+            }
+        }
+
+        @Override
         public String toString()  {
             StringBuilder buf = new StringBuilder();
             final double[] es = root.elementData;
@@ -1737,6 +1757,26 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             product += a[i] * b[boff + i];
         }
         return product;
+    }
+
+    @Override
+    public DoubleList plusn(DoubleList list) {
+        int length = Math.min(size, Objects.requireNonNull(list, "list").size());
+        plusn(length, elementData, list.offset(), list.getArrayUnsafe());
+        return this;
+    }
+
+    @Override
+    public DoubleList plusn(double[] array) {
+        int length = Math.min(size, Objects.requireNonNull(array, "array").length);
+        plusn(length, elementData, 0, array);
+        return this;
+    }
+
+    private static void plusn(int length, double[] a, int boff, double[] b) {
+        for (int i = 0; i < length; ++i) {
+            a[i] += b[boff + i];
+        }
     }
 
     @Override
