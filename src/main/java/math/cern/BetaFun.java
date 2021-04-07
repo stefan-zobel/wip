@@ -98,9 +98,6 @@ public final class BetaFun {
      *            the beta parameter of the beta distribution.
      * @param x
      *            the integration end point.
-     * @param alpha the alpha parameter
-     * @param beta the beta parameter
-     * @param x the upper integration bound
      * @return the value of the incomplete beta function
      */
     public static double incompleteBeta(final double alpha, final double beta,
