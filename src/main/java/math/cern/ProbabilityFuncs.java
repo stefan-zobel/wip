@@ -148,6 +148,10 @@ public final class ProbabilityFuncs {
      * 
      * <tt>1 - P(1-x)  =  Gamma.incompleteBeta( b, a, x )</tt>;
      * 
+     * @param a parameter a
+     * @param b parameter b
+     * @param x the value
+     * @return the value for x
      */
     public static double beta(final double a, final double b, final double x) {
         return BetaFun.incompleteBeta(a, b, x);
@@ -159,6 +163,11 @@ public final class ProbabilityFuncs {
      * 
      * This function is identical to the incomplete beta integral function
      * <tt>Gamma.incompleteBeta(b, a, x)</tt>.
+     * 
+     * @param a parameter a
+     * @param b parameter b
+     * @param x the value
+     * @return the value for x
      */
     public static double betaComplemented(final double a, final double b,
             final double x) {
@@ -172,7 +181,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *   k
      *   --  ( n )   j      n-j
-     *   >   (   )  p  (1-p)
+     *   &gt;   (   )  p  (1-p)
      *   --  ( j )
      *  j=0
      * </pre>
@@ -190,6 +199,7 @@ public final class ProbabilityFuncs {
      *            the number of trials.
      * @param p
      *            the probability of success (must be in <tt>(0.0,1.0)</tt>).
+     * @return the sum
      */
     public static double binomial(final int k, final int n, final double p) {
         if ((p < 0.0) || (p > 1.0)) {
@@ -215,7 +225,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *   n
      *   --  ( n )   j      n-j
-     *   >   (   )  p  (1-p)
+     *   &gt;   (   )  p  (1-p)
      *   --  ( j )
      *  j=k+1
      * </pre>
@@ -233,6 +243,7 @@ public final class ProbabilityFuncs {
      *            the number of trials.
      * @param p
      *            the probability of success (must be in <tt>(0.0,1.0)</tt>).
+     * @return the sum
      */
     public static double binomialComplemented(final int k, final int n,
             final double p) {
@@ -279,6 +290,7 @@ public final class ProbabilityFuncs {
      *            degrees of freedom.
      * @param x
      *            integration end point.
+     * @return the chi square value
      */
     public static double chiSquare(final double v, final double x) {
         if (x < 0.0 || v < 1.0) {
@@ -313,6 +325,8 @@ public final class ProbabilityFuncs {
      * 
      * @param v
      *            degrees of freedom.
+     * @param x the value
+     * @return the chi square complemented value
      */
     public static double chiSquareComplemented(final double v, final double x) {
         if (x < 0.0 || v < 1.0) {
@@ -336,6 +350,7 @@ public final class ProbabilityFuncs {
      * 
      * @param x
      *            the argument to the function.
+     * @return error function value for x
      */
     public static double errorFunction(final double x) {
         return erf_(x);
@@ -358,6 +373,7 @@ public final class ProbabilityFuncs {
      * 
      * @param x
      *            the argument to the function.
+     * @return error function complement for x
      */
     public static double errorFunctionComplemented(final double x) {
         return erfc_(x);
@@ -390,6 +406,7 @@ public final class ProbabilityFuncs {
      *            the rate parameter of the gamma distribution.
      * @param x
      *            integration end point.
+     * @return gamma function probability for x
      */
     public static double gamma(double alpha, double beta, double x) {
         if (x < 0.0) {
@@ -422,6 +439,7 @@ public final class ProbabilityFuncs {
      *            the paramater b (beta, lambda) of the gamma distribution.
      * @param x
      *            integration end point.
+     * @return gamma complemented for x
      */
     public static double gammaComplemented(final double a, final double b,
             final double x) {
@@ -438,7 +456,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *   k
      *   --  ( n+j-1 )   n      j
-     *   >   (       )  p  (1-p)
+     *   &gt;   (       )  p  (1-p)
      *   --  (   j   )
      *  j=0
      * </pre>
@@ -458,6 +476,7 @@ public final class ProbabilityFuncs {
      *            the number of trials.
      * @param p
      *            the probability of success (must be in <tt>(0.0,1.0)</tt>).
+     * @return the negative binomial
      */
     public static double negativeBinomial(final int k, final int n,
             final double p) {
@@ -477,7 +496,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *   inf
      *   --  ( n+j-1 )   n      j
-     *   >   (       )  p  (1-p)
+     *   &gt;   (       )  p  (1-p)
      *   --  (   j   )
      *  j=k+1
      * </pre>
@@ -496,6 +515,7 @@ public final class ProbabilityFuncs {
      *            the number of trials.
      * @param p
      *            the probability of success (must be in <tt>(0.0,1.0)</tt>).
+     * @return the negative binomial complement
      */
     public static double negativeBinomialComplemented(final int k, final int n,
             final double p) {
@@ -528,6 +548,9 @@ public final class ProbabilityFuncs {
      * 
      * where <tt>z = x/sqrt(2)</tt>. Computation is via the functions
      * <tt>errorFunction</tt> and <tt>errorFunctionComplement</tt>.
+     * 
+     * @param a the value 
+     * @return normal probability for the value
      */
     public static double normal(final double a) {
         final double x = a * SQRT_TWO_HALF;
@@ -568,6 +591,7 @@ public final class ProbabilityFuncs {
      *            the variance of the normal distribution.
      * @param x
      *            the integration limit.
+     * @return the normal probability for the integration limit
      */
     public static double normal(final double mean, final double variance,
             final double x) {
@@ -692,14 +716,17 @@ public final class ProbabilityFuncs {
      * (Gaussian) probability density function (integrated from minus infinity
      * to <tt>x</tt>) is equal to the argument <tt>y</tt> (assumes mean is zero,
      * variance is one).
-     * <p/>
-     * For small arguments <tt>0 < y < exp(-2)</tt>, the program computes
+     * <p>
+     * For small arguments <tt>0 &lt; y &lt; exp(-2)</tt>, the program computes
      * <tt>z = sqrt(-2.0 * log(y))</tt>; then the approximation is
      * <tt>x = z - log(z)/z  - (1/z) P(1/z) / Q(1/z)</tt>. There are two
-     * rational functions P/Q, one for <tt>0 < y < exp(-32)</tt> and the other
+     * rational functions P/Q, one for <tt>0 &lt; y &lt; exp(-32)</tt> and the other
      * for <tt>y</tt> up to <tt>exp(-2)</tt>. For larger arguments,
      * <tt>w = y - 0.5</tt>, and
      * <tt>x/sqrt(2pi) = w + w**3 R(w**2)/S(w**2))</tt>.
+     * 
+     * @param y the value
+     * @return normal inverse for the value
      */
     public static double normalInverse(final double y) {
         if (y <= 0.0) {
@@ -753,7 +780,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *   k         j
      *   --   -m  m
-     *   >   e    --
+     *   &gt;   e    --
      *   --       j!
      *  j=0
      * </pre>
@@ -769,6 +796,7 @@ public final class ProbabilityFuncs {
      *            number of terms.
      * @param mean
      *            the mean of the Poisson distribution.
+     * @return sum for the Poisson distribution
      */
     public static double poisson(final int k, final double mean) {
         if (mean < 0) {
@@ -787,7 +815,7 @@ public final class ProbabilityFuncs {
      * <pre>
      *  inf.       j
      *   --   -m  m
-     *   >   e    --
+     *   &gt;   e    --
      *   --       j!
      *  j=k+1
      * </pre>
@@ -802,6 +830,7 @@ public final class ProbabilityFuncs {
      *            start term.
      * @param mean
      *            the mean of the Poisson distribution.
+     * @return sum of the Poisson distribution
      */
     public static double poissonComplemented(final int k, final double mean) {
         if (mean < 0) {
@@ -844,6 +873,7 @@ public final class ProbabilityFuncs {
      *            degrees of freedom.
      * @param t
      *            integration end point.
+     * @return the integral for the StudentT distribution
      */
     public static double studentT(final double k, final double t) {
         if (k <= 0.0) {
@@ -868,7 +898,7 @@ public final class ProbabilityFuncs {
      * <tt>t</tt>) is equal to <tt>1 - alpha/2</tt>. The value returned
      * corresponds to usual Student t-distribution lookup table for
      * <tt>t<sub>alpha[size]</sub></tt>.
-     * <p/>
+     * <p>
      * The function uses the studentT function to determine the return value
      * iteratively.
      * 
@@ -876,6 +906,7 @@ public final class ProbabilityFuncs {
      *            probability
      * @param size
      *            size of data set
+     * @return the StudentT inverse
      */
     public static double studentTInverse(final double alpha, final int size) {
         final double cumProb = 1 - alpha / 2; // Cumulative probability
