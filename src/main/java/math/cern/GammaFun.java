@@ -105,6 +105,9 @@ public final class GammaFun {
 
     /**
      * Returns the Gamma function of the argument.
+     * 
+     * @param x x value
+     * @return gamma(x)
      */
     public static double gamma(double x) {
         double q = Math.abs(x);
@@ -174,6 +177,9 @@ public final class GammaFun {
 
     /**
      * Returns the natural logarithm of the gamma function.
+     * 
+     * @param x x value
+     * @return ln(gamma(x))
      */
     public static double lnGamma(double x) {
         double p;
@@ -250,6 +256,7 @@ public final class GammaFun {
      *            the parameter of the gamma distribution.
      * @param x
      *            the integration end point.
+     * @return the incomplete gamma of x
      */
     public static double incompleteGamma(final double a, final double x) {
         if (x <= 0 || a <= 0) {
@@ -287,6 +294,7 @@ public final class GammaFun {
      *            the parameter of the gamma distribution.
      * @param x
      *            the integration start point.
+     * @return the complemented incomplete gamma of x
      */
     public static double incompleteGammaComplement(final double a,
             final double x) {
@@ -368,6 +376,9 @@ public final class GammaFun {
     /**
      * Returns the value of the logarithmic derivative of the Gamma
      * function {@code psi(x) = Gamma’(x) / Gamma(x)}.
+     * 
+     * @param x x value
+     * @return digamma(x)
      */
     public static double digamma(double x) {
         if (Double.isNaN(x)) {
@@ -402,6 +413,9 @@ public final class GammaFun {
      * Returns the value of the trigamma function {@code d(psi(x))/dx}, the
      * derivative of the {@link #digamma(double)} function, evaluated at
      * {@code x}.
+     * 
+     * @param x x value
+     * @return trigamma(x)
      */
     public static double trigamma(double x) {
         if (Double.isNaN(x)) {
