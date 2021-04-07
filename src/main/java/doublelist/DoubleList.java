@@ -436,4 +436,29 @@ public interface DoubleList {
      * @return this {@code DoubleList}
      */
     DoubleList plusn(double[] array);
+
+    /**
+     * Multiplies the scalars from this list by the scalars from the given
+     * {@code list}. Note that {@code list} doesn't have to have the same
+     * {@link #size()} as this list as the minimum of both list sizes is used to
+     * determine the number of scalars to multiply.
+     * 
+     * @param list
+     *            a DoubleList of scalars to multiply by the elements in this
+     *            list
+     * @return this {@code DoubleList}
+     */
+    DoubleList muln(DoubleList list);
+
+    /**
+     * Multiplies the scalars from this list by the scalars from the given
+     * {@code array}. Note that {@code array} doesn't have to have the same
+     * length as this list as the minimum of both lengths is used to determine
+     * the number of scalars to multiply.
+     * 
+     * @param array
+     *            an array of scalars to multiply by the elements in this list
+     * @return this {@code DoubleList}
+     */
+    DoubleList muln(double[] array);
 }

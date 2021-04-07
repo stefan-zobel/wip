@@ -1546,6 +1546,26 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         @Override
+        public DoubleList muln(DoubleList list) {
+            int length = Math.min(size, Objects.requireNonNull(list, "list").size());
+            muln(length, offset, root.elementData, list.offset(), list.getArrayUnsafe());
+            return this;
+        }
+
+        @Override
+        public DoubleList muln(double[] array) {
+            int length = Math.min(size, Objects.requireNonNull(array, "array").length);
+            muln(length, offset, root.elementData, 0, array);
+            return this;
+        }
+
+        private static void muln(int length, int aoff, double[] a, int boff, double[] b) {
+            for (int i = 0; i < length; ++i) {
+                a[aoff + i] += b[boff + i];
+            }
+        }
+
+        @Override
         public String toString()  {
             StringBuilder buf = new StringBuilder();
             final double[] es = root.elementData;
@@ -1776,6 +1796,26 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     private static void plusn(int length, double[] a, int boff, double[] b) {
         for (int i = 0; i < length; ++i) {
             a[i] += b[boff + i];
+        }
+    }
+
+    @Override
+    public DoubleList muln(DoubleList list) {
+        int length = Math.min(size, Objects.requireNonNull(list, "list").size());
+        muln(length, elementData, list.offset(), list.getArrayUnsafe());
+        return this;
+    }
+
+    @Override
+    public DoubleList muln(double[] array) {
+        int length = Math.min(size, Objects.requireNonNull(array, "array").length);
+        muln(length, elementData, 0, array);
+        return this;
+    }
+
+    private static void muln(int length, double[] a, int boff, double[] b) {
+        for (int i = 0; i < length; ++i) {
+            a[i] *= b[boff + i];
         }
     }
 
