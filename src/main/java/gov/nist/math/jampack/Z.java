@@ -161,6 +161,9 @@ public final class Z {
 
     /**
      * Computes the 1-norm of a Z
+     * 
+     * @param z a complex number
+     * @return the 1-norm
      */
     public static double abs1(Z z) {
         return Math.abs(z.re) + Math.abs(z.im);
@@ -327,6 +330,7 @@ public final class Z {
      * Computes the principal value of the square root of a Z.
      * 
      * @param a a Z
+     * @return principal value of the square root of z
      */
     public Z sqrt(Z a) {
         double t, tre, tim;
