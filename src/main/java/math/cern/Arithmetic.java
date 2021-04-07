@@ -329,16 +329,18 @@ public final class Arithmetic {
     /**
      * Efficiently returns the binomial coefficient, often also referred to as
      * "n over k" or "n choose k".
-     * <p/>
+     * <p>
      * The binomial coefficient is defined as
      * <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )</tt>.
      * <ul>
-     * <li>k<0<tt>: <tt>0</tt>.
-     * <li>k==0<tt>: <tt>1</tt>.
-     * <li>k==1<tt>: <tt>n</tt>.
-     * <li>else: <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )</tt>.
+     * <li>k &lt; 0{@code : 0}.
+     * <li>k==0{@code : 1}.
+     * <li>k==1{@code : n}.
+     * <li>else: {@code (n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )}.
      * </ul>
      * 
+     * @param n the n in "n choose k"
+     * @param k the k in "n choose k"
      * @return the binomial coefficient.
      */
     public static double binomial(final double n, final long k) {
@@ -365,15 +367,17 @@ public final class Arithmetic {
     /**
      * Efficiently returns the binomial coefficient, often also referred to as
      * "n over k" or "n choose k".
-     * <p/>
+     * <p>
      * The binomial coefficient is defined as
      * <ul>
-     * <li>k<0<tt>: <tt>0</tt>.
-     * <li>k==0 || k==n<tt>: <tt>1</tt>.
-     * <li>k==1 || k==n-1<tt>: <tt>n</tt>.
-     * <li>else: <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )</tt>.
+     * <li>k &lt; 0{@code : 0}.
+     * <li>k==0 || k==n{@code : 1}.
+     * <li>k==1 || k==n-1{@code : n}.
+     * <li>else: {@code (n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )}.
      * </ul>
      * 
+     * @param n the n in "n choose k"
+     * @param k the k in "n choose k"
      * @return the binomial coefficient.
      */
     public static double binomial(final long n, long k) {
@@ -418,11 +422,14 @@ public final class Arithmetic {
 
     /**
      * Returns the smallest <code>long &gt;= value</code>.
-     * <p/>
-     * Examples: <code>1.0 -> 1, 1.2 -> 2, 1.9 -> 2</code>.
-     * <p/>
+     * <p>
+     * Examples: {@code 1.0 -> 1, 1.2 -> 2, 1.9 -> 2}.
+     * <p>
      * This method is safer than using (long) Math.ceil(value), because of
      * possible rounding error.
+     * 
+     * @param value the value
+     * @return ceil of the value
      */
     public static long ceil(final double value) {
         return Math.round(Math.ceil(value));
@@ -430,9 +437,9 @@ public final class Arithmetic {
 
     /**
      * Instantly returns the factorial <tt>k!</tt>.
-     * If {@code k >= 171} {@link Double#POSITIVE_INFINITY} is returned.
+     * If {@code k &gt;= 171} {@link Double#POSITIVE_INFINITY} is returned.
      * 
-     * @param k an integer >= 0
+     * @param k an integer &gt;= 0
      * @return the factorial of k
      */
     public static double factorial(final int k) {
@@ -450,16 +457,19 @@ public final class Arithmetic {
 
     /**
      * Returns the largest <code>long &lt;= value</code>.
-     * <p/>
+     * <p>
      * <b>Examples:</b>
      * 
      * <pre>
-     * 1.0 -> 1, 1.2 -> 1, 1.9 -> 1
-     * 2.0 -> 2, 2.2 -> 2, 2.9 -> 2
+     * 1.0 {@code ->} 1, 1.2 {@code ->} 1, 1.9 {@code ->} 1
+     * 2.0 {@code ->} 2, 2.2 {@code ->} 2, 2.9 {@code ->} 2
      * </pre>
      * 
      * This method is safer than using (long) Math.floor(value), because of
      * possible rounding error.
+     * 
+     * @param value the value
+     * @return floor of the value
      */
     public static long floor(final double value) {
         return Math.round(Math.floor(value));
@@ -467,6 +477,10 @@ public final class Arithmetic {
 
     /**
      * Returns <tt>log<sub>base</sub>(x)</tt>.
+     * 
+     * @param base the base
+     * @param x the value
+     * @return log of the value
      */
     public static double log(final double base, final double x) {
         return Math.log(x) / Math.log(base);
@@ -474,6 +488,9 @@ public final class Arithmetic {
 
     /**
      * Returns <tt>log<sub>2</sub>(x)</tt>.
+     * 
+     * @param x the value
+     * @return log2 of the value
      */
     public static double log2(final double x) {
         // 1.0 / Math.log(2) == 1.4426950408889634
@@ -482,12 +499,13 @@ public final class Arithmetic {
 
     /**
      * Returns <tt>log(k!)</tt>.
-     * <p/>
-     * Tries to avoid overflows. For <tt>k < 30</tt> simply looks up a table in
-     * O(1). For <tt>k >= 30</tt> uses Stirlings approximation.
+     * <p>
+     * Tries to avoid overflows. For <tt>k &lt; 30</tt> simply looks up a table in
+     * O(1). For <tt>k &gt;= 30</tt> uses Stirlings approximation.
      * 
      * @param k
      *            must hold <tt>k &gt;= 0</tt>.
+     * @return log factorial of k
      */
     public static double logFactorial(final int k) {
         if (k >= 30) {
@@ -503,7 +521,7 @@ public final class Arithmetic {
 
     /**
      * Returns the value of {@code n!/n^n}.
-     * @param n an integer >= 0
+     * @param n an integer &gt;= 0
      * @return the value of {@code n!/n^n}
      */
     public static double factoPow(int n) {
@@ -524,7 +542,8 @@ public final class Arithmetic {
      * Instantly returns the factorial <tt>k!</tt>.
      * 
      * @param k
-     *            must hold <tt>k &gt;= 0 && k &lt; 21</tt>.
+     *            must hold {@code k >= 0 && k < 21}.
+     * @return the factorial
      */
     public static long longFactorial(final int k) {
         if (k < 0) {
@@ -551,6 +570,9 @@ public final class Arithmetic {
      * log k! = (k + 1/2)log(k)     -  k      + (1/2)log(2Pi) +              
      *          stirlingCorrection(k)
      * </pre>
+     * 
+     * @param k the value
+     * @return Stirling correction for k
      */
     public static double stirlingCorrection(final int k) {
         if (k > 30) {
