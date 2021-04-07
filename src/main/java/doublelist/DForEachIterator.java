@@ -17,6 +17,7 @@ package doublelist;
 
 import java.util.Objects;
 import java.util.function.DoubleConsumer;
+import math.fun.DIterator;
 
 public interface DForEachIterator extends DIterator {
 
