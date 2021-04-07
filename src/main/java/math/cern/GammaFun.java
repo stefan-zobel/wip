@@ -23,7 +23,7 @@
  */
 package math.cern;
 
-import static math.fun.MathConsts.*;
+import static math.MathConsts.*;
 
 /**
  * This is a utility class that provides computation methods related to the

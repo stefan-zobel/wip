@@ -23,7 +23,7 @@
  */
 package math.cern;
 
-import static math.fun.MathConsts.*;
+import static math.MathConsts.*;
 
 /**
  * Custom tailored numerical integration of certain probability distributions.
