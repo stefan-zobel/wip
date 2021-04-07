@@ -60,6 +60,7 @@ public final class Polynomial {
      *            the coefficients of the polynomial
      * @param N
      *            the degree of the polynomial
+     * @return the value of the polynomial for x
      */
     public static double p1evl(final double x, final double coef[], final int N) {
 
@@ -95,6 +96,7 @@ public final class Polynomial {
      *            the coefficients of the polynomial
      * @param N
      *            the degree of the polynomial
+     * @return the value of the polynomial for x
      */
     public static double polevl(final double x, final double coef[], final int N) {
 
@@ -114,7 +116,7 @@ public final class Polynomial {
      * <pre>
      *        N-1
      *         - '
-     *  y  =   >   coef[i] T (x/2)
+     *  y  =   &gt;   coef[i] T (x/2)
      *         -            i
      *        i=0
      * </pre>
@@ -123,12 +125,12 @@ public final class Polynomial {
      * last in the array. Note: N is the number of coefficients, not the order.
      * <p>
      * If coefficients are for the interval a to b, x must have been transformed
-     * to x -> 2(2x - b - a)/(b-a) before entering the routine. This maps x from
+     * to {@code x -> 2(2x - b - a)/(b-a)} before entering the routine. This maps x from
      * (a, b) to (-1, 1), over which the Chebyshev polynomials are defined.
      * <p>
      * If the coefficients are for the inverted interval, in which (a, b) is
-     * mapped to (1/b, 1/a), the transformation required is x -> 2(2ab/x - b -
-     * a)/(b-a). If b is infinity, this becomes x -> 4a/x - 1.
+     * mapped to (1/b, 1/a), the transformation required is {@code x -> 2(2ab/x - b -
+     * a)/(b-a)}. If b is infinity, this becomes {@code x -> 4a/x - 1}.
      * <p>
      * SPEED:
      * <p>
@@ -142,6 +144,7 @@ public final class Polynomial {
      *            the coefficients of the polynomial
      * @param N
      *            the number of coefficients
+     * @return the value of the series for x
      */
     public static double chbevl(final double x, final double coef[], final int N) {
 
