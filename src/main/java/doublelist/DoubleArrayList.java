@@ -990,7 +990,6 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
             public void add(double e) {
                 checkForComodification();
-
                 try {
                     int i = cursor;
                     AbstractDoubleList.this.add(i, e);
@@ -1585,6 +1584,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void forEach(DoubleConsumer action) {
         Objects.requireNonNull(action);
         final int expectedModCount = modCount;
@@ -1685,6 +1685,10 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void sort() {
         final int expectedModCount = modCount;
         Arrays.sort(elementData, 0, size);
@@ -1694,16 +1698,25 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         modCount++;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int offset() {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double[] getArrayUnsafe() {
         return elementData;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList assignConst(double val) {
         final int expectedModCount = modCount;
@@ -1714,6 +1727,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         throw new ConcurrentModificationException();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList plus(double val) {
         final int expectedModCount = modCount;
@@ -1728,6 +1744,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         throw new ConcurrentModificationException();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList mul(double val) {
         final int expectedModCount = modCount;
@@ -1742,6 +1761,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         throw new ConcurrentModificationException();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double plusi(int index, double val) {
         checkIndex(index, size);
@@ -1749,6 +1771,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return (es[index] += val);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double muli(int index, double val) {
         checkIndex(index, size);
@@ -1756,6 +1781,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return (es[index] *= val);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double dot(DoubleList list) {
         if (size != Objects.requireNonNull(list, "list").size()) {
@@ -1764,6 +1792,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return dot(size, elementData, list.offset(), list.getArrayUnsafe());
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double dot(double[] array) {
         if (size != Objects.requireNonNull(array, "array").length) {
@@ -1780,6 +1811,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return product;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList plusn(DoubleList list) {
         int length = Math.min(size, Objects.requireNonNull(list, "list").size());
@@ -1787,6 +1821,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList plusn(double[] array) {
         int length = Math.min(size, Objects.requireNonNull(array, "array").length);
@@ -1800,6 +1837,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList muln(DoubleList list) {
         int length = Math.min(size, Objects.requireNonNull(list, "list").size());
@@ -1807,6 +1847,9 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         return this;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DoubleList muln(double[] array) {
         int length = Math.min(size, Objects.requireNonNull(array, "array").length);

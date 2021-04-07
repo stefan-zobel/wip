@@ -24,6 +24,9 @@ import java.util.stream.StreamSupport;
 
 import math.fun.DForEachIterator;
 
+/**
+ * A resizable primitive double[] array.
+ */
 public interface DoubleList {
 
     default DoubleStream stream() {
@@ -74,6 +77,15 @@ public interface DoubleList {
      */
     boolean contains(double o);
 
+    /**
+     * Returns {@code true} if this DoubleList contains all of the elements in
+     * the specified DoubleList.
+     *
+     * @param c
+     *            DoubleList to be checked for containment in this DoubleList
+     * @return {@code true} if this DoubleList contains all of the elements in
+     *         the specified DoubleList
+     */
     boolean containsAll(DoubleList c);
 
     /**
@@ -339,8 +351,8 @@ public interface DoubleList {
     int offset();
 
     /**
-     * Returns the underlying as an escape hatch. Note that the underlying array
-     * may be the root array in the case of SubLists.
+     * Returns the underlying array as an escape hatch. Note that the underlying
+     * array may be the root array in the case of SubLists.
      * 
      * @return the underlying array
      */
