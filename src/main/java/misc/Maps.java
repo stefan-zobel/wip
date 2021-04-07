@@ -542,17 +542,17 @@ public final class Maps {
     }
 
     /**
-     * Returns an unmodifiable {@link Entry} containing the given key and value.
-     * These entries are suitable for populating {@code Map} instances using the
-     * {@link Maps#ofEntries Maps.ofEntries()} method. The {@code Entry}
-     * instances created by this method have the following characteristics:
+     * Returns an unmodifiable {@link java.util.Map.Entry} containing the given
+     * key and value. These entries are suitable for populating {@code Map}
+     * instances using the {@link Maps#ofEntries Maps.ofEntries()} method.
+     * The {@code Entry} instances created by this method have the following
+     * characteristics:
      *
      * <ul>
      * <li>They disallow {@code null} keys and values. Attempts to create them
      * using a {@code null} key or value result in {@code NullPointerException}.
-     * <li>They are unmodifiable. Calls to {@link Map.Entry#setValue
-     * Entry.setValue()} on a returned {@code Entry} result in
-     * {@code UnsupportedOperationException}.
+     * <li>They are unmodifiable. Calls to {@link java.util.Map.Entry#setValue Entry.setValue()}
+     * on a returned {@code Entry} result in {@code UnsupportedOperationException}.
      * <li>They are not serializable.
      * <li>They are <a href=
      * "../lang/package-summary.html#Value-based-Classes">value-based</a>.
