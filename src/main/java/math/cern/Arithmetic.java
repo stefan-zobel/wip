@@ -437,7 +437,7 @@ public final class Arithmetic {
 
     /**
      * Instantly returns the factorial <tt>k!</tt>.
-     * If {@code k &gt;= 171} {@link Double#POSITIVE_INFINITY} is returned.
+     * If {@code k >= 171} {@link Double#POSITIVE_INFINITY} is returned.
      * 
      * @param k an integer &gt;= 0
      * @return the factorial of k
