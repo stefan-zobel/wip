@@ -28,7 +28,7 @@ import net.jamu.matrix.SvdEconComplexD;
  * Dynamic mode decomposition MATLAB code example presented on YouTube by
  * {@code Nathan Kutz} rewritten in Java.
  * 
- * @see https://www.youtube.com/watch?v=KAau5TBU0Sc
+ * @see "https://www.youtube.com/watch?v=KAau5TBU0Sc"
  */
 public class Example1 {
 
