@@ -278,7 +278,7 @@ public interface DoubleList {
      *
      * @return an iterator over the elements in this list in proper sequence
      */
-    DIterator iterator();
+    DForEachIterator iterator();
 
     /**
      * Returns a view of the portion of this list between the specified

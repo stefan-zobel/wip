@@ -15,17 +15,18 @@
  */
 package doublelist;
 
-public interface DListIterator extends DIterator {
+public interface DListIterator extends DForEachIterator {
 
-    public boolean hasPrevious();
+    boolean hasPrevious();
 
-    public double previous();
+    double previous();
 
-    public int nextIndex();
+    /** Note that indexes are 0-based */
+    int nextIndex();
 
-    public int previousIndex();
+    int previousIndex();
 
-    public void set(double e);
+    void set(double e);
 
-    public void add(double e);
+    void add(double e);
 }

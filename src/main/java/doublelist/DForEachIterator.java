@@ -15,9 +15,19 @@
  */
 package doublelist;
 
-public interface DIterator {
+import java.util.Objects;
+import java.util.function.DoubleConsumer;
 
-    boolean hasNext();
+public interface DForEachIterator extends DIterator {
 
-    double next();
+    default void remove() {
+        throw new UnsupportedOperationException("remove");
+    }
+
+    default void forEachRemaining(DoubleConsumer action) {
+        Objects.requireNonNull(action);
+        while (hasNext()) {
+            action.accept(next());
+        }
+    }
 }

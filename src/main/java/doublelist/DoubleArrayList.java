@@ -440,7 +440,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         if (to > es.length) {
             throw new ConcurrentModificationException();
         }
-        DIterator oit = other.iterator();
+        DForEachIterator oit = other.iterator();
         for (; from < to; from++) {
             if (!oit.hasNext() || es[from] != oit.next()) {
                 return false;
@@ -712,14 +712,14 @@ public class DoubleArrayList implements DoubleList, Cloneable {
      * {@inheritDoc}
      */
     @Override
-    public DIterator iterator() {
+    public DForEachIterator iterator() {
         return new Itr();
     }
 
     /**
      * An optimized version of AbstractDoubleList.Itr
      */
-    private class Itr implements DIterator {
+    private class Itr implements DForEachIterator {
         int cursor; // index of next element to return
         int lastRet = -1; // index of last element returned; -1 if no such
         int expectedModCount = modCount;
@@ -872,12 +872,12 @@ public class DoubleArrayList implements DoubleList, Cloneable {
 
         public abstract void add(int index, double element);
 
-        public abstract DIterator iterator();
+        public abstract DForEachIterator iterator();
 
         AbstractDoubleList() {
         }
 
-        private class Itr implements DIterator {
+        private class Itr implements DForEachIterator {
             /**
              * Index of element to be returned by subsequent call to next.
              */
@@ -1023,7 +1023,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         public boolean remove(double o) {
-            DIterator it = iterator();
+        	DForEachIterator it = iterator();
             while (it.hasNext()) {
                 if (o == it.next()) {
                     it.remove();
@@ -1214,7 +1214,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
             return indexOf(o) >= 0;
         }
 
-        public DIterator iterator() {
+        public DForEachIterator iterator() {
             return listIterator();
         }
 
