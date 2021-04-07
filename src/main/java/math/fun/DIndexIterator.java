@@ -15,9 +15,8 @@
  */
 package math.fun;
 
-public interface DIterator {
+public interface DIndexIterator extends DIterator {
 
-    public boolean hasNext();
-
-    public double next();
+    /** Note that indexes are 1-based! */
+    public int nextIndex();
 }

@@ -23,7 +23,7 @@ import math.fun.DConsumer;
 import math.fun.DForEach;
 import math.fun.DForEachBi;
 import math.fun.DFunction;
-import math.fun.DIterator;
+import math.fun.DIndexIterator;
 
 /**
  * Evenly spaced points between {@code start} and {@code end}. The spacing
@@ -97,7 +97,7 @@ public final class LinSpace {
         return stop;
     }
 
-    public DIterator iterator() {
+    public DIndexIterator iterator() {
         return new DblIt(numberOfPoints, start, stop, step());
     }
 
@@ -345,7 +345,7 @@ public final class LinSpace {
         }
     }
 
-    private static final class DblIt implements DIterator {
+    private static final class DblIt implements DIndexIterator {
         private int remaining;
         private double current;
         private final double last;

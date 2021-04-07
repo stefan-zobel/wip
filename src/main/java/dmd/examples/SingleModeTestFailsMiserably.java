@@ -16,7 +16,7 @@
 package dmd.examples;
 
 import math.coord.LinSpace;
-import math.fun.DIterator;
+import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;
 import net.jamu.matrix.Matrices;
@@ -106,10 +106,10 @@ public class SingleModeTestFailsMiserably {
         // build data 'measurements' matrix
         MatrixD X_ = Matrices.createD(xi.size(), time.size());
 
-        for (DIterator tIt = time.iterator(); tIt.hasNext(); /**/) {
+        for (DIndexIterator tIt = time.iterator(); tIt.hasNext(); /**/) {
             int colIdx = tIt.nextIndex() - 1;
             double t = tIt.next();
-            for (DIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
+            for (DIndexIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
                 int rowIdx = xIt.nextIndex() - 1;
                 Zd z = f(xIt.next(), t);
                 // copy only the real part

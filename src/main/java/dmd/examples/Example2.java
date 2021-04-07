@@ -16,7 +16,7 @@
 package dmd.examples;
 
 import math.coord.LinSpace;
-import math.fun.DIterator;
+import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;
 import net.jamu.matrix.ComplexMatrixD;
@@ -50,10 +50,10 @@ public class Example2 {
         // build data 'measurements' matrix
         MatrixD X_ = Matrices.createD(xi.size(), ti.size());
 
-        for (DIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
+        for (DIndexIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
             int colIdx = tIt.nextIndex() - 1;
             double t = tIt.next();
-            for (DIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
+            for (DIndexIterator xIt = xi.iterator(); xIt.hasNext(); /**/) {
                 int rowIdx = xIt.nextIndex() - 1;
                 Zd z = f(xIt.next(), t);
                 // copy only the real part
@@ -117,7 +117,7 @@ public class Example2 {
         // time dynamics matrix (e^omega*t)
         ComplexMatrixD time_dynamics = Matrices.createComplexD(rank, ti.size());
 
-        for (DIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
+        for (DIndexIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
             int colIdx = tIt.nextIndex() - 1;
             double t = tIt.next();
 
