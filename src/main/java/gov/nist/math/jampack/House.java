@@ -24,7 +24,7 @@ public final class House {
      * @param c
      *            The index of the generating column
      * @return A Z1 of length r2-r1+1 containing the Householder vector
-     * @exception ZException if anything goes wrong
+     * @throws    ZException if anything goes wrong
      */
     public static Z1 genc(Zmat A, int r1, int r2, int c) throws ZException {
         int i, ru;
@@ -97,7 +97,7 @@ public final class House {
      * @param c2
      *            The index of the column in which the generating row ends
      * @return A Z1 of length r2-r1+1 containing the Householder vector
-     * @exception ZException if anything goes wrong
+     * @throws    ZException if anything goes wrong
      */
     public static Z1 genr(Zmat A, int r, int c1, int c2) throws ZException {
         int j, cu;
@@ -179,7 +179,7 @@ public final class House {
      * @param v
      *            A work array of length at least c2-c1+1
      * @return The transformed Zmat A
-     * @exception ZException
+     * @throws    ZException
      *                Thrown if either u or v is too short.
      */
     public static Zmat ua(Z1 u, Zmat A, int r1, int r2, int c1, int c2, Z1 v) throws ZException {
@@ -250,7 +250,7 @@ public final class House {
      * @param v
      *            A work array of length at least c2-c1+1
      * @return The transformed Zmat A
-     * @exception ZException
+     * @throws    ZException
      *                Thrown if either u or v is too short.
      */
     public static Zmat au(Zmat A, Z1 u, int r1, int r2, int c1, int c2, Z1 v) throws ZException {

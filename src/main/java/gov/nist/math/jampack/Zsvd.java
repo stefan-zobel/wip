@@ -48,7 +48,7 @@ public final class Zsvd {
      * of iterations is exceeded.
      * 
      * @param XX a Zmat
-     * @exception ZException
+     * @throws   ZException
      *                Thrown if maximum number of iterations is exceeded.<br>
      *                Passed from below.
      */

@@ -71,7 +71,7 @@ public final class Zdiagmat {
      * @param k
      *            The diagonal. For k=0 gives the princpal diagonal; k>0, the
      *            kth superdiagonal; k<0, the kth subdiagonal.
-     * @exception ZException
+     * @throws    ZException
      *                Thrown for k to large or small.
      */
     public Zdiagmat(Zmat A, int k) throws ZException {
@@ -107,7 +107,7 @@ public final class Zdiagmat {
      * 
      * @param A
      *            a Zmat
-     * @exception ZException
+     * @throws    ZException
      *                Passed from below.
      */
     public Zdiagmat(Zmat A) throws ZException {

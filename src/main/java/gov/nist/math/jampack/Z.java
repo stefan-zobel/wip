@@ -271,7 +271,7 @@ public final class Z {
      * @param b
      *            a Z
      * @return this = a/b
-     * @exception ZException
+     * @throws ZException
      *                Thrown if b is zero.
      */
     public Z div(Z a, Z b) throws ZException {
@@ -298,7 +298,7 @@ public final class Z {
      * @param b
      *            a double
      * @return this = a/b
-     * @exception ZException
+     * @throws ZException
      *                Thrown if b is zero.
      */
     public Z div(Z a, double b) throws ZException {

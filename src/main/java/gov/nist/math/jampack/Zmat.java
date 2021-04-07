@@ -30,7 +30,7 @@ public final class Zmat {
      *            Contains the real part.
      * @param im
      *            Contains the imaginary part.
-     * @exception ZException
+     * @throws    ZException
      *                if the dimensions of re and im do not match
      */
     public Zmat(double[][] re, double[][] im) throws ZException {

@@ -20,7 +20,7 @@ public final class Z1 {
      * 
      * @param n
      *            a positive integer
-     * @exception ZException
+     * @throws    ZException
      *                Thrown if n<=0.
      */
     public Z1(int n) throws ZException {

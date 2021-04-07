@@ -31,7 +31,7 @@ public final class Eig {
      * 
      * @param A
      *            The matrix whose decomposition is to be computed
-     * @exception ZException
+     * @throws    ZException
      *                Thrown if A is not square.
      */
     public Eig(Zmat A) throws ZException {

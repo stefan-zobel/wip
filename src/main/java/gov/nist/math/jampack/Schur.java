@@ -29,7 +29,7 @@ public final class Schur {
      * 
      * @param A
      *            The Zmat whose Schur decomposition is to be computed
-     * @exception ZException
+     * @throws    ZException
      *                Thrown for non-quadratic matrix.<br>
      *                Thrown for maximum iteration count exceeded.
      */
@@ -156,7 +156,7 @@ public final class Schur {
          * @param A
          *            A Zmat
          * @return The Hessenberg form of A
-         * @exception ZException
+         * @throws ZException
          *                Thrown if A is not square.
          */
         Zhess(Zmat A) throws ZException {

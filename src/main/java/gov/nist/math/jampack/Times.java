@@ -37,7 +37,7 @@ public final class Times {
      * @param B
      *            The second Zmat
      * @return AB
-     * @exception ZException
+     * @throws    ZException
      *                for unconformity
      */
     public static Zmat o(Zmat A, Zmat B) throws ZException {
@@ -154,7 +154,7 @@ public final class Times {
      * @param D2
      *            The second Zdiagmat
      * @return D1*D2
-     * @exception ZException
+     * @throws    ZException
      *                for unconformity
      */
     public static Zdiagmat o(Zdiagmat D1, Zdiagmat D2) throws ZException {
@@ -181,7 +181,7 @@ public final class Times {
      * @param A
      *            The Zmat
      * @return DA
-     * @exception ZException
+     * @throws    ZException
      *                for unconformity
      */
     public static Zmat o(Zdiagmat D, Zmat A) throws ZException {
@@ -210,7 +210,7 @@ public final class Times {
      * @param D
      *            The Zdiagmat
      * @return AD
-     * @exception ZException
+     * @throws    ZException
      *                for unconformity
      */
     public static Zmat o(Zmat A, Zdiagmat D) throws ZException {
