@@ -1023,7 +1023,7 @@ public class DoubleArrayList implements DoubleList, Cloneable {
         }
 
         public boolean remove(double o) {
-        	DForEachIterator it = iterator();
+            DForEachIterator it = iterator();
             while (it.hasNext()) {
                 if (o == it.next()) {
                     it.remove();
