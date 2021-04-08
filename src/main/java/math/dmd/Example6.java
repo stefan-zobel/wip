@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd;
 
 import math.coord.LinSpace;
 import math.fun.DIndexIterator;

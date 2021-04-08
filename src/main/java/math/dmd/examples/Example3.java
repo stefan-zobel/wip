@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd.examples;
 
 import math.coord.LinSpace;
 import math.fun.DIndexIterator;
@@ -23,12 +23,13 @@ import net.jamu.matrix.ComplexMatrixD;
 import net.jamu.matrix.EvdComplexD;
 import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;
-import net.jamu.matrix.SvdEconComplexD;
+import net.jamu.matrix.SvdEconD;
 
 /**
- * A DMD example with complex-conjugate eigenvalues and real-valued data.
+ * Equivalent to example 2 but with the switch to the complex domain occurring
+ * later.
  */
-public class Example2 {
+public class Example3 {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -61,41 +62,44 @@ public class Example2 {
             }
         }
 
-        // create time snapshots from measurements matrix
+        // create first snapshot from measurements matrix
         MatrixD X1_ = X_.selectConsecutiveColumns(X_.startCol(), X_.endCol() - 1);
-        MatrixD X2_ = X_.selectConsecutiveColumns(X_.startCol() + 1, X_.endCol());
-
-        // copy snapshots into complex matrices
-        // (from here on everything is done in the complex domain)
-        ComplexMatrixD X1 = Matrices.convertToComplex(X1_);
-        ComplexMatrixD X2 = Matrices.convertToComplex(X2_);
-        ComplexMatrixD X = Matrices.convertToComplex(X_);
 
         // step 1 of exact DMD algorithm
-        SvdEconComplexD svd = X1.svdEcon();
+        SvdEconD svd = X1_.svdEcon();
 
-        ComplexMatrixD U = svd.getU();
-        ComplexMatrixD Vh = svd.getVh();
+        MatrixD U = svd.getU();
+        MatrixD Vt = svd.getVt();
         double[] S = svd.getS();
 
         // pull out low-dimensional subspace
-        ComplexMatrixD Sr = Matrices.createComplexD(rank, rank);
+        MatrixD Sr = Matrices.createD(rank, rank);
         for (int i = Sr.startRow(); i <= Sr.endRow(); ++i) {
-            Sr.set(i, i, S[i], 0.0);
+            Sr.set(i, i, S[i]);
         }
 
-        ComplexMatrixD Ur = U.selectConsecutiveColumns(U.startCol(), rank - 1);
-        ComplexMatrixD Vr = Vh.conjugateTranspose().selectConsecutiveColumns(Vh.startCol(), rank - 1);
+        MatrixD Ur = U.selectConsecutiveColumns(U.startCol(), rank - 1);
+        MatrixD Vr = Vt.transpose().selectConsecutiveColumns(Vt.startCol(), rank - 1);
+
+        // create the second time-shifted snapshot
+        MatrixD X2_ = X_.selectConsecutiveColumns(X_.startCol() + 1, X_.endCol());
 
         // step 2: similarity-transform in the low-rank subspace
         // (ATilde takes us from one snapshot to the next in the low-rank
         // subspace)
-        ComplexMatrixD ATilde = Ur.conjugateTranspose().times(X2).times(Vr).times(Sr.inverse());
+        MatrixD ATilde_ = Ur.transpose().times(X2_).times(Vr).times(Sr.inverse());
+
+        // copy the real ATilde_ into the complex matrix ATilde
+        // (from here on everything is done in the complex domain)
+        ComplexMatrixD ATilde = ATilde_.toComplexMatrix();
 
         // step 3: compute the 'rank' eigenvalues / eigenvectors in the subspace
         EvdComplexD evd = ATilde.evd(true);
         ComplexMatrixD W = evd.getEigenvectors();
         Zd[] D = evd.getEigenvalues();
+
+        // copy the second snapshot into complex matrix
+        ComplexMatrixD X2 = Matrices.convertToComplex(X2_);
 
         // step 4: get back into high-dimensional space
         // Phi contains the modes of the fitted linear system
@@ -109,6 +113,9 @@ public class Example2 {
             z.ln().scale(1.0 / dt);
             omega.set(i, i, z.re(), z.im());
         }
+
+        // convert measurements data to complex matrix
+        ComplexMatrixD X = Matrices.convertToComplex(X_);
 
         // b = initial condition at time 0
         ComplexMatrixD x1 = X.selectConsecutiveColumns(X.startCol(), X.startCol());

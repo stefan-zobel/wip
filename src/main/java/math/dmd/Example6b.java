@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd;
 
 import math.coord.LinSpace;
 import math.fun.DIndexIterator;
@@ -26,21 +26,21 @@ import net.jamu.matrix.MatrixD;
 import net.jamu.matrix.SvdEconD;
 
 /**
- * Partially refactored version of example 3.
+ * A periodic sinusoidal time dynamic over [0..2*PI]
  */
-public class Example4 {
+public class Example6b {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
     static final int x_num = 400;
 
     static final double t_start = 0.0;
-    static final double t_end = 4.0 * Math.PI;
+    static final double t_end = 2.0 * Math.PI;
     static final int t_num = 200;
 
-    // space (TODO)
+    // space
     static final LinSpace xi = LinSpace.linspace(x_start, x_end, x_num);
-    // time (TODO)
+    // time
     static final LinSpace ti = LinSpace.linspace(t_start, t_end, t_num);
 
     public static void main(String[] args) {
@@ -65,8 +65,8 @@ public class Example4 {
         // b = initial condition at time 0
         ComplexMatrixD b = computeInitialCondition(data, rank, modes.Phi);
 
-        // time dynamics matrix (e^omega*t)
-        ComplexMatrixD time_dynamics = createTimeDynamicsMatrix(omega, rank, b);
+        // time dynamics matrix (b * e^omega*t)
+        ComplexMatrixD time_dynamics = createTimeDynamicsMatrix(omega, rank, b, t_start, t_end, t_num);
 
         // spatio-temporal reconstruction
         ComplexMatrixD X_dmd = modes.Phi.times(time_dynamics);
@@ -89,25 +89,44 @@ public class Example4 {
     }
 
     private static double getDeltaT() {
-        // TODO
         return ti.spacing();
     }
 
-    private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD time0) {
-        ComplexMatrixD time_dynamics = Matrices.createComplexD(rank, ti.size());
-        for (DIndexIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
-            int colIdx = tIt.nextIndex() - 1;
-            double t = tIt.next();
-
+    private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD time0,
+            double tStart, double tEnd, int tNum) {
+        // time dynamics matrix (b * e^omega*t)
+        ComplexMatrixD timeDynamics = Matrices.createComplexD(rank, tNum);
+        double dt = (tNum == 1) ? 0.0 : (tEnd - tStart) / (tNum - 1);
+        ZdImpl omg = new ZdImpl(0.0);
+        ZdImpl expOmg_k = new ZdImpl(0.0);
+        ZdImpl time0_k = new ZdImpl(0.0);
+        for (int i = 1; i <= tNum; ++i) {
+            int colIdx = i - 1;
+            double t = (i == tNum) ? tEnd : tStart + colIdx * dt;
             for (int k = 0; k < rank; ++k) {
-                Zd omg = omega.get(k, k);
-                Zd expOmg_k = expOmegaT(omg.re(), omg.im(), t);
-                Zd time0_k = time0.get(k, 0);
-                Zd timeComponent = time0_k.mul(expOmg_k);
-                time_dynamics.set(k, colIdx, timeComponent.re(), timeComponent.im());
+                omega.get(k, k, omg);
+                expOmegaT(omg.re(), omg.im(), t, expOmg_k);
+                time0.get(k, 0, time0_k);
+                double time0_k_re = time0_k.re();
+                double time0_k_im = time0_k.im();
+                double expOmg_k_re = expOmg_k.re();
+                double expOmg_k_im = expOmg_k.im();
+                double re = time0_k_re * expOmg_k_re - time0_k_im * expOmg_k_im;
+                double im = time0_k_im * expOmg_k_re + time0_k_re * expOmg_k_im;
+                timeDynamics.set(k, colIdx, re, im);
             }
         }
-        return time_dynamics;
+        return timeDynamics;
+    }
+
+    private static void expOmegaT(double omegaR, double omegaI, double t, ZdImpl out) {
+        omegaR = t * omegaR;
+        omegaI = t * omegaI;
+        double expRe = Math.exp(omegaR);
+        omegaR = expRe * Math.cos(omegaI);
+        omegaI = expRe * Math.sin(omegaI);
+        out.setRe(omegaR);
+        out.setIm(omegaI);
     }
 
     private static ComplexMatrixD computeInitialCondition(MatrixD data, int rank, ComplexMatrixD modes) {
@@ -129,46 +148,49 @@ public class Example4 {
     }
 
     private static Modes computeModesAndEigenvalues(MatrixD data, SvdEconD svd, int rank) {
+        // create the second time-shifted snapshot
+        MatrixD snapshot = getSecondSnapshot(data);
+        // pull out Sigma inverse for low-dimensional subspace
+        MatrixD sigmaTruncInverse = getSigmaTruncatedInverse(svd, rank);
+        EvdTruncated decomposed = decompose(snapshot, svd, rank, sigmaTruncInverse);
+        // create Modes
+        Modes modes = new Modes();
+        modes.eigs = decomposed.eigs;
+        // copy the second snapshot into complex matrix
+        ComplexMatrixD X2 = Matrices.convertToComplex(snapshot);
+        // step 4: get back into high-dimensional space
+        // Phi contains the modes of the fitted linear system
+        modes.Phi = X2.times(decomposed.Vr).times(sigmaTruncInverse).times(decomposed.eigenvecs);
+        return modes;
+    }
+
+    private static EvdTruncated decompose(MatrixD snapshot, SvdEconD svd, int rank, MatrixD sigmaTruncInverse) {
         MatrixD U = svd.getU();
         MatrixD Vt = svd.getVt();
         // pull out U / V for low-dimensional subspace
         MatrixD Ur = U.selectConsecutiveColumns(U.startCol(), rank - 1);
         MatrixD Vr = Vt.transpose().selectConsecutiveColumns(Vt.startCol(), rank - 1);
-        // create the second time-shifted snapshot
-        MatrixD snapshot = getSecondSnapshot(data);
-        // pull out Sigma for low-dimensional subspace
-        MatrixD Sr = getSigmaTruncated(svd, rank);
+        EvdTruncated summary = new EvdTruncated();
+        summary.Vr = Vr;
         // step 2: similarity-transform in the low-rank subspace
-        // (ATilde takes us from one snapshot to the next in the low-rank
-        // subspace)
-        MatrixD ATilde_ = Ur.transpose().times(snapshot).times(Vr).times(Sr.inverse());
-        // copy the real ATilde_ into the complex matrix ATilde
-        // (from here on everything is done in the complex domain)
-        ComplexMatrixD ATilde = ATilde_.toComplexMatrix();
+        // ATilde takes us from one snapshot to the next in the low-rank
+        // subspace (from here on everything is done in the complex domain)
+        ComplexMatrixD ATilde = Ur.transpose().times(snapshot).times(Vr).times(sigmaTruncInverse).toComplexMatrix();
         // step 3: compute the 'rank' eigenvalues / eigenvectors in the subspace
         EvdComplexD evd = ATilde.evd(true);
-        ComplexMatrixD W = evd.getEigenvectors();
-        Zd[] D = evd.getEigenvalues();
-        // create Modes
-        Modes modes = new Modes();
-        modes.eigs = D;
-        // copy the second snapshot into complex matrix
-        ComplexMatrixD X2 = Matrices.convertToComplex(snapshot);
-        // step 4: get back into high-dimensional space
-        // Phi contains the modes of the fitted linear system
-        ComplexMatrixD Phi = X2.times(Vr).times(Sr.inverse()).times(W);
-        modes.Phi = Phi;
-        return modes;
+        summary.eigenvecs = evd.getEigenvectors();
+        summary.eigs = evd.getEigenvalues();
+        return summary;
     }
 
-    private static MatrixD getSigmaTruncated(SvdEconD svd, int rank) {
+    private static MatrixD getSigmaTruncatedInverse(SvdEconD svd, int rank) {
         double[] S = svd.getS();
         // pull out low-dimensional subspace
         MatrixD Sr = Matrices.createD(rank, rank);
         for (int i = Sr.startRow(); i <= Sr.endRow(); ++i) {
             Sr.set(i, i, S[i]);
         }
-        return Sr;
+        return Sr.inverse();
     }
 
     private static MatrixD getSecondSnapshot(MatrixD data) {
@@ -208,29 +230,19 @@ public class Example4 {
 
     // first spatio-temporal pattern
     private static Zd f1a(double x, double t) {
-        Zd zt = new ZdImpl(0.1, 2.2 * t).exp();
+        Zd zt = new ZdImpl(0.1, 1.0 * t).exp();
         Zd zx = new ZdImpl(sech(x + 3.0), Math.tanh(x));
         return zt.mul(zx);
     }
 
     // second spatio-temporal pattern
     private static Zd f2a(double x, double t) {
-        Zd zt = new ZdImpl(0.1, -2.2 * t).exp();
+        Zd zt = new ZdImpl(0.1, -1.0 * t).exp();
         Zd zx = new ZdImpl(sech(x - 3.0), -Math.tanh(x));
         return zt.mul(zx);
     }
 
-    private static Zd expOmegaT(double omegaR, double omegaI, double t) {
-        Zd z = new ZdImpl(omegaR, omegaI);
-        return z.scale(t).exp();
-    }
-
     private static double sech(double y) {
         return 1.0 / Math.cosh(y);
-    }
-
-    @SuppressWarnings("unused")
-    private static double cosh(double y) {
-        return Math.cosh(y);
     }
 }

@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd.examples;
 
 import math.coord.LinSpace;
+import math.dmd.ExactDMD;
 import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;
@@ -23,9 +24,9 @@ import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;
 
 /**
- * A refactored version of Example2.
+ * "Predicting" the past also works.
  */
-public class Example7 {
+public class ThePast {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -33,7 +34,7 @@ public class Example7 {
 
     static final double t_start = 0.0;
     static final double t_end = 4.0 * Math.PI;
-    static final int t_num = 600;
+    static final int t_num = 201;
 
     // space dimension
     static final LinSpace xi = LinSpace.linspace(x_start, x_end, x_num);
@@ -45,7 +46,7 @@ public class Example7 {
         MatrixD data = setupMeasurementsMatrix(ti);
 
         // step size
-        double deltaT = (t_end - t_start) / (t_num - 1);
+        double deltaT = (t_end - t_start) / (data.numColumns() - 1);
         System.out.println("deltaT: " + deltaT);
         // assumed rank
         int rank = 2;
@@ -53,7 +54,7 @@ public class Example7 {
         ExactDMD dmd = new ExactDMD(data, deltaT, rank).compute();
 
         // predict the same interval that was used to compute the DMD
-        MatrixD pred = dmd.predict(t_start, t_num);
+        MatrixD pred = dmd.predict(t_start, data.numColumns());
 
         System.out.println("reconstructed:" + pred);
         System.out.println("original     :" + data);
@@ -64,10 +65,10 @@ public class Example7 {
         System.out.println("reconstructed: " + normDmd);
         System.out.println("original     : " + normData);
 
-        // now attempt to predict the future starting from 4.0 * PI for t_num
+        // now attempt to "predict" the past starting from -4.0 * PI for t_num
         // predictions with the same stepsize
-        int t_num = 100;
-        double t_start = t_end;
+        int t_num = 51;
+        double t_start = -t_end;
         double t_end = t_start + dmd.getDeltaT() * (t_num - 1);
         deltaT = (t_end - t_start) / (t_num - 1);
         System.out.println("\ndeltaT: " + deltaT);

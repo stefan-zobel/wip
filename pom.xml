@@ -52,6 +52,12 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
+            <groupId>net.sourceforge.streamsupport</groupId>
+            <artifactId>dynmode-decompJ</artifactId>
+            <version>0.9.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.1</version>

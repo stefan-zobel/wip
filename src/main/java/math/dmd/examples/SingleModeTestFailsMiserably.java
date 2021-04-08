@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd.examples;
 
 import math.coord.LinSpace;
+import math.dmd.ExactDMD;
 import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;
@@ -23,9 +24,9 @@ import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;
 
 /**
- * "Predicting" the past also works.
+ * A single mode (a Gaussian) moving diagonally through space and time.
  */
-public class ThePast {
+public class SingleModeTestFailsMiserably {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -33,7 +34,7 @@ public class ThePast {
 
     static final double t_start = 0.0;
     static final double t_end = 4.0 * Math.PI;
-    static final int t_num = 201;
+    static final int t_num = 600;
 
     // space dimension
     static final LinSpace xi = LinSpace.linspace(x_start, x_end, x_num);
@@ -45,15 +46,14 @@ public class ThePast {
         MatrixD data = setupMeasurementsMatrix(ti);
 
         // step size
-        double deltaT = (t_end - t_start) / (data.numColumns() - 1);
+        double deltaT = (t_end - t_start) / (t_num - 1);
         System.out.println("deltaT: " + deltaT);
-        // assumed rank
-        int rank = 2;
 
-        ExactDMD dmd = new ExactDMD(data, deltaT, rank).compute();
+        ExactDMD dmd = new ExactDMD(data, deltaT).compute();
+        System.out.println("Estimated rank: " + dmd.getRank());
 
         // predict the same interval that was used to compute the DMD
-        MatrixD pred = dmd.predict(t_start, data.numColumns());
+        MatrixD pred = dmd.predict(t_start, t_num);
 
         System.out.println("reconstructed:" + pred);
         System.out.println("original     :" + data);
@@ -63,11 +63,19 @@ public class ThePast {
         double normData = data.normF();
         System.out.println("reconstructed: " + normDmd);
         System.out.println("original     : " + normData);
+        double largerNorm = Math.max(normDmd, normData);
+        double smallerNorm = Math.min(normDmd, normData);
+        System.out.println("ratio: " + largerNorm / smallerNorm);
+        MatrixD relErr = RelativeError.compute(data, pred);
+        System.out.println(relErr);
+        System.out.println(RelativeError.avgRelErrorOverall(relErr));
+        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(data, pred, 1.0e-3));
+        System.out.println("Matrices.distance: " + Matrices.distance(data, pred));
 
-        // now attempt to "predict" the past starting from -4.0 * PI for t_num
+        // now attempt to predict the future starting from 4.0 * PI for t_num
         // predictions with the same stepsize
-        int t_num = 51;
-        double t_start = -t_end;
+        int t_num = 100;
+        double t_start = t_end;
         double t_end = t_start + dmd.getDeltaT() * (t_num - 1);
         deltaT = (t_end - t_start) / (t_num - 1);
         System.out.println("\ndeltaT: " + deltaT);
@@ -85,6 +93,14 @@ public class ThePast {
         double normRea = newData.normF();
         System.out.println("predicted    : " + normPred);
         System.out.println("realized     : " + normRea);
+        largerNorm = Math.max(normPred, normRea);
+        smallerNorm = Math.min(normPred, normRea);
+        System.out.println("ratio: " + largerNorm / smallerNorm);
+        relErr = RelativeError.compute(newData, fut);
+        System.out.println(relErr);
+        System.out.println(RelativeError.avgRelErrorOverall(relErr));
+        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(newData, fut, 1.0e-3));
+        System.out.println("Matrices.distance: " + Matrices.distance(newData, fut));
     }
 
     private static MatrixD setupMeasurementsMatrix(LinSpace time) {
@@ -112,19 +128,13 @@ public class ThePast {
 
     // first spatio-temporal pattern
     private static Zd f1a(double x, double t) {
-        Zd zt = new ZdImpl(0.1, 2.2 * t).exp();
-        Zd zx = new ZdImpl(sech(x + 3.0), Math.tanh(x));
-        return zt.mul(zx);
+        double y = ((x - t / 2.0) + 5.0) / 2.0;
+        Zd z = new ZdImpl(y * y);
+        return z.exp();
     }
 
     // second spatio-temporal pattern
     private static Zd f2a(double x, double t) {
-        Zd zt = new ZdImpl(0.1, -2.2 * t).exp();
-        Zd zx = new ZdImpl(sech(x - 3.0), -Math.tanh(x));
-        return zt.mul(zx);
-    }
-
-    private static double sech(double y) {
-        return 1.0 / Math.cosh(y);
+        return new ZdImpl(0.0);
     }
 }

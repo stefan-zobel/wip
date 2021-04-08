@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd.examples;
 
 import math.coord.LinSpace;
+import math.dmd.ExactDMD;
 import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;

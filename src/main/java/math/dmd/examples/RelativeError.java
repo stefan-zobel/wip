@@ -1,4 +1,4 @@
-package dmd.examples;
+package math.dmd.examples;
 
 import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;

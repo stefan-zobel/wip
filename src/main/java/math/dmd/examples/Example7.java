@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd.examples;
 
 import math.coord.LinSpace;
+import math.dmd.ExactDMD;
 import math.fun.DIndexIterator;
 import net.jamu.complex.Zd;
 import net.jamu.complex.ZdImpl;
@@ -23,9 +24,9 @@ import net.jamu.matrix.Matrices;
 import net.jamu.matrix.MatrixD;
 
 /**
- * A single mode (a Gaussian) moving diagonally through space and time.
+ * A refactored version of Example2.
  */
-public class SingleModeTestFailsMiserably {
+public class Example7 {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -47,9 +48,10 @@ public class SingleModeTestFailsMiserably {
         // step size
         double deltaT = (t_end - t_start) / (t_num - 1);
         System.out.println("deltaT: " + deltaT);
+        // assumed rank
+        int rank = 2;
 
-        ExactDMD dmd = new ExactDMD(data, deltaT).compute();
-        System.out.println("Estimated rank: " + dmd.getRank());
+        ExactDMD dmd = new ExactDMD(data, deltaT, rank).compute();
 
         // predict the same interval that was used to compute the DMD
         MatrixD pred = dmd.predict(t_start, t_num);
@@ -62,14 +64,6 @@ public class SingleModeTestFailsMiserably {
         double normData = data.normF();
         System.out.println("reconstructed: " + normDmd);
         System.out.println("original     : " + normData);
-        double largerNorm = Math.max(normDmd, normData);
-        double smallerNorm = Math.min(normDmd, normData);
-        System.out.println("ratio: " + largerNorm / smallerNorm);
-        MatrixD relErr = RelativeError.compute(data, pred);
-        System.out.println(relErr);
-        System.out.println(RelativeError.avgRelErrorOverall(relErr));
-        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(data, pred, 1.0e-3));
-        System.out.println("Matrices.distance: " + Matrices.distance(data, pred));
 
         // now attempt to predict the future starting from 4.0 * PI for t_num
         // predictions with the same stepsize
@@ -92,14 +86,6 @@ public class SingleModeTestFailsMiserably {
         double normRea = newData.normF();
         System.out.println("predicted    : " + normPred);
         System.out.println("realized     : " + normRea);
-        largerNorm = Math.max(normPred, normRea);
-        smallerNorm = Math.min(normPred, normRea);
-        System.out.println("ratio: " + largerNorm / smallerNorm);
-        relErr = RelativeError.compute(newData, fut);
-        System.out.println(relErr);
-        System.out.println(RelativeError.avgRelErrorOverall(relErr));
-        System.out.println("Matrices.approxEqual: " + Matrices.approxEqual(newData, fut, 1.0e-3));
-        System.out.println("Matrices.distance: " + Matrices.distance(newData, fut));
     }
 
     private static MatrixD setupMeasurementsMatrix(LinSpace time) {
@@ -127,13 +113,19 @@ public class SingleModeTestFailsMiserably {
 
     // first spatio-temporal pattern
     private static Zd f1a(double x, double t) {
-        double y = ((x - t / 2.0) + 5.0) / 2.0;
-        Zd z = new ZdImpl(y * y);
-        return z.exp();
+        Zd zt = new ZdImpl(0.1, 2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x + 3.0), Math.tanh(x));
+        return zt.mul(zx);
     }
 
     // second spatio-temporal pattern
     private static Zd f2a(double x, double t) {
-        return new ZdImpl(0.0);
+        Zd zt = new ZdImpl(0.1, -2.2 * t).exp();
+        Zd zx = new ZdImpl(sech(x - 3.0), -Math.tanh(x));
+        return zt.mul(zx);
+    }
+
+    private static double sech(double y) {
+        return 1.0 / Math.cosh(y);
     }
 }

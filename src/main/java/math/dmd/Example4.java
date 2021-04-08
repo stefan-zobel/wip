@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dmd.examples;
+package math.dmd;
 
 import math.coord.LinSpace;
 import math.fun.DIndexIterator;
@@ -26,9 +26,9 @@ import net.jamu.matrix.MatrixD;
 import net.jamu.matrix.SvdEconD;
 
 /**
- * Partially refactored version of example 4.
+ * Partially refactored version of example 3.
  */
-public class Example5 {
+public class Example4 {
 
     static final double x_start = -10.0;
     static final double x_end = 10.0;
@@ -94,7 +94,6 @@ public class Example5 {
     }
 
     private static ComplexMatrixD createTimeDynamicsMatrix(ComplexMatrixD omega, int rank, ComplexMatrixD time0) {
-        // TODO
         ComplexMatrixD time_dynamics = Matrices.createComplexD(rank, ti.size());
         for (DIndexIterator tIt = ti.iterator(); tIt.hasNext(); /**/) {
             int colIdx = tIt.nextIndex() - 1;
@@ -130,52 +129,46 @@ public class Example5 {
     }
 
     private static Modes computeModesAndEigenvalues(MatrixD data, SvdEconD svd, int rank) {
-        // create the second time-shifted snapshot
-        MatrixD snapshot = getSecondSnapshot(data);
-        // pull out Sigma inverse for low-dimensional subspace
-        MatrixD sigmaTruncInverse = getSigmaTruncatedInverse(svd, rank);
-        EvdTruncated decomposed = decompose(snapshot, svd, rank, sigmaTruncInverse);
-        // create Modes
-        Modes modes = new Modes();
-        modes.eigs = decomposed.eigs;
-        // copy the second snapshot into complex matrix
-        ComplexMatrixD X2 = Matrices.convertToComplex(snapshot);
-        // step 4: get back into high-dimensional space
-        // Phi contains the modes of the fitted linear system
-        modes.Phi = X2.times(decomposed.Vr).times(sigmaTruncInverse).times(decomposed.eigenvecs);
-        return modes;
-    }
-
-    private static EvdTruncated decompose(MatrixD snapshot, SvdEconD svd, int rank, MatrixD sigmaTruncInverse) {
         MatrixD U = svd.getU();
         MatrixD Vt = svd.getVt();
         // pull out U / V for low-dimensional subspace
         MatrixD Ur = U.selectConsecutiveColumns(U.startCol(), rank - 1);
         MatrixD Vr = Vt.transpose().selectConsecutiveColumns(Vt.startCol(), rank - 1);
-        EvdTruncated summary = new EvdTruncated();
-        summary.Vr = Vr;
+        // create the second time-shifted snapshot
+        MatrixD snapshot = getSecondSnapshot(data);
+        // pull out Sigma for low-dimensional subspace
+        MatrixD Sr = getSigmaTruncated(svd, rank);
         // step 2: similarity-transform in the low-rank subspace
         // (ATilde takes us from one snapshot to the next in the low-rank
         // subspace)
-        MatrixD ATilde_ = Ur.transpose().times(snapshot).times(Vr).times(sigmaTruncInverse);
+        MatrixD ATilde_ = Ur.transpose().times(snapshot).times(Vr).times(Sr.inverse());
         // copy the real ATilde_ into the complex matrix ATilde
         // (from here on everything is done in the complex domain)
         ComplexMatrixD ATilde = ATilde_.toComplexMatrix();
         // step 3: compute the 'rank' eigenvalues / eigenvectors in the subspace
         EvdComplexD evd = ATilde.evd(true);
-        summary.eigenvecs = evd.getEigenvectors();
-        summary.eigs = evd.getEigenvalues();
-        return summary;
+        ComplexMatrixD W = evd.getEigenvectors();
+        Zd[] D = evd.getEigenvalues();
+        // create Modes
+        Modes modes = new Modes();
+        modes.eigs = D;
+        // copy the second snapshot into complex matrix
+        ComplexMatrixD X2 = Matrices.convertToComplex(snapshot);
+        // step 4: get back into high-dimensional space
+        // Phi contains the modes of the fitted linear system
+        ComplexMatrixD Phi = X2.times(Vr).times(Sr.inverse()).times(W);
+        modes.Phi = Phi;
+        return modes;
     }
 
-    private static MatrixD getSigmaTruncatedInverse(SvdEconD svd, int rank) {
+    private static MatrixD getSigmaTruncated(SvdEconD svd, int rank) {
         double[] S = svd.getS();
         // pull out low-dimensional subspace
         MatrixD Sr = Matrices.createD(rank, rank);
         for (int i = Sr.startRow(); i <= Sr.endRow(); ++i) {
             Sr.set(i, i, S[i]);
         }
-        return Sr.inverse();
+        return Sr;
     }
 
     private static MatrixD getSecondSnapshot(MatrixD data) {
