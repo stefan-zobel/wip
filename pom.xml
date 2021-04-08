@@ -35,6 +35,18 @@
         </dependency>
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
+            <artifactId>math-cern</artifactId>
+            <version>1.0.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.streamsupport</groupId>
+            <artifactId>speedy-math</artifactId>
+            <version>1.0.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>jamu</artifactId>
             <version>1.0.0</version>
             <scope>compile</scope>
