@@ -15,11 +15,11 @@
  */
 package math.stats.distribution;
 
+import static math.cern.FastGamma.logGamma;
+
+import math.cern.ProbabilityFuncs;
 import math.rng.DefaultRng;
 import math.rng.PseudoRandom;
-import math.cern.ProbabilityFuncs;
-
-import static math.cern.FastGamma.logGamma;
 
 /**
  * TODO

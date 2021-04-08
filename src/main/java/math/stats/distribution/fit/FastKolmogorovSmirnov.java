@@ -22,10 +22,11 @@
  */
 package math.stats.distribution.fit;
 
-import math.cern.Arithmetic;
-import math.MathConsts;
-import static math.MathConsts.SQRT_PI_HALF;
 import static math.MathConsts.PI_SQUARED;
+import static math.MathConsts.SQRT_PI_HALF;
+
+import math.MathConsts;
+import math.cern.Arithmetic;
 
 /**
  * Methods for the two-sided *Kolmogorov–Smirnov* distribution of the

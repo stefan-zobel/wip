@@ -15,9 +15,9 @@
  */
 package math.stats.distribution;
 
+import math.cern.ProbabilityFuncs;
 import math.rng.DefaultRng;
 import math.rng.PseudoRandom;
-import math.cern.ProbabilityFuncs;
 
 /**
  * TODO

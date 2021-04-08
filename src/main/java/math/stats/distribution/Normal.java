@@ -23,10 +23,11 @@
  */
 package math.stats.distribution;
 
+import static math.MathConsts.SQRT_TWO_PI;
+
+import math.cern.ProbabilityFuncs;
 import math.rng.DefaultRng;
 import math.rng.PseudoRandom;
-import math.cern.ProbabilityFuncs;
-import static math.MathConsts.SQRT_TWO_PI;
 
 /**
  * Normal (a.k.a Gaussian) distribution.

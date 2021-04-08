@@ -20,8 +20,8 @@
  */
 package math.stats.distribution.fit;
 
-import math.cern.Arithmetic;
 import math.MathConsts;
+import math.cern.Arithmetic;
 import math.stats.ValidatedValue;
 
 /**

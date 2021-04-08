@@ -18,17 +18,17 @@
  */
 package math.stats.distribution.mle;
 
+import math.MathConsts;
 import math.cern.Arithmetic;
 import math.cern.FastGamma;
 import math.cern.GammaFun;
-import math.MathConsts;
-import math.solve.RootFinder;
 import math.fun.DFunction;
 import math.fun.DMultiFunctionEval;
 import math.fun.NumericalDiffDMultiFunction;
 import math.minpack.Lmder_fcn;
 import math.minpack.Minpack_f77;
 import math.optim.CGOptimizer;
+import math.solve.RootFinder;
 
 /**
  * Provides methods for maximum likelihood estimation of distribution

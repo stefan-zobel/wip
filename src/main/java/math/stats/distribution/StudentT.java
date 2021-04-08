@@ -24,9 +24,9 @@
 package math.stats.distribution;
 
 import math.cern.FastGamma;
+import math.cern.ProbabilityFuncs;
 import math.rng.DefaultRng;
 import math.rng.PseudoRandom;
-import math.cern.ProbabilityFuncs;
 
 /**
  * StudentT distribution (a.k.a "T distribution").

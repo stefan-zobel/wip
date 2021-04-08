@@ -15,8 +15,8 @@
  */
 package math.stats.distribution;
 
-import math.fast.SpeedyMath;
 import math.cern.FastGamma;
+import math.fast.SpeedyMath;
 import math.rng.DefaultRng;
 import math.rng.PseudoRandom;
 
