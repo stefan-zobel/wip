@@ -27,7 +27,7 @@ import math.rng.PseudoRandom;
  * <p>
  * Valid parameter ranges: <tt>x &gt;= 0</tt>; &lambda; &gt; 0.
  * <p>
- * https://en.wikipedia.org/wiki/Exponential_distribution
+ * See <a href="https://en.wikipedia.org/wiki/Exponential_distribution">Wikipedia Exponential distribution</a>.
  */
 public class Exponential extends AbstractContinuousDistribution {
 

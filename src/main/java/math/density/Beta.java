@@ -34,6 +34,8 @@ import math.rng.PseudoRandom;
  * only &alpha; is small (but not less than {@code 1/8}) there seems to exist no
  * practically relevant limit for the magnitude of &beta; (other than the lower
  * bound of {@code 1/8}).
+ * <p>
+ * See <a href="https://en.wikipedia.org/wiki/Beta_distribution">Wikipedia Beta distribution</a>.
  */
 public class Beta extends AbstractContinuousDistribution {
 

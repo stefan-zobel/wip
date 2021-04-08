@@ -22,7 +22,7 @@ import math.rng.PseudoRandom;
 /**
  * TODO
  * <p>
- * https://en.wikipedia.org/wiki/Log-normal_distribution
+ * See <a href="https://en.wikipedia.org/wiki/Log-normal_distribution">Wikipedia Log-normal distribution</a>.
  */
 public class LogNormal extends AbstractContinuousDistribution {
 

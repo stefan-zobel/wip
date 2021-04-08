@@ -46,7 +46,9 @@ import math.rng.PseudoRandom;
  * <p>
  * R.W. Bailey (1994): Polar generation of random variates with the
  * t-distribution, Mathematics of Computation 62, 779-781.
- * 
+ * <p>
+ * See <a href="https://en.wikipedia.org/wiki/Student%27s_t-distribution">Wikipedia Student's t-distribution</a>.
+ *  
  * @author wolfgang.hoschek@cern.ch
  * @version 1.0, 09/24/99
  */

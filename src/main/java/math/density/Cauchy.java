@@ -22,7 +22,7 @@ import math.rng.PseudoRandom;
 /**
  * TODO
  * <p>
- * https://en.wikipedia.org/wiki/Cauchy_distribution
+ * See <a href="https://en.wikipedia.org/wiki/Cauchy_distribution">Wikipedia Cauchy distribution</a>.
  */
 public class Cauchy extends AbstractContinuousDistribution {
 
