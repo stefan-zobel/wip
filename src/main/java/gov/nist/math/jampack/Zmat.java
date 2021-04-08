@@ -64,6 +64,8 @@ public final class Zmat {
 
     /**
      * Creates a Zmat and initializes it to an array of class Z.
+     * 
+     * @param A a matrix array of complex numbers
      */
     public Zmat(Z[][] A) {
         nr = A.length;
@@ -81,6 +83,8 @@ public final class Zmat {
     /**
      * Creates a Zmat and initializes its real part to to an array of class
      * double. The imaginary part is set to zero.
+     * 
+     * @param A a matrix array of real numbers
      */
     public Zmat(double[][] A) {
         nr = A.length;
@@ -97,6 +101,8 @@ public final class Zmat {
 
     /**
      * Creates a Zmat and intitializes it to a Zmat.
+     * 
+     * @param A another Zmat
      */
     public Zmat(Zmat A) {
         nr = A.nr;
@@ -113,6 +119,8 @@ public final class Zmat {
 
     /**
      * Creates a Zmat and initialize it to a Z1.
+     * 
+     * @param A a Z1
      */
     public Zmat(Z1 A) {
         nr = A.n;
@@ -127,6 +135,8 @@ public final class Zmat {
 
     /**
      * Creates a Zmat and initialize it to a Zdiagmat.
+     * 
+     * @param D a Zdiagmat
      */
     public Zmat(Zdiagmat D) {
         nr = D.order;
@@ -141,6 +151,9 @@ public final class Zmat {
 
     /**
      * Creates a Zmat and initializes it to zero.
+     * 
+     * @param nrow number of rows
+     * @param ncol number of columns
      */
     public Zmat(int nrow, int ncol) {
         this(nrow, ncol, false);
@@ -156,6 +169,8 @@ public final class Zmat {
 
     /**
      * Returns a copy of the real part of a Zmat.
+     * 
+     * @return a copy of the real part
      */
     public double[][] getRe() {
         double[][] A = new double[nr][nc];
@@ -169,6 +184,8 @@ public final class Zmat {
 
     /**
      * Returns a copy of the imaginary part of a Zmat.
+     * 
+     * @return a copy of the imaginary part
      */
     public double[][] getIm() {
         double[][] A = new double[nr][nc];
@@ -182,6 +199,8 @@ public final class Zmat {
 
     /**
      * Returns a copy of the real and imaginary parts as a complex array.
+     * 
+     * @return a copy of the real and imaginary parts
      */
     public Z[][] getZ() {
         Z[][] A = new Z[nr][nc];
@@ -200,6 +219,7 @@ public final class Zmat {
      *            The row index of the element
      * @param jj
      *            The column index of the element
+     * @return the (ii,jj)-element
      */
     public Z get(int ii, int jj) {
         return new Z(re(ii - 1, jj - 1), im(ii - 1, jj - 1));
@@ -212,6 +232,7 @@ public final class Zmat {
      *            The row index of the element
      * @param j
      *            The column index of the element
+     * @return the zero-based (i,j)-element
      */
     Z get0(int i, int j) {
         return new Z(re(i, j), im(i, j));
@@ -275,6 +296,7 @@ public final class Zmat {
      *            The lower row index
      * @param jj2
      *            The upper row index
+     * @return the submatrix (ii1:ii2, jj1:jj2)
      */
     public Zmat get(int ii1, int ii2, int jj1, int jj2) {
         int nrow = ii2 - ii1 + 1;
@@ -323,6 +345,7 @@ public final class Zmat {
      *            The lower column index
      * @param jj2
      *            The upper column index
+     * @return the submatrix (ii[], jj1:jj2)
      */
     public Zmat get(int[] ii, int jj1, int jj2) {
         int nrow = ii.length;
@@ -369,6 +392,7 @@ public final class Zmat {
      *            The upper row index
      * @param jj
      *            Contains the column indices of the submatrix
+     * @return the submatrix (ii1:ii2, jj[])
      */
     public Zmat get(int ii1, int ii2, int[] jj) {
         int nrow = ii2 - ii1 + 1;
@@ -413,6 +437,7 @@ public final class Zmat {
      *            Contains the row indices of the submatrix
      * @param jj
      *            Contains the column indices of the submatrix
+     * @return the submatrix (ii[], jj[])
      */
     public Zmat get(int[] ii, int[] jj) {
         int nrow = ii.length;
