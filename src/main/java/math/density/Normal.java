@@ -48,7 +48,7 @@ import math.rng.PseudoRandom;
  * 
  * where <tt>v = variance = standardDeviation^2</tt>.
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Normal_distribution">Wikipedia Normal distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Normal_distribution">Wikipedia Normal distribution</a>.
  * 
  * @author wolfgang.hoschek@cern.ch
  * @version 1.0, 09/24/99

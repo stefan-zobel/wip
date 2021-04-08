@@ -21,7 +21,7 @@ import math.rng.PseudoRandom;
 /**
  * TODO
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/F-distribution">Wikipedia F-distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/F-distribution">Wikipedia F-distribution</a>.
  */
 public class FisherF extends AbstractContinuousDistribution {
 

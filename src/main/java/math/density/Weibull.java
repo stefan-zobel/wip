@@ -23,7 +23,7 @@ import math.rng.PseudoRandom;
 /**
  * TODO
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Weibull_distribution">Wikipedia Weibull distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Weibull_distribution">Wikipedia Weibull distribution</a>.
  */
 public class Weibull extends AbstractContinuousDistribution {
 

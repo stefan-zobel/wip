@@ -21,7 +21,7 @@ import math.rng.PseudoRandom;
 /**
  * TODO
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Uniform_distribution_(continuous)">Wikipedia Uniform distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Uniform_distribution_(continuous)">Wikipedia Uniform distribution</a>.
  */
 public class Uniform extends AbstractContinuousDistribution {
 

@@ -37,7 +37,7 @@ import math.rng.PseudoRandom;
  * &theta; = Var(X) / E(X)
  * </pre>
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Wikipedia Gamma distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Wikipedia Gamma distribution</a>.
  */
 public class Gamma extends AbstractContinuousDistribution {
 

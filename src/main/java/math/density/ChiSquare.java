@@ -27,7 +27,7 @@ import math.rng.PseudoRandom;
  * Valid parameter ranges: <tt>k &gt; 0</tt>; <tt>x &gt; 0</tt> (if
  * <tt>k = 1</tt>, otherwise <tt>x &gt;= 0</tt>).
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Chi-squared_distribution">Wikipedia Chi-square distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Chi-squared_distribution">Wikipedia Chi-square distribution</a>.
  */
 public class ChiSquare extends AbstractContinuousDistribution {
 

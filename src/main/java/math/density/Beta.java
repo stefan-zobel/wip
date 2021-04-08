@@ -35,7 +35,7 @@ import math.rng.PseudoRandom;
  * practically relevant limit for the magnitude of &beta; (other than the lower
  * bound of {@code 1/8}).
  * <p>
- * See <a href="https://en.wikipedia.org/wiki/Beta_distribution">Wikipedia Beta distribution</a>.
+ * <b>See</b> <a href="https://en.wikipedia.org/wiki/Beta_distribution">Wikipedia Beta distribution</a>.
  */
 public class Beta extends AbstractContinuousDistribution {
 
