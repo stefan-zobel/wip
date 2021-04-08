@@ -1,2 +1,3 @@
 # wip
-miscellaneous work in progress
+
+A dumping ground for miscellaneous work in progress
