@@ -23,7 +23,7 @@ import math.rng.PseudoRandom;
 
 /**
  * TODO
- * <p/>
+ * <p>
  * <b>Warning:</b> Do not choose a too low value for &alpha; and/or &beta;
  * (<b>especially</b> not for &beta;!). Otherwise the sampled distribution may
  * get very inaccurate. An &alpha; and/or &beta; of {@code 0.125} ({@code 1/8})

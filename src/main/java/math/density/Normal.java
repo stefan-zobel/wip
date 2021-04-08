@@ -47,7 +47,7 @@ import math.rng.PseudoRandom;
  * </pre>
  * 
  * where <tt>v = variance = standardDeviation^2</tt>.
- * <p/>
+ * <p>
  * @author wolfgang.hoschek@cern.ch
  * @version 1.0, 09/24/99
  */

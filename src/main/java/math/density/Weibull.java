@@ -116,6 +116,7 @@ public class Weibull extends AbstractContinuousDistribution {
     /**
      * Inverse of the Weibull cumulative distribution function.
      * 
+     * @param probability a given probability
      * @return the value X for which P(x&lt;=X).
      */
     public double inverse(double probability) {

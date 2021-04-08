@@ -108,13 +108,13 @@ public class Gamma extends AbstractContinuousDistribution {
     /**
      * This implementation uses the following algorithms:
      * <p>
-     * For 0 < k < 1: <br/>
+     * For {@code 0 < k < 1}: <br>
      * Ahrens, J. H. and Dieter, U., <i>Computer methods for sampling from
      * gamma, beta, Poisson and binomial distributions.</i> Computing, 12,
      * 223-246, 1974.
      * </p>
      * <p>
-     * For k >= 1: <br/>
+     * For {@code k >= 1}: <br>
      * Marsaglia and Tsang, <i>A Simple Method for Generating Gamma
      * Variables.</i> ACM Transactions on Mathematical Software, Volume 26 Issue
      * 3, September, 2000.
@@ -201,6 +201,7 @@ public class Gamma extends AbstractContinuousDistribution {
     /**
      * Inverse of the Gamma cumulative distribution function.
      * 
+     * @param probability a given probability
      * @return the value X for which P(x&lt;=X).
      */
     public double inverse(double probability) {
