@@ -15,6 +15,11 @@
  */
 package math.density;
 
+/**
+ * A <a
+ * href="https://en.wikipedia.org/wiki/Probability_distribution#Continuous_probability_distribution">continuous
+ * probability distribution</a>.
+ */
 public interface ContinuousDistribution {
 
     /**

@@ -18,21 +18,34 @@ package math.density;
 import math.cern.Arithmetic;
 import math.rng.PseudoRandom;
 
-public abstract class AbstractContinuousDistribution implements
-        ContinuousDistribution {
+/**
+ * Abstract base class for {@link ContinuousDistribution} implementations.
+ */
+public abstract class AbstractContinuousDistribution implements ContinuousDistribution {
 
+    /**
+     * The {@link PseudoRandom} instance for subclasses.
+     */
     protected final PseudoRandom prng;
 
+    /**
+     * Constructor that must be called by each subclass.
+     * 
+     * @param prng
+     *            the pseudorandom number generator to be used
+     */
     protected AbstractContinuousDistribution(final PseudoRandom prng) {
         this.prng = prng;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public double probability(final double x0, final double x1) {
         if (x0 > x1) {
-            throw new IllegalArgumentException("Lower endpoint (" + x0
-                    + ") must be less than or equal to upper endpoint (" + x1
-                    + ")");
+            throw new IllegalArgumentException(
+                    "Lower endpoint (" + x0 + ") must be less than or equal to upper endpoint (" + x1 + ")");
         }
         return cdf(x1) - cdf(x0);
     }
@@ -49,6 +62,14 @@ public abstract class AbstractContinuousDistribution implements
         return samples;
     }
 
+    /**
+     * Constructs a string representation of the probability distribution that
+     * includes its name and the concrete values of the distribution parameters.
+     * 
+     * @param params
+     *            the parameters of the distribution
+     * @return a string representation of this distribution
+     */
     protected final String getSimpleName(Number... params) {
         String name = getClass().getSimpleName();
         StringBuilder buf = new StringBuilder(name);
@@ -102,14 +123,12 @@ public abstract class AbstractContinuousDistribution implements
      * @return an approximation for the value of {@code x} for which
      *         {@code P(X <= x) = p}
      */
-    protected final double findRoot(double p, double start, double xMin,
-            double xMax) {
+    protected final double findRoot(double p, double start, double xMin, double xMax) {
         double x = start;
         double xNew = start;
         double dx = 1.0;
         int i = 0;
-        while (Math.abs(dx) > FINDROOT_ACCURACY
-                && i++ < FINDROOT_MAX_ITERATIONS) {
+        while (Math.abs(dx) > FINDROOT_ACCURACY && i++ < FINDROOT_MAX_ITERATIONS) {
             // apply Newton-Raphson step
             double error = cdf(x) - p;
             if (error < 0.0) {
