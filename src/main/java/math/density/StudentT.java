@@ -48,9 +48,6 @@ import math.rng.PseudoRandom;
  * t-distribution, Mathematics of Computation 62, 779-781.
  * <p>
  * <b>See</b> <a href="https://en.wikipedia.org/wiki/Student%27s_t-distribution">Wikipedia Student's t-distribution</a>.
- *  
- * @author wolfgang.hoschek@cern.ch
- * @version 1.0, 09/24/99
  */
 public class StudentT extends AbstractContinuousDistribution {
 
