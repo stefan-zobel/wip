@@ -232,7 +232,7 @@ public final class IndexableArrayBuffer<E> implements Indexable<E> {
      */
     @Override
     public Spliterator<E> spliterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return list.spliterator();
     }
 
@@ -265,7 +265,7 @@ public final class IndexableArrayBuffer<E> implements Indexable<E> {
      */
     @Override
     public Iterator<E> iterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return list.iterator();
     }
 
@@ -416,7 +416,7 @@ public final class IndexableArrayBuffer<E> implements Indexable<E> {
      */
     @Override
     public ListIterator<E> listIterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return list.listIterator();
     }
 
@@ -425,7 +425,7 @@ public final class IndexableArrayBuffer<E> implements Indexable<E> {
      */
     @Override
     public ListIterator<E> listIterator(int index) {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return list.listIterator(index);
     }
 

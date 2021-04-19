@@ -1066,7 +1066,7 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
      * @return an iterator over the elements in this deque
      */
     public Iterator<E> iterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return new DeqIterator();
     }
 
@@ -1074,7 +1074,7 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
      * {@inheritDoc}
      */
     public Iterator<E> descendingIterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return new DescendingIterator();
     }
 
@@ -1575,12 +1575,7 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
         }
         // a two-finger traversal, with hare i reading, tortoise w writing
         int w = beg;
-        for (int i = beg + 1, to = (i <= end) ? end : es.length, k = beg;; w = 0) { // w
-                                                                                    // rejoins
-                                                                                    // i
-                                                                                    // on
-                                                                                    // second
-                                                                                    // leg
+        for (int i = beg + 1, to = (i <= end) ? end : es.length, k = beg;; w = 0) { // w rejoins i on second leg
             // In this loop, i and w are on the same leg, with i > w
             for (; i < to; i++) {
                 if (isClear(deathRow, i - k)) {
@@ -2079,7 +2074,7 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
      */
     @Override
     public ListIterator<E> listIterator() {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         return new DeqListIterator(head);
     }
 
@@ -2103,7 +2098,7 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
      */
     @Override
     public ListIterator<E> listIterator(int index) {
-        // Must be manually synched by user
+        // Must be manually synced by caller
         if (index < 0 || index > size())
             throw new IndexOutOfBoundsException(Integer.toString(index));
         return new DeqListIterator(inc(head, index, elements.length));
