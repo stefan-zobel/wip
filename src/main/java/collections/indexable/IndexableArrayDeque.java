@@ -621,13 +621,15 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             if (o != null) {
                 final Object[] es = elements;
                 for (int i = head, end = tail, to = (i <= end) ? end : es.length;; i = 0, to = end) {
-                    for (; i < to; i++)
+                    for (; i < to; i++) {
                         if (o.equals(es[i])) {
                             delete(i);
                             return true;
                         }
-                    if (to == end)
+                    }
+                    if (to == end) {
                         break;
+                    }
                 }
             }
             return false;
@@ -651,13 +653,15 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             if (o != null) {
                 final Object[] es = elements;
                 for (int i = tail, end = head, to = (i >= end) ? end : 0;; i = es.length, to = end) {
-                    for (i--; i > to - 1; i--)
+                    for (i--; i > to - 1; i--) {
                         if (o.equals(es[i])) {
                             delete(i);
                             return true;
                         }
-                    if (to == end)
+                    }
+                    if (to == end) {
                         break;
+                    }
                 }
             }
             return false;
@@ -1187,14 +1191,16 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
         }
 
         private final void checkMod() {
-            if (tail != end || head != start)
+            if (tail != end || head != start) {
                 throw new ConcurrentModificationException();
+            }
         }
 
         public E next() {
             int c = cursor;
-            if (c == end)
+            if (c == end) {
                 throw new NoSuchElementException();
+            }
             checkMod();
             Object[] a = elements;
             cursor = inc(c, a.length);
@@ -1203,8 +1209,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
 
         public E previous() {
             int c = cursor;
-            if (c == start)
+            if (c == start) {
                 throw new NoSuchElementException();
+            }
             checkMod();
             Object[] a = elements;
             return elementAt(a, lastRet = cursor = dec(c, a.length));
@@ -1214,34 +1221,39 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             Objects.requireNonNull(action);
             checkMod();
             int i = cursor, to = end;
-            if (i == to)
+            if (i == to) {
                 return;
+            }
             cursor = to;
             Object[] a = elements;
             for (int e = (i <= to) ? to : a.length;; i = 0, e = to) {
                 for (; i < e; i++) {
                     action.accept(elementAt(a, i));
                 }
-                if (e == to)
+                if (e == to) {
                     break;
+                }
             }
             lastRet = dec(to, a.length);
         }
 
         public void remove() {
             int l = lastRet;
-            if (l < 0)
+            if (l < 0) {
                 throw new IllegalStateException();
+            }
             checkMod();
             int c = cursor;
             boolean prev = l == c;
             if (delete(l)) {
-                if (!prev)
+                if (!prev) {
                     cursor = dec(c, elements.length);
+                }
                 end = tail;
             } else {
-                if (prev)
+                if (prev) {
                     cursor = inc(c, elements.length);
+                }
                 start = head;
             }
             lastRet = -1;
@@ -1249,8 +1261,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
 
         public void set(E e) {
             int l = lastRet;
-            if (l < 0)
+            if (l < 0) {
                 throw new IllegalStateException();
+            }
             checkMod();
             if (e == null) {
                 throw new NullPointerException();
@@ -1398,8 +1411,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     for (; i < to; i++) {
                         action.accept(elementAt(es, i));
                     }
-                    if (to == end)
+                    if (to == end) {
                         break;
+                    }
                 }
             }
         }
@@ -1445,8 +1459,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     action.accept(elementAt(es, i));
                 }
                 if (to == end) {
-                    if (end != tail)
+                    if (end != tail) {
                         throw new ConcurrentModificationException();
+                    }
                     break;
                 }
             }
@@ -1472,8 +1487,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     es[i] = operator.apply(elementAt(es, i));
                 }
                 if (to == end) {
-                    if (end != tail)
+                    if (end != tail) {
                         throw new ConcurrentModificationException();
+                    }
                     break;
                 }
             }
@@ -1527,8 +1543,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                 }
             }
             if (to == end) {
-                if (end != tail)
+                if (end != tail) {
                     throw new ConcurrentModificationException();
+                }
                 break;
             }
         }
@@ -1570,8 +1587,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     setBit(deathRow, i - k);
                 }
             }
-            if (to == end)
+            if (to == end) {
                 break;
+            }
         }
         // a two-finger traversal, with hare i reading, tortoise w writing
         int w = beg;
@@ -1582,8 +1600,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     es[w++] = es[i];
                 }
             }
-            if (to == end)
+            if (to == end) {
                 break;
+            }
             // In this loop, w is on the first leg, i on the second
             for (i = 0, to = end, k -= capacity; i < to && w < capacity; i++) {
                 if (isClear(deathRow, i - k)) {
@@ -1591,13 +1610,15 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                 }
             }
             if (i >= to) {
-                if (w == capacity)
+                if (w == capacity) {
                     w = 0; // "corner" case
+                }
                 break;
             }
         }
-        if (end != tail)
+        if (end != tail) {
             throw new ConcurrentModificationException();
+        }
         circularClear(es, tail = w, end);
         // checkInvariants();
         return true;
@@ -1622,8 +1643,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                             return true;
                         }
                     }
-                    if (to == end)
+                    if (to == end) {
                         break;
+                    }
                 }
             }
             return false;
@@ -1697,10 +1719,12 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
         // assert 0 <= i && i < es.length;
         // assert 0 <= end && end < es.length;
         for (int to = (i <= end) ? end : es.length;; i = 0, to = end) {
-            for (; i < to; i++)
+            for (; i < to; i++) {
                 es[i] = null;
-            if (to == end)
+            }
+            if (to == end) {
                 break;
+            }
         }
     }
 
@@ -1793,8 +1817,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             final Object[] es = elements;
             for (int i = head, j = 0, len = Math.min(size, es.length - i);; i = 0, len = tail) {
                 System.arraycopy(es, i, a, j, len);
-                if ((j += len) == size)
+                if ((j += len) == size) {
                     break;
+                }
             }
             if (size < a.length) {
                 a[size] = null;
@@ -1831,15 +1856,18 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
      */
     @Override
     public boolean addAll(int index, Collection<? extends E> c) {
-        if (index < 0)
+        if (index < 0) {
             throw new IndexOutOfBoundsException(Integer.toString(index));
+        }
         Object[] a = c.toArray();
-        if (a.length == 0)
+        if (a.length == 0) {
             return false;
+        }
         checkArray(a);
         return sync(() -> {
-            if (index > size())
+            if (index > size()) {
                 throw new IndexOutOfBoundsException(Integer.toString(index));
+            }
             insert(index, a, 0, a.length);
             return true;
         });
@@ -1920,8 +1948,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
     @Override
     public E get(int index) {
         return sync(() -> {
-            if (index < 0 || index >= size())
+            if (index < 0 || index >= size()) {
                 throw new IndexOutOfBoundsException(Integer.toString(index));
+            }
             final Object[] es = elements;
             return elementAt(es, inc(head, index, es.length));
         });
@@ -1948,8 +1977,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             throw new NullPointerException();
         }
         return sync(() -> {
-            if (index < 0 || index >= size())
+            if (index < 0 || index >= size()) {
                 throw new IndexOutOfBoundsException(Integer.toString(index));
+            }
             final Object[] es = elements;
             int idx = inc(head, index, es.length);
             E old = elementAt(es, idx);
@@ -1980,8 +2010,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             throw new NullPointerException();
         }
         sync(() -> {
-            if (index < 0 || index > size())
+            if (index < 0 || index > size()) {
                 throw new IndexOutOfBoundsException(Integer.toString(index));
+            }
             insert(inc(head, index, elements.length), element);
             return null;
         });
@@ -2003,8 +2034,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
     @Override
     public E removeAt(int index) {
         return sync(() -> {
-            if (index < 0 || index >= size())
+            if (index < 0 || index >= size()) {
                 throw new IndexOutOfBoundsException(Integer.toString(index));
+            }
             final Object[] es = elements;
             int idx = inc(head, index, es.length);
             E old = elementAt(es, idx);
@@ -2099,8 +2131,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
     @Override
     public ListIterator<E> listIterator(int index) {
         // Must be manually synced by caller
-        if (index < 0 || index > size())
+        if (index < 0 || index > size()) {
             throw new IndexOutOfBoundsException(Integer.toString(index));
+        }
         return new DeqListIterator(inc(head, index, elements.length));
     }
 
@@ -2117,11 +2150,13 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             final Object[] es = elements;
             for (int i = from, e = (i <= to) ? to : es.length; /**/; i = 0, e = to) {
                 for (/**/; i < e; i++) {
-                    if (o.equals(es[i]))
+                    if (o.equals(es[i])) {
                         return i;
+                    }
                 }
-                if (e == to)
+                if (e == to) {
                     break;
+                }
             }
         }
         return -1;
@@ -2132,11 +2167,13 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
             final Object[] es = elements;
             for (int i = from, e = (i >= to) ? to : 0; /**/; i = es.length, e = to) {
                 for (/**/; i > e;) {
-                    if (o.equals(es[--i]))
+                    if (o.equals(es[--i])) {
                         return i;
+                    }
                 }
-                if (e == to)
+                if (e == to) {
                     break;
+                }
             }
         }
         return -1;
@@ -2224,8 +2261,9 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                     sb.append(o == this ? "(this Collection)" : o);
                     sb.append(',').append(' ');
                 }
-                if (e == to)
+                if (e == to) {
                     break;
+                }
             }
             return sb.append(']').toString();
         });
@@ -2239,33 +2277,44 @@ public final class IndexableArrayDeque<E> implements VecDeque<E> {
                 Object o = es[i];
                 hashCode = 31 * hashCode + (o == null ? 0 : o.hashCode());
             }
-            if (e == to)
+            if (e == to) {
                 break;
+            }
         }
         return hashCode;
     }
 
     boolean equals(Object o, int from, int to) {
-        if (!(o instanceof Indexable))
+        if (!(o instanceof Indexable)) {
             return false;
-        Indexable<?> l = (Indexable<?>) o;
-        final Object[] es = elements;
-        int i = from, s = l.size();
-        if (s != sub(to, from, es.length))
-            return false;
-        if (s == 0)
-            return true;
-        for (int j = 0, e = (i <= to) ? to : es.length; /**/; i = 0, e = to) {
-            for (/**/; i < e; i++) {
-                Object t = es[i];
-                Object c = l.get(j++);
-                if (!(t == null ? c == null : t.equals(c)))
-                    return false;
-            }
-            if (e == to)
-                break;
         }
-        return true;
+        Indexable<?> l = (Indexable<?>) o;
+        try {
+            l.lockInterruptibly();
+            final Object[] es = elements;
+            int i = from, s = l.size();
+            if (s != sub(to, from, es.length)) {
+                return false;
+            }
+            if (s == 0) {
+                return true;
+            }
+            for (int j = 0, e = (i <= to) ? to : es.length; /**/; i = 0, e = to) {
+                for (/**/; i < e; i++) {
+                    Object t = es[i];
+                    Object c = l.get(j++);
+                    if (!(t == null ? c == null : t.equals(c))) {
+                        return false;
+                    }
+                }
+                if (e == to) {
+                    break;
+                }
+            }
+            return true;
+        } finally {
+            l.unlock();
+        }
     }
 
     <T> T sync(Supplier<T> block) {
