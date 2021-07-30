@@ -25,7 +25,6 @@
 /*
  * Portions Copyright (c) Microsoft Corporation
  */
-
 package misc;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -67,7 +66,7 @@ public final class CancellationToken {
      * {@link CancellationToken#cancel()}.
      *
      * @return {@code true} if cancellation has been requested,
-     *         {@false} otherwise.
+     *         {@code false} otherwise.
      */
     public boolean isCancellationRequested() {
         return isCancelled.get();
