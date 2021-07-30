@@ -48,13 +48,13 @@
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>jamu</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>dynmode-decompJ</artifactId>
-            <version>0.9.0</version>
+            <version>0.9.2</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
