@@ -62,7 +62,7 @@ public final class AddOpens {
             // get the method that is also used by "--add-opens"
             Method m = javaLangModule.getDeclaredMethod("implAddOpens", String.class, javaLangModule);
             // override language-level access checks
-            U.putBooleanVolatile(m, OVERRIDE_FIELD_OFFSET, true);
+            U.putBoolean(m, OVERRIDE_OFFSET, true);
             // open given packages in the target module to this module
             for (String package_ : packageNames) {
                 m.invoke(targetModule, package_, thisModule);
@@ -98,11 +98,10 @@ public final class AddOpens {
         }
     }
 
-    private static <A extends AccessibleObject> A setAccessible(A accessible) {
+    private static void setAccessible(Method method) {
         if (U != null) {
-            U.putBoolean(accessible, OVERRIDE_FIELD_OFFSET, true);
+            U.putBoolean(method, OVERRIDE_OFFSET, true);
         }
-        return accessible;
     }
 
     private static sun.misc.Unsafe getUnsafe() {
@@ -116,7 +115,7 @@ public final class AddOpens {
     }
 
     // field offset of the override field (Warning: this may change at any time!)
-    private static final long OVERRIDE_FIELD_OFFSET = 12;
+    private static final long OVERRIDE_OFFSET = 12;
     private static final sun.misc.Unsafe U = getUnsafe();
 
     private AddOpens() {
