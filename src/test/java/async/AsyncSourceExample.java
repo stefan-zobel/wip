@@ -1,5 +1,6 @@
 package async;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 
 public class AsyncSourceExample implements AsyncSource<Integer> {
@@ -50,6 +51,12 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
         CancellationToken token = new CancellationToken();
         agent.onInit(token);
 
+        // handle unlikely case that the agent cancels in onInit()
+        if (token.isCancellationRequested()) {
+            agent.onError(new CancellationException());
+            return token;
+        }
+
         CompletableFuture<Void> future = enumerateSource(agent, token);
         token.registerOnCancel(() -> {
             future.cancel(true); // this won't interrupt threads!
@@ -96,16 +103,20 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
 
         @Override
         public void run() {
-            while (current < stop && !ct.isCancellationRequested()) {
-                agent.onNext(current++);
-                if (!ct.isCancellationRequested()) {
-                    try {
-                        Thread.sleep(sleep);
-                        System.out.println("-");
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+            try {
+                while (current < stop && !ct.isCancellationRequested()) {
+                    agent.onNext(current++);
+                    if (!ct.isCancellationRequested()) {
+                        try {
+                            Thread.sleep(sleep);
+                            System.out.println("-");
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
+            } catch (Exception e) {
+                agent.onError(e);
             }
             System.out.println("Thread exit: " + Thread.currentThread().getName());
         }
