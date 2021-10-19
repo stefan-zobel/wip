@@ -53,7 +53,7 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
 
         // handle unlikely case that the agent cancels in onInit()
         if (token.isCancellationRequested()) {
-            agent.onError(new CancellationException());
+            agent.onError(new CancellationException("onInit"));
             return token;
         }
 
@@ -74,12 +74,12 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
     }
 
     private CompletableFuture<Void> enumerateSource(AsyncSourceAgent<Integer> agent, CancellationToken ct) {
-        return CompletableFuture.runAsync(new Producer(5, 101, agent, 250L, ct)).thenCompose((Void v) -> {
+        return CompletableFuture.runAsync(new Producer(5, 101, agent, 250L, ct)).thenCompose(stage -> {
             if (!ct.isCancellationRequested()) {
                 return CompletableFuture.completedFuture(null);
             } else {
                 CompletableFuture<Void> future = new CompletableFuture<>();
-                future.completeExceptionally(new RuntimeException());
+                future.completeExceptionally(new CancellationException("afterCompletion"));
                 return future;
             }
         });
