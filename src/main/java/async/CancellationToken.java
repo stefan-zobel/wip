@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public final class CancellationToken {
 
-    // the reference to the head of the OnCancelNode list (each node hold an
+    // the reference to the head of the OnCancelNode list (each node holds a
     // Runnable to execute on cancel).
     private volatile OnCancelNode onCancelNodes;
     // CAS Updater to update the above OnCancelNode list head field.
