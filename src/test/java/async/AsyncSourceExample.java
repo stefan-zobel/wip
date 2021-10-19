@@ -1,9 +1,6 @@
 package async;
 
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-
-public class AsyncSourceExample implements AsyncSource<Integer> {
+public class AsyncSourceExample extends AbstractAsyncSource<Integer> {
 
     static final class Agent implements AsyncSourceAgent<Integer> {
         CancellationToken ct = null;
@@ -47,42 +44,8 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
     }
 
     @Override
-    public CancellationToken forEach(AsyncSourceAgent<Integer> agent) {
-        CancellationToken token = new CancellationToken();
-        agent.onInit(token);
-
-        // handle unlikely case that the agent cancels in onInit()
-        if (token.isCancellationRequested()) {
-            agent.onError(new CancellationException("onInit"));
-            return token;
-        }
-
-        CompletableFuture<Void> future = enumerateSource(agent, token);
-        token.registerOnCancel(() -> {
-            future.cancel(true); // this won't interrupt threads!
-        });
-
-        future.whenCompleteAsync((ignored, throwable) -> {
-            if (throwable != null) {
-                agent.onError(throwable);
-            } else {
-                agent.onCompleted();
-            }
-        });
-
-        return token;
-    }
-
-    private CompletableFuture<Void> enumerateSource(AsyncSourceAgent<Integer> agent, CancellationToken ct) {
-        return CompletableFuture.runAsync(new Producer(5, 101, agent, 250L, ct)).thenCompose(stage -> {
-            if (!ct.isCancellationRequested()) {
-                return CompletableFuture.completedFuture(null);
-            } else {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                future.completeExceptionally(new CancellationException("afterCompletion"));
-                return future;
-            }
-        });
+    protected Runnable newRunnable(AsyncSourceAgent<Integer> agent, CancellationToken ct) {
+        return new Producer(5, 101, agent, 250L, ct);
     }
 
     static final class Producer implements Runnable {
