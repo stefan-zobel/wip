@@ -16,10 +16,10 @@
 package async;
 
 /**
- * A source of elements that can be processed asynchronously.
+ * A source of events that can be processed asynchronously.
  * 
  * @param <T>
- *            The source's element type
+ *            The event type produced by the source
  */
 public interface AsyncSource<T> {
 

@@ -16,11 +16,11 @@
 package async;
 
 /**
- * Handler for the asynchronous delivery of signals (individual events, error or
- * completion of the source) from a {@link AsyncSource}.
+ * Handler for the asynchronous delivery of messages (individual events, error
+ * or completion of the source) from a {@link AsyncSource}.
  * 
  * @param <T>
- *            The source's element type
+ *            The event type produced by the source
  */
 @FunctionalInterface
 public interface AsyncSourceAgent<T> {

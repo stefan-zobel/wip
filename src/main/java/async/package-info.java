@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Asynchronous delivery of signals from a source. 
+ * Asynchronous delivery of events from a source. 
  */
 package async;
