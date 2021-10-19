@@ -24,7 +24,7 @@ public class AsyncSourceExample implements AsyncSource<Integer> {
 
         @Override
         public void onError(Throwable t) {
-            System.out.println("Error: " + t.getClass().getName());
+            System.out.println("Error: " + t.getClass().getName() + " " + t.getMessage());
         }
 
         @Override
