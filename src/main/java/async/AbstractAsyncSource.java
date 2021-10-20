@@ -18,6 +18,8 @@ package async;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * A simple abstract implementation of {@link AsyncSource} that requires the
@@ -29,11 +31,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public abstract class AbstractAsyncSource<T> implements AsyncSource<T> {
 
-    /**
-     * Public no argument constructor.
-     */
-    public AbstractAsyncSource() {
-    }
+    private static final ExecutorService executor = Executors.newWorkStealingPool();
 
     /**
      * Must return a {@link Runnable} that delivers the events to {@code agent}
@@ -81,7 +79,7 @@ public abstract class AbstractAsyncSource<T> implements AsyncSource<T> {
     }
 
     private CompletableFuture<Void> decorateSource(AsyncSourceAgent<T> agent, CancellationToken ct) {
-        return CompletableFuture.runAsync(newRunnable(agent, ct)).thenCompose(stage -> {
+        return CompletableFuture.runAsync(newRunnable(agent, ct), executor).thenCompose(stage -> {
             if (!ct.isCancellationRequested()) {
                 return CompletableFuture.completedFuture(null);
             } else {
