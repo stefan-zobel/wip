@@ -61,7 +61,7 @@ final class ImmutableCollections {
         return new UnsupportedOperationException();
     }
 
-    static abstract class AbstractImmutableCollection<E> extends AbstractCollection<E> {
+    abstract static class AbstractImmutableCollection<E> extends AbstractCollection<E> {
         // all mutating methods throw UnsupportedOperationException
         @Override
         public boolean add(E e) {
@@ -111,7 +111,7 @@ final class ImmutableCollections {
         }
     }
 
-    static abstract class AbstractImmutableList<E> extends AbstractImmutableCollection<E>
+    abstract static class AbstractImmutableList<E> extends AbstractImmutableCollection<E>
             implements List<E>, RandomAccess {
         // all mutating methods throw UnsupportedOperationException
         @Override
@@ -557,7 +557,7 @@ final class ImmutableCollections {
 
     // ---------- Set Implementations ----------
 
-    static abstract class AbstractImmutableSet<E> extends AbstractImmutableCollection<E> implements Set<E> {
+    abstract static class AbstractImmutableSet<E> extends AbstractImmutableCollection<E> implements Set<E> {
 
         @Override
         public boolean equals(Object o) {
