@@ -24,7 +24,7 @@
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>schwefel</artifactId>
-            <version>6.28.2.3</version>
+            <version>6.29.4.1</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
