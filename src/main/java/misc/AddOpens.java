@@ -61,7 +61,7 @@ public final class AddOpens {
             // get the method that is also used by "--add-opens"
             Method m = javaLangModule.getDeclaredMethod("implAddOpens", String.class, javaLangModule);
             // override language-level access checks
-            U.putBoolean(m, OVERRIDE_OFFSET, true);
+            setAccessible(m);
             // open given packages in the target module to this module
             for (String package_ : packageNames) {
                 m.invoke(targetModule, package_, thisModule);
