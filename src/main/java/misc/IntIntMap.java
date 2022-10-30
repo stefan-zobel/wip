@@ -70,6 +70,10 @@ public class IntIntMap {
         return valIfNoKey;
     }
 
+    public boolean containsKey(int key) {
+        return get(key) != valIfNoKey;
+    }
+
     public int put(int key, int value) {
         checkKey(key);
         int idx = modPowerOf2(key, keys.length);
@@ -114,7 +118,6 @@ public class IntIntMap {
         keys = newKeys;
         vals = newVals;
         threshold = computeThreshold(newCapacity);
-        DEBUG_checkKeyConsistency(); // XXX
     }
 
     public int remove(int key) {
@@ -293,93 +296,6 @@ public class IntIntMap {
     private static void checkKey(int key) {
         if (key < 0) {
             throw new ArrayIndexOutOfBoundsException(key);
-        }
-    }
-
-    public static void main(String[] args) {
-        int UPPER_BOUND = 511;
-        int INVALID_KEY = -5;
-        HashMap<Integer, Integer> testedKeyValues = new HashMap<>();
-        Random r = new Random();
-        IntIntMap map = new IntIntMap(INVALID_KEY);
-
-        testFill(map, testedKeyValues, INVALID_KEY, UPPER_BOUND, r);
-        testRemove(map, testedKeyValues, INVALID_KEY, UPPER_BOUND);
-
-        testedKeyValues.clear();
-        testFill(map, testedKeyValues, INVALID_KEY, UPPER_BOUND, r);
-        testRemove(map, testedKeyValues, INVALID_KEY, UPPER_BOUND);
-
-        testedKeyValues.clear();
-        map.clear();
-        printStats(map);
-    }
-
-    private static void testFill(IntIntMap map, HashMap<Integer, Integer> testedKeyValues, int INVALID_KEY,
-            int UPPER_BOUND, Random r) {
-        for (int i = 0; i <= UPPER_BOUND; ++i) {
-            int key = r.ints(0, Integer.MAX_VALUE).findFirst().getAsInt();
-            int value = i;
-            map.put(key, value);
-            int retVal = map.get(key);
-            if (retVal != value) {
-                System.err.println("WRONG return value !!!");
-            }
-            testedKeyValues.put(key, value);
-        }
-        printStats(map);
-    }
-
-    private static void testRemove(IntIntMap map, HashMap<Integer, Integer> testedKeyValues, int INVALID_KEY,
-            int UPPER_BOUND) {
-        for (Entry<Integer, Integer> entry : testedKeyValues.entrySet()) {
-            int key = entry.getKey();
-            int expectedValue = entry.getValue();
-            int removedValue = map.remove(key);
-            if (removedValue != expectedValue) {
-                System.err.println("WRONG value from remove: " + removedValue);
-            }
-            removedValue = map.remove(key);
-            if (removedValue != INVALID_KEY) {
-                System.err.println("WRONG value from remove for non-existing key: " + removedValue);
-            }
-        }
-        printStats(map);
-    }
-
-    private static void printStats(IntIntMap map) {
-        int count = map.size();
-        int bucketCount = map.getBucketCount();
-        int bucketsUsed = map.getBucketsOccupiedCount();
-        double avgBucketLen = map.getAverageOccupiedBucketLength();
-        int maxLength = map.getMaxOccupiedBucketLength();
-        System.out.println("#elements   : " + count);
-        System.out.println("bucketCount : " + bucketCount);
-        System.out.println("bucketsUsed : " + bucketsUsed);
-        System.out.println("percent used: " + ((double) bucketsUsed / bucketCount));
-        System.out.println("avgBucketLen: " + avgBucketLen);
-        System.out.println("maxLength   : " + maxLength);
-        System.out.println("---");
-    }
-
-    private void DEBUG_checkKeyConsistency() {
-        for (int[] k_ : keys) {
-            if (k_ != null && k_.length > 0) {
-                int key = k_[0];
-                if (key == -1) {
-                    break;
-                }
-                int expected = modPowerOf2(key, keys.length);
-                for (int kk : k_) {
-                    if (kk == -1) {
-                        break;
-                    }
-                    int idx = modPowerOf2(kk, keys.length);
-                    if (idx != expected) {
-                        throw new IllegalArgumentException("WRONG index !!! -> " + expected);
-                    }
-                }
-            }
         }
     }
 }
