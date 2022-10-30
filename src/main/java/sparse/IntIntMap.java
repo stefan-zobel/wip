@@ -37,14 +37,18 @@ public class IntIntMap {
     private int[][] vals;
 
     public IntIntMap(int valueIfKeyNotFound) {
-        init();
+        this(valueIfKeyNotFound, INITIAL_CAP);
+    }
+
+    public IntIntMap(int valueIfKeyNotFound, int capacity) {
+        init(getNextPowerOfTwo(capacity));
         valIfNoKey = valueIfKeyNotFound;
     }
 
-    private void init() {
+    private void init(int capacity) {
         count = 0;
-        keys = new int[INITIAL_CAP][];
-        vals = new int[INITIAL_CAP][];
+        keys = new int[capacity][];
+        vals = new int[capacity][];
         threshold = computeThreshold(keys.length);
     }
 
@@ -205,7 +209,7 @@ public class IntIntMap {
     }
 
     public void clear() {
-        init();
+        init(INITIAL_CAP);
     }
 
     public int getCurrentThreshold() {
@@ -287,6 +291,19 @@ public class IntIntMap {
 
     private static int computeThreshold(int capacity) {
         return (int) Math.min(THRESHOLD_FACTOR * capacity, MAX_CAP + 1);
+    }
+
+    private static int getNextPowerOfTwo(int capacity) {
+        if (capacity < 0) {
+            throw new IllegalArgumentException("capacity: " + capacity);
+        }
+        if (capacity <= INITIAL_CAP) {
+            return INITIAL_CAP;
+        }
+        if (Integer.bitCount(capacity) == 1) {
+            return capacity;
+        }
+        return Integer.highestOneBit(capacity) << 1;
     }
 
     private static void checkKey(int key) {
