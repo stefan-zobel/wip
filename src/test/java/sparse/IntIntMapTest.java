@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Map.Entry;
 
-import misc.IntIntMap;
-
 public class IntIntMapTest {
 
     public static void main(String[] args) {

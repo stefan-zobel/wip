@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package misc;
-
-import java.util.HashMap;
-import java.util.Map.Entry;
-import java.util.Random;
+package sparse;
 
 /**
  * A map that maps non-negative integer keys to arbitrary integer values. An
