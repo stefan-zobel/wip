@@ -17,6 +17,7 @@ package sparse;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.StringJoiner;
 
 /**
  * A map that maps non-negative integer keys to arbitrary integer values. An
@@ -211,6 +212,10 @@ public class IntIntMap {
         return count;
     }
 
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
     public void clear() {
         init(INITIAL_CAP);
     }
@@ -277,6 +282,23 @@ public class IntIntMap {
         return max;
     }
 
+    public String toString() {
+        StringJoiner buf = new StringJoiner(", ", "{", "}");
+        for (int j = 0; j < keys.length; ++j) {
+            int[] bucket = keys[j];
+            if (bucket != null && bucket[0] != -1) {
+                for (int i = 0; i < bucket.length; ++i) {
+                    int key = bucket[i];
+                    if (key == -1) {
+                        break;
+                    }
+                    buf.add(key + "=" + vals[j][i]);
+                }
+            }
+        }
+        return buf.toString();
+    }
+
     private static int effectiveKeyArrayLength(int[] a) {
         int used = 0;
         for (int i = 0; i < a.length; ++i) {
@@ -306,7 +328,8 @@ public class IntIntMap {
         if (Integer.bitCount(capacity) == 1) {
             return capacity;
         }
-        return Integer.highestOneBit(capacity) << 1;
+        capacity = Integer.highestOneBit(capacity) << 1;
+        return capacity <= MAX_CAP ? capacity : MAX_CAP;
     }
 
     private static void checkKey(int key) {
