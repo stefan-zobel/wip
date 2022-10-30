@@ -1,5 +1,7 @@
 package sparse;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Map.Entry;
@@ -66,7 +68,8 @@ public class IntIntMapTest {
         System.out.println("#elements   : " + count);
         System.out.println("bucketCount : " + bucketCount);
         System.out.println("bucketsUsed : " + bucketsUsed);
-        System.out.println("percent used: " + ((double) bucketsUsed / bucketCount));
+        System.out.println("percent used: "
+                + new BigDecimal((double) bucketsUsed / bucketCount).setScale(3, RoundingMode.HALF_EVEN).doubleValue());
         System.out.println("avgBucketLen: " + avgBucketLen);
         System.out.println("maxLength   : " + maxLength);
         System.out.println("---");

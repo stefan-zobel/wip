@@ -15,6 +15,9 @@
  */
 package sparse;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
  * A map that maps non-negative integer keys to arbitrary integer values. An
  * integer value that cannot occur as a value in the map must be passed as
@@ -253,7 +256,7 @@ public class IntIntMap {
         if (Double.isNaN(length)) {
             return 0.0;
         }
-        return length;
+        return new BigDecimal(length).setScale(2, RoundingMode.HALF_EVEN).doubleValue();
     }
 
     public int getMaxOccupiedBucketLength() {
