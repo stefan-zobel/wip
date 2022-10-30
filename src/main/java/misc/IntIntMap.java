@@ -41,10 +41,15 @@ public class IntIntMap {
     private int[][] vals;
 
     public IntIntMap(int valueIfKeyNotFound) {
+        init();
+        valIfNoKey = valueIfKeyNotFound;
+    }
+
+    private void init() {
+        count = 0;
         keys = new int[INITIAL_CAP][];
         vals = new int[INITIAL_CAP][];
         threshold = computeThreshold(keys.length);
-        valIfNoKey = valueIfKeyNotFound;
     }
 
     public int get(int key) {
@@ -200,6 +205,10 @@ public class IntIntMap {
         return count;
     }
 
+    public void clear() {
+        init();
+    }
+
     public int getCurrentThreshold() {
         return threshold;
     }
@@ -301,8 +310,9 @@ public class IntIntMap {
         testFill(map, testedKeyValues, INVALID_KEY, UPPER_BOUND, r);
         testRemove(map, testedKeyValues, INVALID_KEY, UPPER_BOUND);
 
-        int x;
-        x = 0;
+        testedKeyValues.clear();
+        map.clear();
+        printStats(map);
     }
 
     private static void testFill(IntIntMap map, HashMap<Integer, Integer> testedKeyValues, int INVALID_KEY,
