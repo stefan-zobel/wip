@@ -15,10 +15,17 @@
  */
 package misc;
 
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Random;
 
 /**
- * TODO
+ * A map that maps non-negative integer keys to arbitrary integer values. An
+ * integer value that cannot occur as a value in the map must be passed as
+ * {@code valueIfKeyNotFound} on construction. This special value is returned
+ * from all value returning methods when the passed key doesn't exist in the
+ * map. All methods that accept an integer key argument throw
+ * {@link ArrayIndexOutOfBoundsException} if a negative key gets passed.
  */
 public class IntIntMap {
 
@@ -90,7 +97,7 @@ public class IntIntMap {
     }
 
     private void resize() {
-        int oldLength = keys.length; 
+        int oldLength = keys.length;
         if (oldLength == MAX_CAP) {
             threshold = Integer.MAX_VALUE;
             return;
@@ -106,10 +113,46 @@ public class IntIntMap {
         DEBUG_checkKeyConsistency();
     }
 
+    public int remove(int key) {
+        checkKey(key);
+        int idx = modPowerOf2(key, keys.length);
+        int[] k = keys[idx];
+        if (k != null) {
+            for (int i = 0; i < k.length; ++i) {
+                int key_ = k[i];
+                if (key_ == -1) {
+                    break;
+                }
+                if (key_ == key) {
+                    int val = vals[idx][i];
+                    // XXX
+                    if (k[i + 1] == -1) {
+                        k[i + 1] = 0;
+                        k[i] = -1;
+                        vals[idx][i] = 0;
+                    } else {
+                        // XXX
+                        int last = effectiveKeyArrayLength(k) - 1;
+                        k[i] = k[last];
+                        k[last] = -1;
+                        k[last + 1] = 0;
+                        vals[idx][i] = vals[idx][last];
+                        vals[idx][last] = 0;
+                    }
+                    return val;
+                }
+            }
+        }
+        // XXX
+        return valIfNoKey;
+    }
+
     public static void main(String[] args) {
         int UPPER_BOUND = 511;
+        int INVALID_KEY = -5;
+        HashMap<Integer, Integer> testKeyValues = new HashMap<>();
         Random r = new Random();
-        IntIntMap map = new IntIntMap(-5);
+        IntIntMap map = new IntIntMap(INVALID_KEY);
         for (int i = 0; i <= UPPER_BOUND; ++i) {
             int key = r.ints(0, Integer.MAX_VALUE).findFirst().getAsInt();
             int value = i;
@@ -118,6 +161,7 @@ public class IntIntMap {
             if (retVal != value) {
                 System.err.println("WRONG return value !!!");
             }
+            testKeyValues.put(key, value);
         }
         int bucketCount = map.getBucketCount();
         int bucketsUsed = map.getBucketsOccupiedCount();
@@ -128,6 +172,20 @@ public class IntIntMap {
         System.out.println("percent used: " + ((double) bucketsUsed / bucketCount));
         System.out.println("avgBucketLen: " + avgBucketLen);
         System.out.println("maxLength   : " + maxLength);
+        for (Entry<Integer, Integer> entry : testKeyValues.entrySet()) {
+            int key = entry.getKey();
+            int expectedValue = entry.getValue();
+            int removedValue = map.remove(key);
+            if (removedValue != expectedValue) {
+                System.err.println("WRONG value from remove: " + removedValue);
+            }
+            removedValue = map.remove(key);
+            if (removedValue != INVALID_KEY) {
+                System.err.println("WRONG value from remove for non-existing key: " + removedValue);
+            }
+        }
+        int x;
+        x = 0;
     }
 
     private static void transfer(int[][] newKeys, int[][] oldKeys, int[][] newVals, int[][] oldVals) {
@@ -196,7 +254,6 @@ public class IntIntMap {
         vals[idx][used] = value;
         int[] k__ = new int[2 * k_.length];
         int[] v__ = new int[2 * k_.length];
-        System.err.println("append: resize above MIN_LEN: " + k__.length); // XXX
         System.arraycopy(k_, 0, k__, 0, k_.length);
         System.arraycopy(vals[idx], 0, v__, 0, k_.length);
         k__[k_.length] = -1;
