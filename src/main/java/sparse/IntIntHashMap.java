@@ -110,6 +110,8 @@ public class IntIntHashMap implements Map<Integer, Integer>, Cloneable {
     }
 
     public boolean containsKey(Object key) {
+        if (key == null)
+            throw new NullPointerException();
         return getEntry(key) != null;
     }
 
@@ -362,7 +364,7 @@ public class IntIntHashMap implements Map<Integer, Integer>, Cloneable {
 
     public boolean containsValue(Object value) {
         if (value == null)
-            return false;
+            throw new NullPointerException();
 
         Item[] tab = table;
         for (int i = 0; i < tab.length; i++)
