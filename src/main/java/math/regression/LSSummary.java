@@ -15,6 +15,8 @@
  */
 package math.regression;
 
+import java.util.List;
+
 import math.list.DoubleArrayList;
 import math.list.DoubleList;
 import net.jamu.matrix.MatrixD;
@@ -62,6 +64,9 @@ public class LSSummary {
 
     // p values of the coefficients
     private DoubleList pValues;
+
+    // confidence intervals of the coefficients
+    private List<DoubleList> confidenceIntervals;
 
     // df for t-distribution
     private int degreesOfFreedom;
@@ -169,6 +174,14 @@ public class LSSummary {
         this.pValues = pValues;
     }
 
+    public List<DoubleList> getConfidenceIntervals() {
+        return confidenceIntervals;
+    }
+
+    void setConfidenceIntervals(List<DoubleList> confidenceIntervals) {
+        this.confidenceIntervals = confidenceIntervals;
+    }
+
     public int getDegreesOfFreedom() {
         return degreesOfFreedom;
     }
@@ -198,6 +211,7 @@ public class LSSummary {
         return "Summary [alpha=" + alpha + ", numCoefficients=" + getCoefficientsCount() + ",\n coefficients="
                 + coefficients + ",\n yBar=" + yBar + ", rSquared=" + rSquared + ", sigmaHatSquared=" + sigmaHatSquared
                 + ",\n varCovMatrix=" + varCovMatrix + ", coefficientStandardErrors=" + coefficientStandardErrors
-                + ",\n pValues=" + pValues + ",\n degreesOfFreedom=" + degreesOfFreedom + "]";
+                + ",\n pValues=" + pValues + ",\n confidenceIntervals=" + confidenceIntervals + ",\n degreesOfFreedom="
+                + degreesOfFreedom + "]";
     }
 }
