@@ -189,11 +189,15 @@ public class LSSummary {
         return regressand;
     }
 
+    public int getCoefficientsCount() {
+        return coefficients.size();
+    }
+
     @Override
     public String toString() {
-        return "Summary [alpha=" + alpha + ", coefficients=" + coefficients + ", yBar=" + yBar + ", rSquared="
-                + rSquared + ", sigmaHatSquared=" + sigmaHatSquared + ", varCovMatrix=" + varCovMatrix
-                + ", coefficientStandardErrors=" + coefficientStandardErrors + ", pValues=" + pValues
-                + ", degreesOfFreedom=" + degreesOfFreedom + "]";
+        return "Summary [alpha=" + alpha + ", numCoefficients=" + getCoefficientsCount() + ",\n coefficients="
+                + coefficients + ",\n yBar=" + yBar + ", rSquared=" + rSquared + ", sigmaHatSquared=" + sigmaHatSquared
+                + ",\n varCovMatrix=" + varCovMatrix + ", coefficientStandardErrors=" + coefficientStandardErrors
+                + ",\n pValues=" + pValues + ",\n degreesOfFreedom=" + degreesOfFreedom + "]";
     }
 }
