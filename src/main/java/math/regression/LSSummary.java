@@ -25,16 +25,16 @@ import net.jamu.matrix.MatrixD;
 public class LSSummary {
 
     // significance level used
-    private final double alpha;
+    private double alpha;
 
     // parameters (beta)
     private DoubleList coefficients;
 
     // designMatrix X
-    private final MatrixD designMatrix;
+    private MatrixD designMatrix;
 
     // regressand y
-    private final MatrixD regressand;
+    private MatrixD regressand;
 
     // average value of y
     private double yBar;
@@ -52,7 +52,7 @@ public class LSSummary {
     private double sigmaHatSquared;
 
     // var-cov matrix of the coefficients
-    private MatrixD varianceCovarianceMatrix;
+    private MatrixD varCovMatrix;
 
     // standard error estimates of the coefficient estimators 
     private DoubleList coefficientStandardErrors;
@@ -70,6 +70,13 @@ public class LSSummary {
         this.alpha = alpha;
         this.designMatrix = designMatrix;
         this.regressand = regressand;
+    }
+
+    public void clearTemporaries() {
+        designMatrix = null;
+        regressand = null;
+        yHat = null;
+        residuals = null;
     }
 
     public DoubleList getBeta() {
@@ -130,11 +137,11 @@ public class LSSummary {
     }
 
     public MatrixD getVarianceCovarianceMatrix() {
-        return varianceCovarianceMatrix;
+        return varCovMatrix;
     }
 
     void setVarianceCovarianceMatrix(MatrixD varianceCovarianceMatrix) {
-        this.varianceCovarianceMatrix = varianceCovarianceMatrix;
+        this.varCovMatrix = varianceCovarianceMatrix;
     }
 
     public DoubleList getCoefficientStandardErrors() {
@@ -179,5 +186,13 @@ public class LSSummary {
 
     public MatrixD getYVector() {
         return regressand;
+    }
+
+    @Override
+    public String toString() {
+        return "Summary [alpha=" + alpha + ", coefficients=" + coefficients + ", yBar=" + yBar + ", rSquared="
+                + rSquared + ", sigmaHatSquared=" + sigmaHatSquared + ", varCovMatrix=" + varCovMatrix
+                + ", coefficientStandardErrors=" + coefficientStandardErrors + ", tValues=" + tValues + ", pValues="
+                + pValues + ", degreesOfFreedom=" + degreesOfFreedom + "]";
     }
 }
