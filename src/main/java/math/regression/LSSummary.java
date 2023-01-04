@@ -77,6 +77,7 @@ public class LSSummary {
         regressand = null;
         yHat = null;
         residuals = null;
+        tValues = null;
     }
 
     public DoubleList getBeta() {
@@ -192,7 +193,7 @@ public class LSSummary {
     public String toString() {
         return "Summary [alpha=" + alpha + ", coefficients=" + coefficients + ", yBar=" + yBar + ", rSquared="
                 + rSquared + ", sigmaHatSquared=" + sigmaHatSquared + ", varCovMatrix=" + varCovMatrix
-                + ", coefficientStandardErrors=" + coefficientStandardErrors + ", tValues=" + tValues + ", pValues="
-                + pValues + ", degreesOfFreedom=" + degreesOfFreedom + "]";
+                + ", coefficientStandardErrors=" + coefficientStandardErrors + ", pValues=" + pValues
+                + ", degreesOfFreedom=" + degreesOfFreedom + "]";
     }
 }
