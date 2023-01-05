@@ -17,6 +17,7 @@ package math.regression;
 
 import java.util.ArrayList;
 
+import math.MathConsts;
 import math.distribution.StudentT;
 import math.list.DoubleArrayList;
 import math.list.DoubleList;
@@ -27,13 +28,22 @@ import net.jamu.matrix.SvdEconD;
 public class OLS {
 
     public static LSSummary estimate(double alpha, MatrixD X, MatrixD y) {
+        if (X.numRows() != y.numRows()) {
+            throw new IllegalArgumentException("X.numRows != y.numRows : " + X.numRows() + " != " + y.numRows());
+        }
+        if (X.numRows() - X.numColumns() < 1) {
+            throw new IllegalArgumentException("degrees of freedom < 1 : " + (X.numRows() - X.numColumns()));
+        }
+        if (alpha <= 0.0) {
+            throw new IllegalArgumentException("alpha <= 0 : " + alpha);
+        }
         LSSummary smmry = new LSSummary(alpha, X, y);
         SvdEconD svd = X.svdEcon();
         double[] sigma = svd.getS();
         MatrixD sigmaPI = Matrices.createD(sigma.length, sigma.length);
         for (int i = 0; i < sigma.length; ++i) {
             double sv = sigma[i];
-            if (sv != 0.0) {
+            if (sv > 5.0 * MathConsts.MACH_EPS_DBL) {
                 sigmaPI.set(i, i, 1.0 / sv);
             } else {
                 break;
