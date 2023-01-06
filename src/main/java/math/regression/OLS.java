@@ -37,6 +37,9 @@ public class OLS {
         if (alpha <= 0.0) {
             throw new IllegalArgumentException("alpha <= 0 : " + alpha);
         }
+        if (alpha >= 1.0) {
+            throw new IllegalArgumentException("alpha >= 1 : " + alpha);
+        }
         LSSummary smmry = new LSSummary(alpha, X, y);
         SvdEconD svd = X.svdEcon();
         double[] sigma = svd.getS();
