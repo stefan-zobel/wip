@@ -80,7 +80,7 @@ public class OLS {
         for (int i = 0; i < varCov.numRows(); ++i) {
             double vari = varCov.get(i, i);
             if (vari < 0.0) {
-                vari = 0.0;
+                vari = Double.MIN_NORMAL;
                 varCov.set(i, i, vari);
             }
             standardErrors.add(Math.sqrt(vari));
