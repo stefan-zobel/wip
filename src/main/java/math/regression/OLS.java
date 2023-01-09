@@ -67,7 +67,7 @@ public class OLS {
         double SQE = a.transpose().times(a).get(0, 0);
         double SQT = b.transpose().times(b).get(0, 0);
         double R_squared = SQE / SQT;
-        smmry.setRSquared(R_squared);
+        smmry.setRSquared(R_squared > 1.0 ? 1.0 : R_squared);
         MatrixD epsHat = y.minus(yHat);
         smmry.setResiduals(epsHat);
         int df = epsHat.numRows() - X.numColumns();
