@@ -78,7 +78,12 @@ public class OLS {
         smmry.setVarianceCovarianceMatrix(varCov);
         DoubleList standardErrors = new DoubleArrayList(varCov.numRows());
         for (int i = 0; i < varCov.numRows(); ++i) {
-            standardErrors.add(Math.sqrt(varCov.get(i, i)));
+            double vari = varCov.get(i, i);
+            if (vari < 0.0) {
+                vari = 0.0;
+                varCov.set(i, i, vari);
+            }
+            standardErrors.add(Math.sqrt(vari));
         }
         smmry.setCoefficientStandardErrors(standardErrors);
         DoubleList tValues = new DoubleArrayList(varCov.numRows());
