@@ -9,6 +9,14 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+/**
+ * A map that maps integer keys to arbitrary integer values. An {@code int}
+ * value that cannot occur as a value in the map must be passed as
+ * {@code valueIfKeyNotFound} on construction. This special value is returned
+ * from all {@code int} value returning methods (such as {@link #getInt(int)},
+ * {@link #putInt(int, int)} or {@link #removeInt(int)}) when the passed key
+ * doesn't exist in the map.
+ */
 public class IntIntHashMap implements Map<Integer, Integer>, Cloneable {
 
     static final int INITIAL_CAP = 16;
