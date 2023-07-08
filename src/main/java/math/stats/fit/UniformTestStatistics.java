@@ -93,16 +93,11 @@ public final class UniformTestStatistics {
         @Override
         public String toString() {
             StringBuilder b = new StringBuilder(256);
-            b.append("\r\n");
-            // b.append("KSP D+ : ").append(KSP).append("\r\n");
-            // b.append("KSM D- : ").append(KSM).append("\r\n");
-            b.append("KS  D  : ").append(KS).append("\r\n");
-            b.append("AD  A2 : ").append(AD).append("\r\n");
-            // b.append("CM W2 : ").append(CM).append("\r\n");
-            // b.append("WG G : ").append(WG).append("\r\n");
-            // b.append("WU U2 : ").append(WU).append("\r\n");
-            b.append("MEAN   : ").append(MEAN).append("\r\n");
-            b.append("N      : ").append(N).append("\r\n\r\n");
+            b.append(SEP);
+            b.append("KS  D  : ").append(KS).append(SEP);
+            b.append("AD  A2 : ").append(AD).append(SEP);
+            b.append("MEAN   : ").append(MEAN).append(SEP);
+            b.append("N      : ").append(N).append(SEP).append(SEP);
             return b.toString();
         }
     }
@@ -119,10 +114,6 @@ public final class UniformTestStatistics {
          * Kolmogorov-Smirnov+ test p-value
          */
         public double KSP_PVAL = Double.NaN;
-        /**
-         * Kolmogorov-Smirnov- test p-value
-         */
-        public double KSM_PVAL = Double.NaN;
         /**
          * Kolmogorov-Smirnov test p-value
          */
@@ -149,23 +140,20 @@ public final class UniformTestStatistics {
          */
         @Override
         public String toString() {
-            // String ksp = "KolmogorovSmirnovPlus  p-value: " + KSP_PVAL;
-            // String ksm = "KolmogorovSmirnovMinus p-value: " + KSM_PVAL;
             String ks = "KolmogorovSmirnov      p-value: " + KS_PVAL;
             String ad = "Anderson-Darling       p-value: " + AD_PVAL;
             String size = "Sample size                 : " + N;
             StringBuilder b = new StringBuilder(384);
-            b.append("\r\n");
-            // b.append(ksp).append("\r\n");
-            // b.append(ksm).append("\r\n");
-            b.append(ks).append("\r\n");
-            b.append(ad).append("\r\n");
-            b.append(size).append("\r\n\r\n");
+            b.append(SEP);
+            b.append(ks).append(SEP);
+            b.append(ad).append(SEP);
+            b.append(size).append(SEP).append(SEP);
             return b.toString();
         }
     }
 
     private static final double EPS = MathConsts.BIG_INV / 2.0;
+    static final String SEP = System.lineSeparator();
 
     /**
      * Computes the {@link UniformTestStatistics.Result} for a sorted array of
