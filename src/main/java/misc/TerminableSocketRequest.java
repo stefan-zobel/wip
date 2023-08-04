@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class TerminableSocketRequest {
 
-    private static final int BUF_SIZE_DEFAULT = 128;
+    private static final int BUF_SIZE_DEFAULT = 2048;
 
     private final Socket sock;
     private final InputStream is;
