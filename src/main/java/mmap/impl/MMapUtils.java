@@ -18,7 +18,6 @@ package mmap.impl;
 import sun.misc.Unsafe;
 
 import java.io.FileDescriptor;
-import java.lang.reflect.Field;
 
 /**
  * Native utilities for memory-mapped files.
@@ -102,12 +101,7 @@ public final class MMapUtils {
     public static boolean force(FileDescriptor fd, long address, long index, long length) {
         // force writeback via file descriptor
         long offset = mappingOffset(address, index);
-        // only the Windows implementation of 'force0()' needs the raw fd
-        long rawfd = 0L;
-        if (Native.isWindows()) {
-            rawfd = getFileDescriptor(fd);
-        }
-        return force0(rawfd, mappingAddress(address, offset, index), mappingLength(offset, length));
+        return force0(fd, mappingAddress(address, offset, index), mappingLength(offset, length));
     }
 
     // native methods
@@ -118,7 +112,7 @@ public final class MMapUtils {
 
     private static native boolean unload0(long address, long length);
 
-    private static native boolean force0(long fd, long address, long length);
+    private static native boolean force0(FileDescriptor fd, long address, long length);
 
     // utility methods
 
@@ -166,38 +160,6 @@ public final class MMapUtils {
     private static long alignDown(long address, int pageSize) {
         // pageSize must be a power of 2
         return address & ~(pageSize - 1);
-    }
-
-    private static long getFileDescriptor(FileDescriptor fd) {
-        try {
-            if (Native.isWindows()) {
-                return FD_WIN.getLong(fd);
-            } else {
-                return FD_LINUX.getInt(fd);
-            }
-        } catch (Exception e) {
-            throw new Error(e);
-        }
-    }
-
-    private static final Field FD_WIN;
-    private static final Field FD_LINUX;
-    static {
-        try {
-            if (Native.isWindows()) {
-                Field f = FileDescriptor.class.getDeclaredField("handle");
-                f.setAccessible(true);
-                FD_WIN = f;
-                FD_LINUX = null;
-            } else {
-                Field f = FileDescriptor.class.getDeclaredField("fd");
-                f.setAccessible(true);
-                FD_WIN = null;
-                FD_LINUX = f;
-            }
-        } catch (Throwable t) {
-            throw new ExceptionInInitializerError(t);
-        }
     }
 
     private MMapUtils() {

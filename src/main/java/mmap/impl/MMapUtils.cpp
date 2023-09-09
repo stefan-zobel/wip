@@ -179,11 +179,11 @@ Java_mmap_impl_MMapUtils_unload0(JNIEnv* env, jclass,
 /*
  * Class:     mmap_impl_MMapUtils
  * Method:    force0
- * Signature: (JJJ)Z
+ * Signature: (Ljava/io/FileDescriptor;JJ)Z
  */
 JNIEXPORT jboolean JNICALL
 Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
-  jlong fd,
+  jobject fd,
   jlong address,
   jlong length) {
 #if defined (_WIN64)
@@ -209,8 +209,13 @@ Java_mmap_impl_MMapUtils_force0(JNIEnv* env, jclass,
      * disk cache so we have to call FlushFileBuffers to ensure they are
      * physically written to the disk
      */
-    if (result != 0 && fd != 0) {
-        HANDLE fileHandle = (HANDLE) jlong_to_ptr(fd);
+    if (result != 0 && fd != nullptr) {
+        static jfieldID handle_fd;
+        if (handle_fd == nullptr) {
+            jclass clazz = env->FindClass("java/io/FileDescriptor");
+            handle_fd = env->GetFieldID(clazz, "handle", "J");
+        }
+        HANDLE fileHandle = (HANDLE) jlong_to_ptr(env->GetLongField(fd, handle_fd));
         result = FlushFileBuffers(fileHandle);
         if (result == 0 && GetLastError() == ERROR_ACCESS_DENIED) {
             // this is a read-only mapping
