@@ -57,25 +57,6 @@ public final class Native {
         return UNALIGNED;
     }
 
-    // -- Direct memory management --
-
-    // These methods should be called whenever direct memory is allocated or
-    // freed. They allow the user to control the amount of direct memory
-    // which a process may access. All sizes are specified in bytes.
-    public static void reserveMemory(long size, int cap) {
-        try {
-            RESERVE_MEMORY.invoke(null, size, cap);
-        } catch (Exception ignore) {
-        }
-    }
-
-    public static void unreserveMemory(long size, int cap) {
-        try {
-            UNRESERVE_MEMORY.invoke(null, size, cap);
-        } catch (Exception ignore) {
-        }
-    }
-
     // These methods do no bounds checking. Verification that the copy will not
     // result in memory corruption should be done prior to invocation.
     // All positions and lengths are specified in bytes.
@@ -158,20 +139,12 @@ public final class Native {
     private static final int PAGE_SIZE = U.pageSize();
     private static final boolean UNALIGNED;
     private static final boolean IS_WINDOWS;
-    private static final Method RESERVE_MEMORY;
-    private static final Method UNRESERVE_MEMORY;
     static {
         try {
             Class<?> clsNioBits = Class.forName("java.nio.Bits");
             Method unaligned = clsNioBits.getDeclaredMethod("unaligned");
             unaligned.setAccessible(true);
             UNALIGNED = Boolean.class.cast(unaligned.invoke(null)).booleanValue();
-            Method reserveMemory = clsNioBits.getDeclaredMethod("reserveMemory", Long.TYPE, Integer.TYPE);
-            reserveMemory.setAccessible(true);
-            RESERVE_MEMORY = reserveMemory;
-            Method unreserveMemory = clsNioBits.getDeclaredMethod("unreserveMemory", Long.TYPE, Integer.TYPE);
-            unreserveMemory.setAccessible(true);
-            UNRESERVE_MEMORY = unreserveMemory;
             IS_WINDOWS = System.getProperty("os.name").contains("Windows");
         } catch (Throwable t) {
             throw new ExceptionInInitializerError(t);
