@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class TransactionDB extends RocksDB
     implements TransactionalDB<TransactionOptions> {
-
+  // Field is "used" to prevent GC of the
   private TransactionDBOptions transactionDbOptions_;
 
   /**
@@ -116,6 +116,7 @@ public class TransactionDB extends RocksDB
    *
    * @throws RocksDBException if an error occurs whilst closing.
    */
+  @Override
   public void closeE() throws RocksDBException {
     if (owningHandle_.compareAndSet(true, false)) {
       try {
@@ -218,7 +219,7 @@ public class TransactionDB extends RocksDB
 
     final List<Transaction> txns = new ArrayList<>();
     for(final long jtxnHandle : jtxnHandles) {
-      final Transaction txn = new Transaction(this, jtxnHandle);
+      final Transaction txn = new Transaction(this, jtxnHandle); // NOPMD - CloseResource
 
       // this instance doesn't own the underlying C++ object
       txn.disOwnNativeHandle();
@@ -287,8 +288,7 @@ public class TransactionDB extends RocksDB
    *
    * @return The waiting transactions
    */
-  private DeadlockInfo newDeadlockInfo(
-      final long transactionID, final long columnFamilyId,
+  private DeadlockInfo newDeadlockInfo(final long transactionID, final long columnFamilyId,
       final String waitingKey, final boolean exclusive) {
     return new DeadlockInfo(transactionID, columnFamilyId,
         waitingKey, exclusive);

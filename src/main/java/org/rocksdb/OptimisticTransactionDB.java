@@ -107,6 +107,7 @@ public class OptimisticTransactionDB extends RocksDB
    *
    * @throws RocksDBException if an error occurs whilst closing.
    */
+  @Override
   public void closeE() throws RocksDBException {
     if (owningHandle_.compareAndSet(true, false)) {
       try {

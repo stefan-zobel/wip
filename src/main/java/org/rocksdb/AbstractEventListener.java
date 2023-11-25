@@ -58,7 +58,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
      * @throws IllegalArgumentException if the value is unknown.
      */
     static EnabledEventCallback fromValue(final byte value) {
-      for (final EnabledEventCallback enabledEventCallback : EnabledEventCallback.values()) {
+      for (final EnabledEventCallback enabledEventCallback : values()) {
         if (enabledEventCallback.value == value) {
           return enabledEventCallback;
         }
@@ -125,7 +125,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
    * @param flushJobInfo the flush job info
    */
   private void onFlushCompletedProxy(final long dbHandle, final FlushJobInfo flushJobInfo) {
-    final RocksDB db = new RocksDB(dbHandle);
+    final RocksDB db = new RocksDB(dbHandle); // NOPMD - CloseResource
     db.disOwnNativeHandle(); // we don't own this!
     onFlushCompleted(db, flushJobInfo);
   }
@@ -143,7 +143,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
    * @param flushJobInfo the flush job info
    */
   private void onFlushBeginProxy(final long dbHandle, final FlushJobInfo flushJobInfo) {
-    final RocksDB db = new RocksDB(dbHandle);
+    final RocksDB db = new RocksDB(dbHandle); // NOPMD - CloseResource
     db.disOwnNativeHandle(); // we don't own this!
     onFlushBegin(db, flushJobInfo);
   }
@@ -167,7 +167,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
    */
   private void onCompactionBeginProxy(
       final long dbHandle, final CompactionJobInfo compactionJobInfo) {
-    final RocksDB db = new RocksDB(dbHandle);
+    final RocksDB db = new RocksDB(dbHandle); // NOPMD - CloseResource
     db.disOwnNativeHandle(); // we don't own this!
     onCompactionBegin(db, compactionJobInfo);
   }
@@ -186,7 +186,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
    */
   private void onCompactionCompletedProxy(
       final long dbHandle, final CompactionJobInfo compactionJobInfo) {
-    final RocksDB db = new RocksDB(dbHandle);
+    final RocksDB db = new RocksDB(dbHandle); // NOPMD - CloseResource
     db.disOwnNativeHandle(); // we don't own this!
     onCompactionCompleted(db, compactionJobInfo);
   }
@@ -227,7 +227,7 @@ public abstract class AbstractEventListener extends RocksCallbackObject implemen
    */
   private void onExternalFileIngestedProxy(
       final long dbHandle, final ExternalFileIngestionInfo externalFileIngestionInfo) {
-    final RocksDB db = new RocksDB(dbHandle);
+    final RocksDB db = new RocksDB(dbHandle); // NOPMD - CloseResource
     db.disOwnNativeHandle(); // we don't own this!
     onExternalFileIngested(db, externalFileIngestionInfo);
   }

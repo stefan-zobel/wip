@@ -36,18 +36,10 @@ public class SstFileMetaData {
    * @param numEntries the number of entries
    * @param numDeletions the number of deletions
    */
-  protected SstFileMetaData(
-      final String fileName,
-      final String path,
-      final long size,
-      final long smallestSeqno,
-      final long largestSeqno,
-      final byte[] smallestKey,
-      final byte[] largestKey,
-      final long numReadsSampled,
-      final boolean beingCompacted,
-      final long numEntries,
-      final long numDeletions) {
+  protected SstFileMetaData(final String fileName, final String path, final long size,
+      final long smallestSeqno, final long largestSeqno, final byte[] smallestKey,
+      final byte[] largestKey, final long numReadsSampled, final boolean beingCompacted,
+      final long numEntries, final long numDeletions) {
     this.fileName = fileName;
     this.path = path;
     this.size = size;

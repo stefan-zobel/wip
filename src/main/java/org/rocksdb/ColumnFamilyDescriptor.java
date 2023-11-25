@@ -33,8 +33,8 @@ public class ColumnFamilyDescriptor {
    *     column family.
    * @since 3.10.0
    */
-  public ColumnFamilyDescriptor(final byte[] columnFamilyName,
-                                final ColumnFamilyOptions columnFamilyOptions) {
+  public ColumnFamilyDescriptor(
+      final byte[] columnFamilyName, final ColumnFamilyOptions columnFamilyOptions) {
     columnFamilyName_ = columnFamilyName;
     columnFamilyOptions_ = columnFamilyOptions;
   }
