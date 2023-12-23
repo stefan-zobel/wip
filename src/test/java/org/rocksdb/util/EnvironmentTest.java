@@ -12,11 +12,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class EnvironmentTest {
-  private final static String ARCH_FIELD_NAME = "ARCH";
-  private final static String OS_FIELD_NAME = "OS";
+  private static final String ARCH_FIELD_NAME = "ARCH";
+  private static final String OS_FIELD_NAME = "OS";
 
-  private final static String MUSL_ENVIRONMENT_FIELD_NAME = "MUSL_ENVIRONMENT";
-  private final static String MUSL_LIBC_FIELD_NAME = "MUSL_LIBC";
+  private static final String MUSL_ENVIRONMENT_FIELD_NAME = "MUSL_ENVIRONMENT";
+  private static final String MUSL_LIBC_FIELD_NAME = "MUSL_LIBC";
 
   private static String INITIAL_OS;
   private static String INITIAL_ARCH;
@@ -254,8 +254,7 @@ public class EnvironmentTest {
     assertThat(Environment.initIsMuslLibc()).isFalse();
   }
 
-  private void setEnvironmentClassFields(String osName,
-      String osArch) {
+  private void setEnvironmentClassFields(final String osName, final String osArch) {
     setEnvironmentClassField(OS_FIELD_NAME, osName);
     setEnvironmentClassField(ARCH_FIELD_NAME, osArch);
   }
@@ -269,7 +268,7 @@ public class EnvironmentTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static <T> T getEnvironmentClassField(String fieldName) {
+  private static <T> T getEnvironmentClassField(final String fieldName) {
     final Field field;
     try {
       field = Environment.class.getDeclaredField(fieldName);
@@ -285,7 +284,7 @@ public class EnvironmentTest {
     }
   }
 
-  private static void setEnvironmentClassField(String fieldName, Object value) {
+  private static void setEnvironmentClassField(final String fieldName, final Object value) {
     final Field field;
     try {
       field = Environment.class.getDeclaredField(fieldName);

@@ -184,10 +184,8 @@ public class RocksDBTest {
          final WriteOptions opt = new WriteOptions(); final ReadOptions optr = new ReadOptions()) {
       db.put("key1".getBytes(), "value".getBytes());
       db.put(opt, "key2".getBytes(), "12345678".getBytes());
-      assertThat(db.get("key1".getBytes())).isEqualTo(
-          "value".getBytes());
-      assertThat(db.get("key2".getBytes())).isEqualTo(
-          "12345678".getBytes());
+      assertThat(db.get("key1".getBytes())).isEqualTo("value".getBytes());
+      assertThat(db.get("key2".getBytes())).isEqualTo("12345678".getBytes());
 
       final ByteBuffer key = ByteBuffer.allocateDirect(12);
       final ByteBuffer value = ByteBuffer.allocateDirect(12);
@@ -245,8 +243,73 @@ public class RocksDBTest {
     }
   }
 
-  private static Segment sliceSegment(final String key) {
-    final ByteBuffer rawKey = ByteBuffer.allocate(key.length() + 4);
+  @Test
+  public void putIndirectByteBuffers() throws RocksDBException {
+    try (final RocksDB db = RocksDB.open(dbFolder.getRoot().getAbsolutePath());
+         final WriteOptions opt = new WriteOptions(); final ReadOptions optr = new ReadOptions()) {
+      db.put("key1".getBytes(), "value".getBytes());
+      db.put(opt, "key2".getBytes(), "12345678".getBytes());
+      assertThat(db.get("key1".getBytes())).isEqualTo("value".getBytes());
+      assertThat(db.get("key2".getBytes())).isEqualTo("12345678".getBytes());
+
+      ByteBuffer key = ByteBuffer.allocate(12);
+      ByteBuffer value = ByteBuffer.allocate(12);
+      key.position(4);
+      key.put("key3".getBytes());
+      key.position(4).limit(8);
+      value.position(4);
+      value.put("val3".getBytes());
+      value.position(4).limit(8);
+
+      db.put(opt, key, value);
+
+      assertThat(key.position()).isEqualTo(8);
+      assertThat(key.limit()).isEqualTo(8);
+
+      assertThat(value.position()).isEqualTo(8);
+      assertThat(value.limit()).isEqualTo(8);
+
+      key.position(4);
+
+      ByteBuffer result = ByteBuffer.allocate(12);
+      assertThat(db.get(optr, key, result)).isEqualTo(4);
+      assertThat(result.position()).isEqualTo(0);
+      assertThat(result.limit()).isEqualTo(4);
+      assertThat(key.position()).isEqualTo(8);
+      assertThat(key.limit()).isEqualTo(8);
+
+      byte[] tmp = new byte[4];
+      result.get(tmp);
+      assertThat(tmp).isEqualTo("val3".getBytes());
+
+      key.position(4);
+
+      result.clear().position(9);
+      assertThat(db.get(optr, key, result)).isEqualTo(4);
+      assertThat(result.position()).isEqualTo(9);
+      assertThat(result.limit()).isEqualTo(12);
+      assertThat(key.position()).isEqualTo(8);
+      assertThat(key.limit()).isEqualTo(8);
+      byte[] tmp2 = new byte[3];
+      result.get(tmp2);
+      assertThat(tmp2).isEqualTo("val".getBytes());
+
+      // put
+      Segment key3 = sliceSegment("key3");
+      Segment key4 = sliceSegment("key4");
+      Segment value0 = sliceSegment("value 0");
+      Segment value1 = sliceSegment("value 1");
+      db.put(key3.data, key3.offset, key3.len, value0.data, value0.offset, value0.len);
+      db.put(opt, key4.data, key4.offset, key4.len, value1.data, value1.offset, value1.len);
+
+      // compare
+      Assert.assertTrue(value0.isSamePayload(db.get(key3.data, key3.offset, key3.len)));
+      Assert.assertTrue(value1.isSamePayload(db.get(key4.data, key4.offset, key4.len)));
+    }
+  }
+
+  private static Segment sliceSegment(String key) {
+    ByteBuffer rawKey = ByteBuffer.allocate(key.length() + 4);
     rawKey.put((byte)0);
     rawKey.put((byte)0);
     rawKey.put(key.getBytes());
@@ -547,6 +610,28 @@ public class RocksDBTest {
   }
 
   @Test
+  public void clipColumnFamily() throws RocksDBException {
+    try (final RocksDB db = RocksDB.open(dbFolder.getRoot().getAbsolutePath())) {
+      db.put("key1".getBytes(), "value".getBytes());
+      db.put("key2".getBytes(), "12345678".getBytes());
+      db.put("key3".getBytes(), "abcdefg".getBytes());
+      db.put("key4".getBytes(), "xyz".getBytes());
+      db.put("key5".getBytes(), "qwer".getBytes());
+      assertThat(db.get("key1".getBytes())).isEqualTo("value".getBytes());
+      assertThat(db.get("key2".getBytes())).isEqualTo("12345678".getBytes());
+      assertThat(db.get("key3".getBytes())).isEqualTo("abcdefg".getBytes());
+      assertThat(db.get("key4".getBytes())).isEqualTo("xyz".getBytes());
+      assertThat(db.get("key5".getBytes())).isEqualTo("qwer".getBytes());
+      db.clipColumnFamily(db.getDefaultColumnFamily(), "key2".getBytes(), "key4".getBytes());
+      assertThat(db.get("key1".getBytes())).isNull();
+      assertThat(db.get("key2".getBytes())).isEqualTo("12345678".getBytes());
+      assertThat(db.get("key3".getBytes())).isEqualTo("abcdefg".getBytes());
+      assertThat(db.get("key4".getBytes())).isNull();
+      assertThat(db.get("key5".getBytes())).isNull();
+    }
+  }
+
+  @Test
   public void getIntProperty() throws RocksDBException {
     try (
         final Options options = new Options()
@@ -818,25 +903,27 @@ public class RocksDBTest {
     final int NUM_L0_FILES = 10;
     final int TEST_SCALE = 5;
     final int KEY_INTERVAL = 100;
-    try (final Options opt = new Options().
-        setCreateIfMissing(true).
-        setCompactionStyle(CompactionStyle.LEVEL).
-        setNumLevels(5).
-        // a slightly bigger write buffer than L0 file
-        // so that we can ensure manual flush always
-        // go before background flush happens.
-            setWriteBufferSize(L0_FILE_SIZE * 2).
-        // Disable auto L0 -> L1 compaction
-            setLevelZeroFileNumCompactionTrigger(20).
-            setTargetFileSizeBase(L0_FILE_SIZE * 100).
-            setTargetFileSizeMultiplier(1).
-        // To disable auto compaction
-            setMaxBytesForLevelBase(NUM_L0_FILES * L0_FILE_SIZE * 100).
-            setMaxBytesForLevelMultiplier(2).
-            setDisableAutoCompactions(true);
-         final RocksDB db = RocksDB.open(opt,
-             dbFolder.getRoot().getAbsolutePath())
-    ) {
+    try (final Options opt = new Options()
+                                 .setCreateIfMissing(true)
+                                 .setCompactionStyle(CompactionStyle.LEVEL)
+                                 .setLevelCompactionDynamicLevelBytes(false)
+                                 .setNumLevels(5)
+                                 .
+                             // a slightly bigger write buffer than L0 file
+                             // so that we can ensure manual flush always
+                             // go before background flush happens.
+                             setWriteBufferSize(L0_FILE_SIZE * 2)
+                                 .
+                             // Disable auto L0 -> L1 compaction
+                             setLevelZeroFileNumCompactionTrigger(20)
+                                 .setTargetFileSizeBase(L0_FILE_SIZE * 100)
+                                 .setTargetFileSizeMultiplier(1)
+                                 .
+                             // To disable auto compaction
+                             setMaxBytesForLevelBase(NUM_L0_FILES * L0_FILE_SIZE * 100)
+                                 .setMaxBytesForLevelMultiplier(2)
+                                 .setDisableAutoCompactions(true);
+         final RocksDB db = RocksDB.open(opt, dbFolder.getRoot().getAbsolutePath())) {
       // fill database with key/value pairs
       final byte[] value = new byte[VALUE_SIZE];
       int int_key = 0;
@@ -904,7 +991,8 @@ public class RocksDBTest {
                                  .setCompressionType(CompressionType.NO_COMPRESSION)
                                  .setTargetFileSizeBase(FILE_SIZE)
                                  .setWriteBufferSize(FILE_SIZE / 2)
-                                 .setDisableAutoCompactions(true);
+                                 .setDisableAutoCompactions(true)
+                                 .setLevelCompactionDynamicLevelBytes(false);
          final RocksDB db = RocksDB.open(opt, dbFolder.getRoot().getAbsolutePath())) {
       final int records = FILE_SIZE / (KEY_SIZE + VALUE_SIZE);
 
@@ -954,25 +1042,28 @@ public class RocksDBTest {
     final int TEST_SCALE = 5;
     final int KEY_INTERVAL = 100;
 
-    try (final DBOptions opt = new DBOptions().
-        setCreateIfMissing(true).
-        setCreateMissingColumnFamilies(true);
-         final ColumnFamilyOptions new_cf_opts = new ColumnFamilyOptions().
-             setCompactionStyle(CompactionStyle.LEVEL).
-             setNumLevels(5).
+    try (final DBOptions opt =
+             new DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true);
+         final ColumnFamilyOptions new_cf_opts =
+             new ColumnFamilyOptions()
+                 .setCompactionStyle(CompactionStyle.LEVEL)
+                 .setLevelCompactionDynamicLevelBytes(false)
+                 .setNumLevels(5)
+                 .
              // a slightly bigger write buffer than L0 file
              // so that we can ensure manual flush always
              // go before background flush happens.
-                 setWriteBufferSize(L0_FILE_SIZE * 2).
+             setWriteBufferSize(L0_FILE_SIZE * 2)
+                 .
              // Disable auto L0 -> L1 compaction
-                 setLevelZeroFileNumCompactionTrigger(20).
-                 setTargetFileSizeBase(L0_FILE_SIZE * 100).
-                 setTargetFileSizeMultiplier(1).
+             setLevelZeroFileNumCompactionTrigger(20)
+                 .setTargetFileSizeBase(L0_FILE_SIZE * 100)
+                 .setTargetFileSizeMultiplier(1)
+                 .
              // To disable auto compaction
-                 setMaxBytesForLevelBase(NUM_L0_FILES * L0_FILE_SIZE * 100).
-                 setMaxBytesForLevelMultiplier(2).
-                 setDisableAutoCompactions(true)
-    ) {
+             setMaxBytesForLevelBase(NUM_L0_FILES * L0_FILE_SIZE * 100)
+                 .setMaxBytesForLevelMultiplier(2)
+                 .setDisableAutoCompactions(true)) {
       final List<ColumnFamilyDescriptor> columnFamilyDescriptors =
           Arrays.asList(
               new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY),
@@ -1267,15 +1358,16 @@ public class RocksDBTest {
     final byte[] cfName = "pikachu".getBytes(UTF_8);
 
     try (final Options options = new Options()
-        .setCreateIfMissing(true)
-        .setWriteBufferSize(writeBufferSize)
-        .setCompactionStyle(CompactionStyle.LEVEL)
-        .setTargetFileSizeBase(writeBufferSize)
-        .setMaxBytesForLevelBase(writeBufferSize * 2)
-        .setLevel0StopWritesTrigger(2)
-        .setMaxBytesForLevelMultiplier(2)
-        .setCompressionType(CompressionType.NO_COMPRESSION)
-        .setMaxSubcompactions(4)) {
+                                     .setCreateIfMissing(true)
+                                     .setWriteBufferSize(writeBufferSize)
+                                     .setCompactionStyle(CompactionStyle.LEVEL)
+                                     .setLevelCompactionDynamicLevelBytes(false)
+                                     .setTargetFileSizeBase(writeBufferSize)
+                                     .setMaxBytesForLevelBase(writeBufferSize * 2)
+                                     .setLevel0StopWritesTrigger(2)
+                                     .setMaxBytesForLevelMultiplier(2)
+                                     .setCompressionType(CompressionType.NO_COMPRESSION)
+                                     .setMaxSubcompactions(4)) {
       final String dbPath = dbFolder.getRoot().getAbsolutePath();
       try (final RocksDB db = RocksDB.open(options, dbPath);
            final ColumnFamilyOptions cfOptions = new ColumnFamilyOptions(options)) {
@@ -1330,6 +1422,25 @@ public class RocksDBTest {
       try (final RocksDB db = RocksDB.open(options, dbPath, cfDescs, cfHandles)) {
         try {
           db.enableAutoCompaction(cfHandles);
+        } finally {
+          for (final ColumnFamilyHandle cfHandle : cfHandles) {
+            cfHandle.close();
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void enableAutoCompactionNull() throws RocksDBException {
+    try (final DBOptions options = new DBOptions().setCreateIfMissing(true)) {
+      final List<ColumnFamilyDescriptor> cfDescs =
+          Arrays.asList(new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY));
+      final List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
+      final String dbPath = dbFolder.getRoot().getAbsolutePath();
+      try (final RocksDB db = RocksDB.open(options, dbPath, cfDescs, cfHandles)) {
+        try {
+          db.enableAutoCompaction(null);
         } finally {
           for (final ColumnFamilyHandle cfHandle : cfHandles) {
             cfHandle.close();
@@ -1427,7 +1538,7 @@ public class RocksDBTest {
       try (final RocksDB db = RocksDB.open(options, dbPath)) {
         final RocksDB.LiveFiles livefiles = db.getLiveFiles(true);
         assertThat(livefiles).isNotNull();
-        assertThat(livefiles.manifestFileSize).isEqualTo(66);
+        assertThat(livefiles.manifestFileSize).isEqualTo(70);
         assertThat(livefiles.files.size()).isEqualTo(3);
         assertThat(livefiles.files.get(0)).isEqualTo("/CURRENT");
         assertThat(livefiles.files.get(1)).isEqualTo("/MANIFEST-000005");
@@ -1573,8 +1684,42 @@ public class RocksDBTest {
         db.put(cfHandles.get(0), "key2".getBytes(UTF_8), "value2".getBytes(UTF_8));
         db.put(cfHandles.get(0), "key3".getBytes(UTF_8), "value3".getBytes(UTF_8));
         try {
+          final Range range = db.suggestCompactRange();
+          assertThat(range).isNotNull();
+        } finally {
+          for (final ColumnFamilyHandle cfHandle : cfHandles) {
+            cfHandle.close();
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void suggestCompactRangeCF() throws RocksDBException {
+    try (final DBOptions options =
+             new DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true)) {
+      final List<ColumnFamilyDescriptor> cfDescs =
+          Arrays.asList(new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY),
+              new ColumnFamilyDescriptor("new_cf".getBytes(), new ColumnFamilyOptions()),
+              new ColumnFamilyDescriptor("new_cf2".getBytes(), new ColumnFamilyOptions()));
+
+      final List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
+      final String dbPath = dbFolder.getRoot().getAbsolutePath();
+      try (final RocksDB db = RocksDB.open(options, dbPath, cfDescs, cfHandles)) {
+        db.put(cfHandles.get(0), "key1".getBytes(UTF_8), "value1".getBytes(UTF_8));
+        db.put(cfHandles.get(0), "key2".getBytes(UTF_8), "value2".getBytes(UTF_8));
+        db.put(cfHandles.get(0), "key3".getBytes(UTF_8), "value3".getBytes(UTF_8));
+        db.put(cfHandles.get(1), "key1_new_cf".getBytes(UTF_8), "value1".getBytes(UTF_8));
+        db.put(cfHandles.get(1), "key2_new_cf".getBytes(UTF_8), "value2".getBytes(UTF_8));
+        db.put(cfHandles.get(1), "key3_new_cf".getBytes(UTF_8), "value3".getBytes(UTF_8));
+        try {
           final Range range =  db.suggestCompactRange(cfHandles.get(0));
           assertThat(range).isNotNull();
+          final Range rangeCF = db.suggestCompactRange(cfHandles.get(1));
+          assertThat(rangeCF).isNotNull();
+          final Range rangeCFEmpty = db.suggestCompactRange(cfHandles.get(2));
+          assertThat(rangeCFEmpty).isNotNull();
         } finally {
           for (final ColumnFamilyHandle cfHandle : cfHandles) {
             cfHandle.close();
