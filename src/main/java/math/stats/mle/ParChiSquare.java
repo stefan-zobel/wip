@@ -15,7 +15,6 @@
  */
 package math.stats.mle;
 
-import math.density.ChiSquare;
 import math.stats.Validity;
 
 /**

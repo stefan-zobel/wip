@@ -16,7 +16,6 @@
 package math.stats.mle;
 
 import math.cern.Arithmetic;
-import math.density.Normal;
 import math.stats.Validity;
 
 /**
