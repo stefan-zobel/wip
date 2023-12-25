@@ -15,7 +15,6 @@
  */
 package math.stats.mle;
 
-import math.density.Exponential;
 import math.stats.Validity;
 
 /**

@@ -16,7 +16,6 @@
 package math.stats.mle;
 
 import math.cern.Arithmetic;
-import math.density.Weibull;
 import math.stats.Validity;
 
 /**
