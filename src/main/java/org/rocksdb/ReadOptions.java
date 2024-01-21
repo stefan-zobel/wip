@@ -750,6 +750,35 @@ public class ReadOptions extends RocksObject {
     return this;
   }
 
+  /**
+   * If async_io is enabled, RocksDB will prefetch some of data asynchronously.
+   * RocksDB apply it if reads are sequential and its internal automatic
+   * prefetching.
+   * <p>
+   * Default: false
+   * @return true if async_io is enabled.
+   */
+  @Experimental("Caution: this option is experimental")
+  public boolean asyncIo() {
+    assert (isOwningHandle());
+    return asyncIo(nativeHandle_);
+  }
+
+  /**
+   * If async_io is enabled, RocksDB will prefetch some of data asynchronously.
+   * RocksDB apply it if reads are sequential and its internal automatic
+   * prefetching.
+   * <p>
+   * @param asyncIo async_io enabled or not.
+   * @return the reference to the current ReadOptions.
+   */
+  @Experimental("Caution: this option is experimental")
+  public ReadOptions setAsyncIo(final boolean asyncIo) {
+    assert (isOwningHandle());
+    setAsyncIo(nativeHandle_, asyncIo);
+    return this;
+  }
+
   // instance variables
   // NOTE: If you add new member variables, please update the copy constructor above!
   //
@@ -817,4 +846,6 @@ public class ReadOptions extends RocksObject {
   private native void setIoTimeout(final long handle, final long ioTimeout);
   private native long valueSizeSoftLimit(final long handle);
   private native void setValueSizeSoftLimit(final long handle, final long softLimit);
+  private native boolean asyncIo(final long handle);
+  private native void setAsyncIo(final long handle, final boolean asyncIO);
 }

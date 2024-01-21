@@ -20,6 +20,7 @@ public class SstFileMetaData {
   private final boolean beingCompacted;
   private final long numEntries;
   private final long numDeletions;
+  private final byte[] fileChecksum;
 
   /**
    * Called from JNI C++
@@ -35,11 +36,12 @@ public class SstFileMetaData {
    * @param beingCompacted true if the file is being compacted, false otherwise
    * @param numEntries the number of entries
    * @param numDeletions the number of deletions
+   * @param fileChecksum the full file checksum (if enabled)
    */
   protected SstFileMetaData(final String fileName, final String path, final long size,
       final long smallestSeqno, final long largestSeqno, final byte[] smallestKey,
       final byte[] largestKey, final long numReadsSampled, final boolean beingCompacted,
-      final long numEntries, final long numDeletions) {
+      final long numEntries, final long numDeletions, final byte[] fileChecksum) {
     this.fileName = fileName;
     this.path = path;
     this.size = size;
@@ -51,6 +53,7 @@ public class SstFileMetaData {
     this.beingCompacted = beingCompacted;
     this.numEntries = numEntries;
     this.numDeletions = numDeletions;
+    this.fileChecksum = fileChecksum;
   }
 
   /**
@@ -150,5 +153,14 @@ public class SstFileMetaData {
    */
   public long numDeletions() {
     return numDeletions;
+  }
+
+  /**
+   * Get the full file checksum iff full file checksum is enabled.
+   *
+   * @return the file's checksum
+   */
+  public byte[] fileChecksum() {
+    return fileChecksum;
   }
 }
