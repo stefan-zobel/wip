@@ -109,5 +109,5 @@ public class OptionsUtil {
   private static native String getLatestOptionsFileName(String dbPath, long envHandle)
       throws RocksDBException;
 
-  private native static TableFormatConfig readTableFormatConfig(final long nativeHandle_);
+  private static native TableFormatConfig readTableFormatConfig(final long nativeHandle_);
 }
