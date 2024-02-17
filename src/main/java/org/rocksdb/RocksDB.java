@@ -4754,7 +4754,6 @@ public class RocksDB extends RocksObject {
     return handleList;
   }
 
-  @SuppressWarnings({"PMD.ForLoopVariableCount", "PMD.AvoidReassigningLoopVariables"})
   private static long[] toRangeSliceHandles(final List<Range> ranges) {
     final long[] rangeSliceHandles = new long[ranges.size() * 2];
     for (int i = 0, j = 0; i < ranges.size(); i++) {
