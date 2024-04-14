@@ -133,7 +133,7 @@ public class TtlDB extends RocksDB {
       }
     }
     if (defaultColumnFamilyIndex < 0) {
-      new IllegalArgumentException(
+      throw new IllegalArgumentException(
           "You must provide the default column family in your columnFamilyDescriptors");
     }
 
@@ -194,6 +194,12 @@ public class TtlDB extends RocksDB {
    */
   @Override
   public void close() {
+    for (final ColumnFamilyHandle columnFamilyHandle : // NOPMD - CloseResource
+        ownedColumnFamilyHandles) {
+      columnFamilyHandle.close();
+    }
+    ownedColumnFamilyHandles.clear();
+
     if (owningHandle_.compareAndSet(true, false)) {
       try {
         closeDatabase(nativeHandle_);
