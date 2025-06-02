@@ -88,5 +88,20 @@ public final class ExpmTest {
         System.out.println(A5);
         MatrixD eA5 = Expm.expmD(A5, A5.normMaxAbs());
         System.out.println(eA5);
+
+        ComplexMatrixD A6 = Matrices.createComplexD(3, 3);
+        System.out.println(A6.expm());
+
+        MatrixD A7 = Matrices.createD(3, 3);
+        System.out.println(A7.expm());
+
+        ComplexMatrixD A8 = Matrices.createComplexD(2, 2);
+        A8.set(0, 0, 1.0, 0.0);
+        A8.set(1, 0, 2.0, 0.0);
+        A8.set(0, 1, -1.0, 0.0);
+        A8.set(1, 1, 3.0, 0.0);
+        A8 = A8.scaleInplace(0.0, 1.0);
+        System.out.println(A8);
+        System.out.println(A8.expm());
     }
 }
