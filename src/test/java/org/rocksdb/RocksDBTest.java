@@ -219,15 +219,31 @@ public class RocksDBTest {
 
       key.position(4);
 
+      final ByteBuffer result2 = ByteBuffer.allocateDirect(12);
+      result2.put("abcdefghijkl".getBytes());
+      result2.flip().position(3);
+      assertThat(db.get(optr, key, result2)).isEqualTo(4);
+      assertThat(result2.position()).isEqualTo(3);
+      assertThat(result2.limit()).isEqualTo(7);
+      assertThat(key.position()).isEqualTo(8);
+      assertThat(key.limit()).isEqualTo(8);
+
+      final byte[] tmp2 = new byte[12];
+      result2.position(0).limit(12);
+      result2.get(tmp2);
+      assertThat(tmp2).isEqualTo("abcval3hijkl".getBytes());
+
+      key.position(4);
+
       result.clear().position(9);
       assertThat(db.get(optr, key, result)).isEqualTo(4);
       assertThat(result.position()).isEqualTo(9);
       assertThat(result.limit()).isEqualTo(12);
       assertThat(key.position()).isEqualTo(8);
       assertThat(key.limit()).isEqualTo(8);
-      final byte[] tmp2 = new byte[3];
-      result.get(tmp2);
-      assertThat(tmp2).isEqualTo("val".getBytes());
+      final byte[] tmp3 = new byte[3];
+      result.get(tmp3);
+      assertThat(tmp3).isEqualTo("val".getBytes());
 
       // put
       final Segment key3 = sliceSegment("key3");
@@ -1407,6 +1423,33 @@ public class RocksDBTest {
     }
   }
 
+  @Test
+  public void getColumnFamilyMetadataWithChecksum() throws RocksDBException {
+    final Properties props = new Properties();
+    props.put("file_checksum_gen_factory", "FileChecksumGenCrc32cFactory");
+    final String dbPath = dbFolder.getRoot().getAbsolutePath();
+
+    try (final DBOptions dbOptions = DBOptions.getDBOptionsFromProps(props);
+         final ColumnFamilyOptions cfOptions = new ColumnFamilyOptions();
+         final Options options = new Options(dbOptions, cfOptions).setCreateIfMissing(true)) {
+      try (final RocksDB db = RocksDB.open(options, dbPath);
+           final WriteOptions writeOptions = new WriteOptions().setDisableWAL(true)) {
+        db.put("key".getBytes(UTF_8), "value".getBytes(UTF_8));
+      }
+
+      try (final RocksDB db = RocksDB.open(options, dbFolder.getRoot().getAbsolutePath())) {
+        ColumnFamilyMetaData metadata = db.getColumnFamilyMetaData(); // Exception here
+        List<LevelMetaData> levels = metadata.levels();
+        assertThat(levels).isNotEmpty();
+        List<SstFileMetaData> filesMetadata = levels.get(0).files();
+        assertThat(filesMetadata).isNotEmpty();
+        assertThat(filesMetadata.get(0).fileChecksum()).isNotNull();
+        assertThat(filesMetadata.get(0).fileChecksum()).hasSize(4);
+        assertThat(filesMetadata.get(0).fileChecksum()).isNotEqualTo(new byte[] {0, 0, 0, 0});
+      }
+    }
+  }
+
   @Ignore("TODO(AR) re-enable when ready!")
   @Test
   public void compactFiles() throws RocksDBException {
@@ -1521,16 +1564,6 @@ public class RocksDBTest {
   }
 
   @Test
-  public void maxMemCompactionLevel() throws RocksDBException {
-    try (final Options options = new Options().setCreateIfMissing(true)) {
-      final String dbPath = dbFolder.getRoot().getAbsolutePath();
-      try (final RocksDB db = RocksDB.open(options, dbPath)) {
-        assertThat(db.maxMemCompactionLevel()).isEqualTo(0);
-      }
-    }
-  }
-
-  @Test
   public void level0StopWriteTrigger() throws RocksDBException {
     try (final Options options = new Options().setCreateIfMissing(true)) {
       final String dbPath = dbFolder.getRoot().getAbsolutePath();
@@ -1598,7 +1631,7 @@ public class RocksDBTest {
       try (final RocksDB db = RocksDB.open(options, dbPath)) {
         final RocksDB.LiveFiles livefiles = db.getLiveFiles(true);
         assertThat(livefiles).isNotNull();
-        assertThat(livefiles.manifestFileSize).isEqualTo(70);
+        assertThat(livefiles.manifestFileSize).isEqualTo(116);
         assertThat(livefiles.files.size()).isEqualTo(3);
         assertThat(livefiles.files.get(0)).isEqualTo("/CURRENT");
         assertThat(livefiles.files.get(1)).isEqualTo("/MANIFEST-000005");
@@ -1618,16 +1651,6 @@ public class RocksDBTest {
         assertThat(logFiles.size()).isEqualTo(1);
         assertThat(logFiles.get(0).type())
             .isEqualTo(WalFileType.kAliveLogFile);
-      }
-    }
-  }
-
-  @Test
-  public void deleteFile() throws RocksDBException {
-    try (final Options options = new Options().setCreateIfMissing(true)) {
-      final String dbPath = dbFolder.getRoot().getAbsolutePath();
-      try (final RocksDB db = RocksDB.open(options, dbPath)) {
-        db.deleteFile("unknown");
       }
     }
   }
@@ -1859,6 +1882,14 @@ public class RocksDBTest {
     final RocksDB.Version version = RocksDB.rocksdbVersion();
     assertThat(version).isNotNull();
     assertThat(version.getMajor()).isGreaterThan(1);
+  }
+
+  @Test
+  public void isClosed() throws RocksDBException {
+    final RocksDB db = RocksDB.open(dbFolder.getRoot().getAbsolutePath());
+    assertThat(db.isClosed()).isFalse();
+    db.close();
+    assertThat(db.isClosed()).isTrue();
   }
 
   private static class InMemoryTraceWriter extends AbstractTraceWriter {
