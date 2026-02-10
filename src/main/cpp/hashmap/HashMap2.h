@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Stefan Zobel
+ * Copyright 2026 Stefan Zobel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,12 @@
 // https://en.cppreference.com/w/cpp/container.html#Thread_safety
 
 
-template<typename K, typename V, unsigned int SLOT_SIZE=32, unsigned int BUCKET_SIZE=16>
-class HashMap {
+template<typename K, typename V, unsigned int SLOT_SIZE = 32, unsigned int BUCKET_SIZE = 16>
+class HashMap2 {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
-public:
 
+public:
+    // return the existing shared_ptr
     std::shared_ptr<V> get(const K& key) noexcept {
         return slotFor(key).get(key);
     }
@@ -44,11 +45,11 @@ public:
         return slotFor(key).remove(key);
     }
     template<std::convertible_to<V> VALUE_TYPE>
-    std::shared_ptr<V> add(const K& key, VALUE_TYPE && value) {
+    std::shared_ptr<V> add(const K& key, VALUE_TYPE&& value) {
         return slotFor(key).add(key, std::forward<VALUE_TYPE>(value));
     }
     template<std::convertible_to<V> VALUE_TYPE>
-    std::shared_ptr<V> add(K && key, VALUE_TYPE && value) {
+    std::shared_ptr<V> add(K&& key, VALUE_TYPE&& value) {
         return slotFor(key).add(std::move(key), std::forward<VALUE_TYPE>(value));
     }
     bool contains(const K& key) noexcept {
@@ -57,58 +58,58 @@ public:
     // best effort, does not acquire a global lock for all slots
     size_t size() const noexcept {
         size_t total = 0;
-        for (const auto& slot : slots) {
-            total += slot.size();
-        }
+        for (const auto& slot : slots) total += slot.size();
         return total;
     }
     // best effort, does not acquire a global lock for all slots
     void clear() noexcept {
-        for (auto& slot : slots) {
-            slot.clear();
-        }
+        for (auto& slot : slots) slot.clear();
     }
 
 private:
 
     class Slot {
     public:
-        Slot() {
-        }
+
         std::shared_ptr<V> get(const K& key) const noexcept {
             std::shared_lock lock(mutex);
-            auto it = map.find(key);
-            if (it != map.end()) {
-                return std::make_shared<V>(it->second);
+            if (auto it = map.find(key); it != map.end()) {
+                // increase ref count by 1 (thread-safe)
+                return it->second;
             }
             return {};
         }
         std::shared_ptr<V> remove(const K& key) noexcept {
             std::unique_lock lock(mutex);
-            auto it = map.find(key);
-            if (it != map.end()) {
-                auto value = std::make_shared<V>(it->second);
+            if (auto it = map.find(key); it != map.end()) {
+                // transfer ownership
+                auto old = std::move(it->second);
                 map.erase(it);
-                return value;
+                // ref count remains stable
+                return old;
             }
             return {};
         }
-        template<class VALUE_TYPE>
-        std::shared_ptr<V> add(const K& key, VALUE_TYPE && value) {
+        template<typename VALUE_TYPE>
+        std::shared_ptr<V> add(K key, VALUE_TYPE&& value) {
             std::unique_lock lock(mutex);
+            auto new_ptr = std::make_shared<V>(std::forward<VALUE_TYPE>(value));
+
             auto it = map.find(key);
             if (it != map.end()) {
-                auto old = it->second;
-                it->second = std::forward<VALUE_TYPE>(value);
-                return std::make_shared<V>(old);
-            } else {
-                map.insert_or_assign(key, std::forward<VALUE_TYPE>(value));
+                std::shared_ptr<V> old = std::move(it->second);
+                it->second = std::move(new_ptr);
+                // return the old reference (like Java's Map.put)
+                return old;
+            }
+            else {
+                map.emplace(std::move(key), std::move(new_ptr));
                 return {};
             }
         }
         bool contains(const K& key) const noexcept {
             std::shared_lock lock(mutex);
-            return map.find(key) != map.end();
+            return map.contains(key);
         }
         size_t size() const noexcept {
             std::shared_lock lock(mutex);
@@ -119,20 +120,22 @@ private:
             map.clear();
         }
     private:
-        std::unordered_map<K, V> map{ BUCKET_SIZE };
+        // internal storage holds shared_ptr (like Java references)
+        std::unordered_map<K, std::shared_ptr<V>> map{ BUCKET_SIZE };
         mutable std::shared_mutex mutex;
     };
 
-    Slot& slotFor(K const& key) noexcept {
-        if constexpr (SIZE_IS_POW2) {
-            return slots[hash(key) & (SLOT_SIZE - 1)];
-        } else {
-            return slots[hash(key) % SLOT_SIZE];
+    Slot& slotFor(const K& key) noexcept {
+        size_t h = hash(key);
+        if constexpr ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0) {
+            return slots[h & (SLOT_SIZE - 1)];
+        }
+        else {
+            return slots[h % SLOT_SIZE];
         }
     }
 
-    constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));
-
     std::array<Slot, SLOT_SIZE> slots{};
-    const std::hash<K> hash{};
+    std::hash<K> hash{};
 };
+
