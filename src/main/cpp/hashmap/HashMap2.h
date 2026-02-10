@@ -22,7 +22,7 @@
 #include <shared_mutex>
 #include <concepts>
 
-// A minimal (hopefully) thread-safe hash map with a Java reference semantics.
+// A minimal (hopefully) thread-safe hash map with Java reference semantics.
 
 // Note 1: the noexcept claims are a bit exaggerated since std::unordered_map find() could actually throw
 // because std::equal_to<K> can throw depending on the type K. But when will that ever happen?
@@ -35,7 +35,6 @@
 template<typename K, typename V, unsigned int SLOT_SIZE = 32, unsigned int BUCKET_SIZE = 16>
 class HashMap2 {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
-
 public:
     // return the existing shared_ptr
     std::shared_ptr<V> get(const K& key) noexcept {
@@ -45,11 +44,11 @@ public:
         return slotFor(key).remove(key);
     }
     template<std::convertible_to<V> VALUE_TYPE>
-    std::shared_ptr<V> add(const K& key, VALUE_TYPE&& value) {
+    std::shared_ptr<V> add(const K& key, VALUE_TYPE && value) {
         return slotFor(key).add(key, std::forward<VALUE_TYPE>(value));
     }
     template<std::convertible_to<V> VALUE_TYPE>
-    std::shared_ptr<V> add(K&& key, VALUE_TYPE&& value) {
+    std::shared_ptr<V> add(K && key, VALUE_TYPE && value) {
         return slotFor(key).add(std::move(key), std::forward<VALUE_TYPE>(value));
     }
     bool contains(const K& key) noexcept {
@@ -58,12 +57,16 @@ public:
     // best effort, does not acquire a global lock for all slots
     size_t size() const noexcept {
         size_t total = 0;
-        for (const auto& slot : slots) total += slot.size();
+        for (const auto& slot : slots) {
+            total += slot.size();
+        }
         return total;
     }
     // best effort, does not acquire a global lock for all slots
     void clear() noexcept {
-        for (auto& slot : slots) slot.clear();
+        for (auto& slot : slots) {
+            slot.clear();
+        }
     }
 
 private:
@@ -91,18 +94,16 @@ private:
             return {};
         }
         template<typename VALUE_TYPE>
-        std::shared_ptr<V> add(K key, VALUE_TYPE&& value) {
+        std::shared_ptr<V> add(K key, VALUE_TYPE && value) {
             std::unique_lock lock(mutex);
             auto new_ptr = std::make_shared<V>(std::forward<VALUE_TYPE>(value));
-
             auto it = map.find(key);
             if (it != map.end()) {
                 std::shared_ptr<V> old = std::move(it->second);
                 it->second = std::move(new_ptr);
                 // return the old reference (like Java's Map.put)
                 return old;
-            }
-            else {
+            } else {
                 map.emplace(std::move(key), std::move(new_ptr));
                 return {};
             }
@@ -126,16 +127,15 @@ private:
     };
 
     Slot& slotFor(const K& key) noexcept {
-        size_t h = hash(key);
-        if constexpr ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0) {
-            return slots[h & (SLOT_SIZE - 1)];
-        }
-        else {
-            return slots[h % SLOT_SIZE];
+        if constexpr (SIZE_IS_POW2) {
+            return slots[hash(key) & (SLOT_SIZE - 1)];
+        } else {
+            return slots[hash(key) % SLOT_SIZE];
         }
     }
+
+    constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));
 
     std::array<Slot, SLOT_SIZE> slots{};
     std::hash<K> hash{};
 };
-

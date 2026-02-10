@@ -22,7 +22,7 @@
 #include <shared_mutex>
 #include <concepts>
 
-// A minimal (hopefully) thread-safe hash map with a Java reference semantics.
+// A minimal (hopefully) thread-safe hash map with a Java-like interface.
 
 // Note 1: the noexcept claims are a bit exaggerated since std::unordered_map find() could actually throw
 // because std::equal_to<K> can throw depending on the type K. But when will that ever happen?
@@ -32,7 +32,7 @@
 // https://en.cppreference.com/w/cpp/container.html#Thread_safety
 
 
-template<typename K, typename V, unsigned int SLOT_SIZE=32, unsigned int BUCKET_SIZE=16>
+template<typename K, typename V, unsigned int SLOT_SIZE = 32, unsigned int BUCKET_SIZE = 16>
 class HashMap {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
 public:
@@ -73,8 +73,7 @@ private:
 
     class Slot {
     public:
-        Slot() {
-        }
+
         std::shared_ptr<V> get(const K& key) const noexcept {
             std::shared_lock lock(mutex);
             auto it = map.find(key);
