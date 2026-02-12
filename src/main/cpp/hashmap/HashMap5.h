@@ -478,23 +478,30 @@ private:
         mutable std::shared_mutex mutex;
     };
 
-    // TODO: better use a "Finalizer" for the hash (like in MurmurHash)?
+
     Slot& slotFor(const K& key) noexcept {
         if constexpr (SIZE_IS_POW2) {
-            return slots[hash(key) & (SLOT_SIZE - 1)];
+            return slots[finalize(hash(key)) & (SLOT_SIZE - 1)];
         }
         else {
-            return slots[hash(key) % SLOT_SIZE];
+            return slots[finalize(hash(key)) % SLOT_SIZE];
         }
     }
 
     const Slot& slotFor(const K& key) const noexcept {
         if constexpr (SIZE_IS_POW2) {
-            return slots[hash(key) & (SLOT_SIZE - 1)];
+            return slots[finalize(hash(key)) & (SLOT_SIZE - 1)];
         }
         else {
-            return slots[hash(key) % SLOT_SIZE];
+            return slots[finalize(hash(key)) % SLOT_SIZE];
         }
+    }
+
+    [[nodiscard]] static size_t finalize(size_t h) noexcept {
+        h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
+        h = h ^ (h >> 31);
+        return h;
     }
 
     constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));
