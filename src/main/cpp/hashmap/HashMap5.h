@@ -502,6 +502,7 @@ private:
         }
     }
 
+    // That's Stafford's "variant 13" bit mixing function
     [[nodiscard]] static size_t finalize(size_t h) noexcept {
         h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
         h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
