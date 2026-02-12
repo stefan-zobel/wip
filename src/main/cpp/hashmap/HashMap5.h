@@ -67,7 +67,7 @@ class HashMap5 {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
 public:
 
-    HashMap5() {}
+    HashMap5() = default;
     HashMap5(const HashMap5&) = delete;
     HashMap5(HashMap5&&) = delete;
 
