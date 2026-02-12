@@ -26,6 +26,7 @@
 
 // A minimal (hopefully) thread-safe hash map with value semantics and a Java-like interface.
 
+// internal helpers
 namespace detail {
     // Checks whether a type is std::optional
     template<typename T> struct is_optional : std::false_type {};
@@ -37,6 +38,7 @@ namespace detail {
 }
 
 
+// Concepts
 template<typename F, typename Key, typename Val>
 concept MergeCallback = std::invocable<F, Val&, Val&&>
                      && std::convertible_to<std::invoke_result_t<F, Val&, Val&&>, std::optional<Val>>;
@@ -59,6 +61,7 @@ concept UpdatePredicate = std::invocable<FUNC, const K&, V&>
                        && std::convertible_to<std::invoke_result_t<FUNC, const K&, V&>, bool>;
 
 
+// The Map
 template<typename K, typename V, unsigned int SLOT_SIZE = 32, unsigned int BUCKET_SIZE = 16>
 class HashMap5 {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
@@ -114,7 +117,7 @@ public:
 
     template<typename FUNC>
         requires std::invocable<FUNC>&& std::convertible_to<std::invoke_result_t<FUNC>, V>
-    std::optional<V> computeIfAbsent2(const K& key, FUNC&& createFunction) {
+    std::optional<V> computeIfAbsent2(const K& key, FUNC && createFunction) {
         return slotFor(key).computeIfAbsent2(key, std::forward<FUNC>(createFunction));
     }
 
@@ -149,13 +152,13 @@ public:
 
     template<typename VALUE_TYPE>
         requires std::convertible_to<VALUE_TYPE, V>
-    bool tryAdd(K key, VALUE_TYPE&& value) {
+    bool tryAdd(K key, VALUE_TYPE && value) {
         return slotFor(key).tryAdd(std::move(key), std::forward<VALUE_TYPE>(value));
     }
 
     template<typename FUNC>
         requires std::invocable<FUNC, const K&, const V&>
-    void forEach(FUNC&& callback) const {
+    void forEach(FUNC && callback) const {
         for (const auto& slot : slots) {
             slot.forEach(callback);
         }
@@ -167,7 +170,7 @@ public:
 
     template<typename PREDICATE>
         requires SearchPredicate<PREDICATE, K, V>
-    bool containsIf(PREDICATE&& predicate) const {
+    bool containsIf(PREDICATE && predicate) const {
         bool found = false;
         // Use our own forEachUntil
         this->forEachUntil([&](const K& key, const V& value) -> bool {
@@ -183,7 +186,7 @@ public:
 
     template<typename PREDICATE>
         requires SearchPredicate<PREDICATE, K, V>
-    std::optional<V> find(PREDICATE&& predicate) const {
+    std::optional<V> find(PREDICATE && predicate) const {
         for (const auto& slot : slots) {
             auto result = slot.find(predicate);
             if (result.has_value()) {
@@ -194,7 +197,7 @@ public:
     }
 
     template<typename FUNC>
-    void forEachUntil(FUNC&& func) const {
+    void forEachUntil(FUNC && func) const {
         for (const auto& slot : slots) {
             if (!slot.forEachUntil(func)) {
                 break;
@@ -226,6 +229,7 @@ public:
 private:
     static constexpr size_t hardware_destructive_interference_size = 64;
 
+    // Slot: the real implementation
     class alignas(hardware_destructive_interference_size) Slot {
     public:
         Slot() : local_pool(), map(BUCKET_SIZE, &local_pool) {}
@@ -288,7 +292,7 @@ private:
 
         template<typename FUNC>
             requires std::invocable<FUNC, const V&>
-        auto inspect2(const K& key, FUNC&& callback) const {
+        auto inspect2(const K& key, FUNC && callback) const {
             using RawReturnType = std::invoke_result_t<FUNC, const V&>;
 
             std::shared_lock lock(mutex);
@@ -340,7 +344,7 @@ private:
 
         template<typename FUNC>
             requires std::invocable<FUNC>&& std::convertible_to<std::invoke_result_t<FUNC>, V>
-        std::optional<V> computeIfAbsent2(const K& key, FUNC&& createFunction) {
+        std::optional<V> computeIfAbsent2(const K& key, FUNC && createFunction) {
             std::unique_lock lock(mutex);
             auto it = map.find(key);
 
@@ -410,7 +414,7 @@ private:
         }
 
         template<std::convertible_to<V> VALUE_TYPE>
-        bool tryAdd(K key, VALUE_TYPE&& value) {
+        bool tryAdd(K key, VALUE_TYPE && value) {
             std::unique_lock lock(mutex);
             // 'inserted' is true when the key was not known
             auto [it, inserted] = map.emplace(std::move(key), std::forward<VALUE_TYPE>(value));
@@ -510,5 +514,5 @@ private:
     std::hash<K> hash{};
 
     static_assert(sizeof(Slot) % alignof(Slot) == 0, "Wrong padding. Compiler Error?");
-    static_assert(alignof(Slot) >= hardware_destructive_interference_size, "Under-alignment: may cause false sharing!");
+    static_assert(alignof(Slot) >= hardware_destructive_interference_size, "Under-alignment detected: may cause false sharing!");
 };
