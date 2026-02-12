@@ -477,6 +477,7 @@ private:
         }
 
     private:
+        // The PMR allocator is what keeps this design competitive
         std::pmr::unsynchronized_pool_resource local_pool;
         std::pmr::unordered_map<K, V> map;
         mutable std::shared_mutex mutex;
