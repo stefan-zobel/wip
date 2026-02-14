@@ -1,9 +1,24 @@
+/*
+ * Copyright 2026 Stefan Zobel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include <concepts>
 #include <optional>
 
-template<typename M, typename K, typename V, typename R>
+template<typename MAP, typename K, typename V, typename RET>
 concept ConcurrentMap =
 
     // Keys and values must be destructible
@@ -13,7 +28,7 @@ concept ConcurrentMap =
     (std::move_constructible<K> || std::copy_constructible<K>) &&
     (std::move_constructible<V> || std::copy_constructible<V>) &&
 
-        requires(M& map, const M& cmap, const K& key, V && val) {
+        requires(MAP& map, const MAP& cmap, const K& key, V && val) {
 
             // 1. Basic methods
             { cmap.get(key) } -> std::same_as<std::optional<V>>;
@@ -35,8 +50,8 @@ concept ConcurrentMap =
 
             // 4. The most challenging: inspect2 (including "flattening" of nested optionals)
             { cmap.inspect2(key, [](const V&) {}) } -> std::same_as<bool>;
-            { cmap.inspect2(key, [](const V&) { return R{}; }) } -> std::same_as<std::optional<R>>;
-            { cmap.inspect2(key, [](const V&) { return std::optional<R>{}; }) } -> std::same_as<std::optional<R>>;
+            { cmap.inspect2(key, [](const V&) { return RET{}; }) } -> std::same_as<std::optional<RET>>;
+            { cmap.inspect2(key, [](const V&) { return std::optional<RET>{}; }) } -> std::same_as<std::optional<RET>>;
 
             // 5. Java-style operations
             {
