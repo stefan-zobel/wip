@@ -24,6 +24,8 @@
 #include <memory_resource> // for pmr::
 #include <concepts>
 
+#include "ConcurrentMap.h"
+
 // A minimal (hopefully) thread-safe hash map with value semantics and a Java-like interface.
 
 // internal helpers
@@ -518,3 +520,6 @@ private:
     static_assert(sizeof(Slot) % alignof(Slot) == 0, "Wrong padding. Compiler Error?");
     static_assert(alignof(Slot) >= hardware_destructive_interference_size, "Under-alignment detected: may cause false sharing!");
 };
+
+static_assert(ConcurrentMap<HashMap5<int, std::string>, int, std::string, double>,
+    "Error: HashMap5 doesn't satisfy the ConcurrentMap concept!");
