@@ -18,6 +18,7 @@
 #include <concepts>
 #include <optional>
 
+// A concurrent map concept for a map with value semantics and a Java-like interface.
 template<typename MAP, typename K, typename V>
 concept ConcurrentMap =
 
