@@ -18,24 +18,21 @@
 #include <concepts>
 #include <optional>
 
-template<typename MAP, typename K, typename V, typename RET>
+template<typename MAP, typename K, typename V>
 concept ConcurrentMap =
 
-    // Keys and values must be destructible
-    std::destructible<K> &&
-    std::destructible<V> &&
     // Keys and values must be at least moveable or copyable
     (std::move_constructible<K> || std::copy_constructible<K>) &&
     (std::move_constructible<V> || std::copy_constructible<V>) &&
 
-        requires(MAP& map, const MAP& cmap, const K& key, V && val) {
+        requires(MAP& map, const MAP& cmap, K& key, const K& ckey, V& val, const V& cval) {
 
             // 1. Basic methods
-            { cmap.get(key) } -> std::same_as<std::optional<V>>;
-            { cmap.contains(key) } -> std::same_as<bool>;
-            { map.add(key, std::forward<V>(val)) } -> std::same_as<std::optional<V>>;
-            { map.add(std::declval<K&&>(), std::forward<V>(val)) } -> std::same_as<std::optional<V>>;
-            { map.remove(key) } -> std::same_as<std::optional<V>>;
+            { cmap.get(ckey) } -> std::same_as<std::optional<V>>;
+            { cmap.contains(ckey) } -> std::same_as<bool>;
+            { map.add(ckey, std::move(val)) } -> std::same_as<std::optional<V>>;
+            { map.add(std::move(key), std::move(val)) } -> std::same_as<std::optional<V>>;
+            { map.remove(ckey) } -> std::same_as<std::optional<V>>;
 
             // 2. Size, capacity & management
             { cmap.size() } noexcept -> std::convertible_to<std::size_t>;
@@ -43,29 +40,25 @@ concept ConcurrentMap =
             { map.reserve(std::declval<std::size_t>()) };
 
             // 3. Inspection & updates (lambdas / callbacks)
-            { cmap.inspect(key, [](const V&) {}) } -> std::same_as<bool>;
-            { map.update(key, [](V&) {}) } -> std::same_as<bool>;
+            { cmap.inspect(ckey, [](const V&) {}) } -> std::same_as<bool>;
+            { map.update(ckey, std::declval<void(*)(V&)>()) } -> std::same_as<bool>;
             { map.updateIf([](const K&, V&) { return true; }) } -> std::convertible_to<std::size_t>;
             { map.removeIf([](const K&, const V&) { return true; }) } -> std::convertible_to<std::size_t>;
 
             // 4. The most challenging: inspect2 (including "flattening" of nested optionals)
-            { cmap.inspect2(key, [](const V&) {}) } -> std::same_as<bool>;
-            { cmap.inspect2(key, [](const V&) { return RET{}; }) } -> std::same_as<std::optional<RET>>;
-            { cmap.inspect2(key, [](const V&) { return std::optional<RET>{}; }) } -> std::same_as<std::optional<RET>>;
+            { cmap.inspect2(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
+            { cmap.inspect2(ckey, std::declval<int(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
+            { cmap.inspect2(ckey, std::declval<std::optional<int>(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
 
             // 5. Java-style operations
-            {
-                map.merge(key, std::forward<V>(val), [](V& current, V&& next) {
-                    return std::optional<V>{next};
-                })
-            };
-            { map.computeIfAbsent(key, []() { return V{}; }, [](V&) {}) };
-            { map.computeIfAbsent2(key, []() { return V{}; }) } -> std::same_as<std::optional<V>>;
-            { cmap.getOrDefault(key, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
+            { map.merge(ckey, std::declval<V>(), std::declval<std::optional<V>(*)(V&, V&&)>()) };
+            { map.computeIfAbsent(ckey, []() { return V{}; }, [](V&) {}) };
+            { map.computeIfAbsent2(ckey, []() { return V{}; }) } -> std::same_as<std::optional<V>>;
+            { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
             { cmap.forEach([](const K&, const V&) {}) };
 
             // 6. extra methods
-            { map.tryAdd(key, std::declval<V>()) } -> std::same_as<bool>;
+            { map.tryAdd(ckey, std::declval<V>()) } -> std::same_as<bool>;
             { cmap.containsIf([](const K&, const V&) { return true; }) } -> std::same_as<bool>;
             { cmap.find([](const K&, const V&) { return true; }) } -> std::same_as<std::optional<V>>;
             { cmap.forEachUntil([](const K&, const V&) { return false; }) };

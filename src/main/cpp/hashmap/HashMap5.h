@@ -521,5 +521,5 @@ private:
     static_assert(alignof(Slot) >= hardware_destructive_interference_size, "Under-alignment detected: may cause false sharing!");
 };
 
-static_assert(ConcurrentMap<HashMap5<int, std::string>, int, std::string, double>,
+static_assert(ConcurrentMap<HashMap5<int, std::string>, int, std::string>,
     "Error: HashMap5 doesn't satisfy the ConcurrentMap concept!");
