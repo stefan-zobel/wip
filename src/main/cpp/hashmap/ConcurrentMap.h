@@ -26,45 +26,45 @@ concept ConcurrentMap =
     (std::move_constructible<K> || std::copy_constructible<K>) &&
     (std::move_constructible<V> || std::copy_constructible<V>) &&
 
-        requires(MAP& map, const MAP& cmap, K& key, const K& ckey, V& val, const V& cval) {
+    requires(MAP& map, const MAP& cmap, K& key, const K& ckey, V& val, const V& cval) {
 
-            // 1. Basic methods
-            { cmap.contains(ckey) } -> std::same_as<bool>;
-            { map.add(ckey, std::move(val)) } -> std::same_as<std::optional<V>>;
-            { map.add(std::move(key), std::move(val)) } -> std::same_as<std::optional<V>>;
-            { map.remove(ckey) } -> std::same_as<std::optional<V>>;
+        // 1. Basic methods
+        { cmap.contains(ckey) } -> std::same_as<bool>;
+        { map.add(ckey, std::move(val)) } -> std::same_as<std::optional<V>>;
+        { map.add(std::move(key), std::move(val)) } -> std::same_as<std::optional<V>>;
+        { map.remove(ckey) } -> std::same_as<std::optional<V>>;
 
-            // 2. Size, capacity & management
-            { cmap.size() } noexcept -> std::convertible_to<std::size_t>;
-            { map.clear() } noexcept;
-            { map.reserve(std::declval<std::size_t>()) };
+        // 2. Size, capacity & management
+        { cmap.size() } noexcept -> std::convertible_to<std::size_t>;
+        { map.clear() } noexcept;
+        { map.reserve(std::declval<std::size_t>()) };
 
-            // 3. Inspection & updates (lambdas / callbacks)
-            { cmap.inspect(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
-            { map.update(ckey, std::declval<void(*)(V&)>()) } -> std::same_as<bool>;
-            { map.updateIf(std::declval<bool(*)(const K&, V&)>()) } -> std::convertible_to<std::size_t>;
-            { map.removeIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::convertible_to<std::size_t>;
+        // 3. Inspection & updates (lambdas / callbacks)
+        { cmap.inspect(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
+        { map.update(ckey, std::declval<void(*)(V&)>()) } -> std::same_as<bool>;
+        { map.updateIf(std::declval<bool(*)(const K&, V&)>()) } -> std::convertible_to<std::size_t>;
+        { map.removeIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::convertible_to<std::size_t>;
 
-            // 4. The most challenging: inspect2 (including "flattening" of nested optionals)
-            { cmap.inspect2(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
-            { cmap.inspect2(ckey, std::declval<int(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
-            { cmap.inspect2(ckey, std::declval<std::optional<int>(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
+        // 4. The most challenging: inspect2 (including "flattening" of nested optionals)
+        { cmap.inspect2(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
+        { cmap.inspect2(ckey, std::declval<int(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
+        { cmap.inspect2(ckey, std::declval<std::optional<int>(*)(const V&)>()) } -> std::same_as<std::optional<int>>;
 
-            // 5. Java-style operations
-            { map.merge(ckey, std::declval<V>(), std::declval<std::optional<V>(*)(V&, V&&)>()) };
-            { map.computeIfAbsent(ckey, std::declval<V(*)()>(), std::declval<void(*)(V&)>()) };
-            { cmap.forEach(std::declval<void(*)(const K&, const V&)>()) };
+        // 5. Java-style operations
+        { map.merge(ckey, std::declval<V>(), std::declval<std::optional<V>(*)(V&, V&&)>()) };
+        { map.computeIfAbsent(ckey, std::declval<V(*)()>(), std::declval<void(*)(V&)>()) };
+        { cmap.forEach(std::declval<void(*)(const K&, const V&)>()) };
 
-            // 6. Extra methods
-            { map.tryAdd(ckey, std::move(val)) } -> std::same_as<bool>;
-            { cmap.containsIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<bool>;
-            { cmap.forEachUntil(std::declval<bool(*)(const K&, const V&)>()) };
-        }
-        // Additional required methods for copy-constructible values
-        && (std::copy_constructible<V> ? requires(MAP& map, const MAP& cmap, K key, const K& ckey, V& val) {
-            { cmap.get(ckey) } -> std::same_as<std::optional<V>>;
-            { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
-            { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
-            { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
-        } : true);
+        // 6. Extra methods
+        { map.tryAdd(ckey, std::move(val)) } -> std::same_as<bool>;
+        { cmap.containsIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<bool>;
+        { cmap.forEachUntil(std::declval<bool(*)(const K&, const V&)>()) };
+    }
+    // Additional required methods for copy-constructible values
+    && (std::copy_constructible<V> ? requires(MAP& map, const MAP& cmap, K key, const K& ckey, V& val) {
+        { cmap.get(ckey) } -> std::same_as<std::optional<V>>;
+        { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
+        { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
+        { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
+    } : true);
 
