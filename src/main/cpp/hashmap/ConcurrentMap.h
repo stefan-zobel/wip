@@ -66,3 +66,4 @@ concept ConcurrentMap =
     { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
     { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
 } : true);
+

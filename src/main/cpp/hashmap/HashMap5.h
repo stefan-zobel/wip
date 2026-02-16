@@ -535,3 +535,4 @@ static_assert(ConcurrentMap<HashMap5<std::string, std::vector<int>>, std::string
 // move-only type
 static_assert(ConcurrentMap<HashMap5<int, std::unique_ptr<int>>, int, std::unique_ptr<int>>,
     "Error assert 3: HashMap5 doesn't satisfy the ConcurrentMap concept!");
+
