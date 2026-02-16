@@ -40,7 +40,7 @@ concept ConcurrentMap =
             { map.reserve(std::declval<std::size_t>()) };
 
             // 3. Inspection & updates (lambdas / callbacks)
-            { cmap.inspect(ckey, [](const V&) {}) } -> std::same_as<bool>;
+            { cmap.inspect(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
             { map.update(ckey, std::declval<void(*)(V&)>()) } -> std::same_as<bool>;
             { map.updateIf(std::declval<bool(*)(const K&, V&)>()) } -> std::convertible_to<std::size_t>;
             { map.removeIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::convertible_to<std::size_t>;
