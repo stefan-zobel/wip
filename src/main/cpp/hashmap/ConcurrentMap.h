@@ -58,7 +58,7 @@ concept ConcurrentMap =
             { cmap.forEach(std::declval<void(*)(const K&, const V&)>()) };
 
             // 6. extra methods
-            { map.tryAdd(ckey, std::declval<V>()) } -> std::same_as<bool>;
+            { map.tryAdd(ckey, std::move(val)) } -> std::same_as<bool>;
             { cmap.containsIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<bool>;
             { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
             { cmap.forEachUntil(std::declval<bool(*)(const K&, const V&)>()) };

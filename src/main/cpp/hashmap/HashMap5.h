@@ -26,7 +26,7 @@
 
 #include "ConcurrentMap.h"
 
-// A minimal (hopefully) thread-safe hash map with value semantics and a Java-like interface.
+// A minimal thread-safe hash map with value semantics and a Java-like interface.
 
 // internal helpers
 namespace detail {
@@ -296,11 +296,13 @@ private:
             requires std::invocable<FUNC, const V&>
         auto inspect2(const K& key, FUNC && callback) const {
             using RawReturnType = std::invoke_result_t<FUNC, const V&>;
+            // the T of optional<T> or keep the T
+            using InnerType = typename detail::extract_optional_type<RawReturnType>::type;
 
             std::shared_lock lock(mutex);
             auto it = map.find(key);
 
-            // case 1: callback returns void
+            // callback returns void
             if constexpr (std::is_void_v<RawReturnType>) {
                 if (it != map.end()) {
                     std::invoke(std::forward<FUNC>(callback), it->second);
@@ -308,8 +310,8 @@ private:
                 }
                 return false; // key not found
             }
-            // cases 2 & 3: callback returns something
             else {
+                // every path returns std::optional<InnerType>
                 if (it != map.end()) {
                     auto result = std::invoke(std::forward<FUNC>(callback), it->second);
 
@@ -319,12 +321,11 @@ private:
                     }
                     else {
                         // otherwise we wrap the return in an optional
-                        return std::optional<RawReturnType>(std::move(result));
+                        return std::optional<InnerType>(std::move(result));
                     }
                 }
                 // key not found: return an empty optional of the type that the user expects
-                using FinalReturnType = typename detail::extract_optional_type<RawReturnType>::type;
-                return std::optional<FinalReturnType>{std::nullopt};
+                return std::optional<InnerType>{std::nullopt};
             }
         }
 
@@ -521,5 +522,14 @@ private:
     static_assert(alignof(Slot) >= hardware_destructive_interference_size, "Under-alignment detected: may cause false sharing!");
 };
 
+// copy + move
 static_assert(ConcurrentMap<HashMap5<int, std::string>, int, std::string>,
-    "Error: HashMap5 doesn't satisfy the ConcurrentMap concept!");
+    "Error assert 1: HashMap5 doesn't satisfy the ConcurrentMap concept!");
+
+// complex keys and values
+static_assert(ConcurrentMap<HashMap5<std::string, std::vector<int>>, std::string, std::vector<int>>,
+    "Error assert 2: HashMap5 doesn't satisfy the ConcurrentMap concept!");
+
+// move-only type
+static_assert(ConcurrentMap<HashMap5<int, std::unique_ptr<int>>, int, std::unique_ptr<int>>,
+    "Error assert 3: HashMap5 doesn't satisfy the ConcurrentMap concept!");
