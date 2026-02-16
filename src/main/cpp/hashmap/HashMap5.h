@@ -73,12 +73,12 @@ public:
     HashMap5(const HashMap5&) = delete;
     HashMap5(HashMap5&&) = delete;
 
-    std::optional<V> get(const K& key) const {
+    std::optional<V> get(const K& key) const requires std::copy_constructible<V> {
         return slotFor(key).get(key);
     }
 
     template<typename VALUE_TYPE>
-        requires std::convertible_to<VALUE_TYPE, V>
+        requires std::convertible_to<VALUE_TYPE, V> && std::copy_constructible<V>
     V getOrDefault(const K& key, bool& found, VALUE_TYPE && defaultValue) const {
         return slotFor(key).getOrDefault(key, found, std::forward<VALUE_TYPE>(defaultValue));
     }
@@ -119,6 +119,7 @@ public:
 
     template<typename FUNC>
         requires std::invocable<FUNC>&& std::convertible_to<std::invoke_result_t<FUNC>, V>
+              && std::copy_constructible<V>
     std::optional<V> computeIfAbsent2(const K& key, FUNC && createFunction) {
         return slotFor(key).computeIfAbsent2(key, std::forward<FUNC>(createFunction));
     }
@@ -187,7 +188,7 @@ public:
     }
 
     template<typename PREDICATE>
-        requires SearchPredicate<PREDICATE, K, V>
+        requires SearchPredicate<PREDICATE, K, V> && std::copy_constructible<V>
     std::optional<V> find(PREDICATE && predicate) const {
         for (const auto& slot : slots) {
             auto result = slot.find(predicate);
@@ -236,7 +237,7 @@ private:
     public:
         Slot() : local_pool(), map(BUCKET_SIZE, &local_pool) {}
 
-        std::optional<V> get(const K& key) const {
+        std::optional<V> get(const K& key) const requires std::copy_constructible<V> {
             std::shared_lock lock(mutex);
             if (auto it = map.find(key); it != map.end()) {
                 return it->second;
@@ -245,7 +246,7 @@ private:
         }
 
         template<typename VALUE_TYPE>
-            requires std::convertible_to<VALUE_TYPE, V>
+            requires std::convertible_to<VALUE_TYPE, V> && std::copy_constructible<V>
         V getOrDefault(const K& key, bool& found, VALUE_TYPE && defaultValue) const {
             std::shared_lock lock(mutex);
             auto it = map.find(key);
@@ -347,6 +348,7 @@ private:
 
         template<typename FUNC>
             requires std::invocable<FUNC>&& std::convertible_to<std::invoke_result_t<FUNC>, V>
+                  && std::copy_constructible<V>
         std::optional<V> computeIfAbsent2(const K& key, FUNC && createFunction) {
             std::unique_lock lock(mutex);
             auto it = map.find(key);
@@ -449,7 +451,7 @@ private:
         }
 
         template<typename PREDICATE>
-            requires SearchPredicate<PREDICATE, K, V>
+            requires SearchPredicate<PREDICATE, K, V> && std::copy_constructible<V>
         std::optional<V> find(PREDICATE && predicate) const {
             std::optional<V> result;
             // capture result by reference

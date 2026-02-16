@@ -28,7 +28,6 @@ concept ConcurrentMap =
         requires(MAP& map, const MAP& cmap, K& key, const K& ckey, V& val, const V& cval) {
 
             // 1. Basic methods
-            { cmap.get(ckey) } -> std::same_as<std::optional<V>>;
             { cmap.contains(ckey) } -> std::same_as<bool>;
             { map.add(ckey, std::move(val)) } -> std::same_as<std::optional<V>>;
             { map.add(std::move(key), std::move(val)) } -> std::same_as<std::optional<V>>;
@@ -53,13 +52,17 @@ concept ConcurrentMap =
             // 5. Java-style operations
             { map.merge(ckey, std::declval<V>(), std::declval<std::optional<V>(*)(V&, V&&)>()) };
             { map.computeIfAbsent(ckey, std::declval<V(*)()>(), std::declval<void(*)(V&)>()) };
-            { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
-            { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
             { cmap.forEach(std::declval<void(*)(const K&, const V&)>()) };
 
-            // 6. extra methods
+            // 6. Extra methods
             { map.tryAdd(ckey, std::move(val)) } -> std::same_as<bool>;
             { cmap.containsIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<bool>;
-            { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
             { cmap.forEachUntil(std::declval<bool(*)(const K&, const V&)>()) };
-};
+}
+// Additional required methods for copy-constructible values
+&& (std::copy_constructible<V> ? requires(MAP& map, const MAP& cmap, K key, const K& ckey, V& val) {
+    { cmap.get(ckey) } -> std::same_as<std::optional<V>>;
+    { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
+    { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
+    { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
+} : true);
