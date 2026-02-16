@@ -42,8 +42,8 @@ concept ConcurrentMap =
             // 3. Inspection & updates (lambdas / callbacks)
             { cmap.inspect(ckey, [](const V&) {}) } -> std::same_as<bool>;
             { map.update(ckey, std::declval<void(*)(V&)>()) } -> std::same_as<bool>;
-            { map.updateIf([](const K&, V&) { return true; }) } -> std::convertible_to<std::size_t>;
-            { map.removeIf([](const K&, const V&) { return true; }) } -> std::convertible_to<std::size_t>;
+            { map.updateIf(std::declval<bool(*)(const K&, V&)>()) } -> std::convertible_to<std::size_t>;
+            { map.removeIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::convertible_to<std::size_t>;
 
             // 4. The most challenging: inspect2 (including "flattening" of nested optionals)
             { cmap.inspect2(ckey, std::declval<void(*)(const V&)>()) } -> std::same_as<bool>;
@@ -52,14 +52,14 @@ concept ConcurrentMap =
 
             // 5. Java-style operations
             { map.merge(ckey, std::declval<V>(), std::declval<std::optional<V>(*)(V&, V&&)>()) };
-            { map.computeIfAbsent(ckey, []() { return V{}; }, [](V&) {}) };
-            { map.computeIfAbsent2(ckey, []() { return V{}; }) } -> std::same_as<std::optional<V>>;
+            { map.computeIfAbsent(ckey, std::declval<V(*)()>(), std::declval<void(*)(V&)>()) };
+            { map.computeIfAbsent2(ckey, std::declval<V(*)()>()) } -> std::same_as<std::optional<V>>;
             { cmap.getOrDefault(ckey, std::declval<bool&>(), std::declval<V>()) } -> std::same_as<V>;
-            { cmap.forEach([](const K&, const V&) {}) };
+            { cmap.forEach(std::declval<void(*)(const K&, const V&)>()) };
 
             // 6. extra methods
             { map.tryAdd(ckey, std::declval<V>()) } -> std::same_as<bool>;
-            { cmap.containsIf([](const K&, const V&) { return true; }) } -> std::same_as<bool>;
-            { cmap.find([](const K&, const V&) { return true; }) } -> std::same_as<std::optional<V>>;
-            { cmap.forEachUntil([](const K&, const V&) { return false; }) };
+            { cmap.containsIf(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<bool>;
+            { cmap.find(std::declval<bool(*)(const K&, const V&)>()) } -> std::same_as<std::optional<V>>;
+            { cmap.forEachUntil(std::declval<bool(*)(const K&, const V&)>()) };
 };
