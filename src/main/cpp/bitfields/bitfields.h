@@ -91,6 +91,22 @@ constexpr bool has_any(E value, Args... flags) {
     return (((value & flags) != E{ 0 }) || ...);
 }
 
+/**
+ * Creates a new enum value where all the passed flags are set
+ */
+template<typename E, typename... Args>
+    requires is_bitmask_enum<E>::value && (std::same_as<E, Args> && ...)
+constexpr E create(Args... flags) {
+    // if there are no arguments we return 0 (None)
+    if constexpr (sizeof...(Args) == 0) {
+        return E{ 0 };
+    } else {
+        // Fold Expression (Unary Right Fold): combine all flags with '|'
+        return ((flags) | ...);
+    }
+}
+
+
 #define ENABLE_BITMASK_OPERATORS(E) \
     template<> struct is_bitmask_enum<E> : std::true_type {};
 
