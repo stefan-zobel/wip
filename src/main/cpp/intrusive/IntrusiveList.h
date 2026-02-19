@@ -155,6 +155,9 @@ public:
             tail = prev;
         }
 
+        // we don't want 'zombies' hanging around
+        static_cast<T&>(storage[idx]) = T{};
+
         // Return the slot to the freelist
         release_to_free_list(idx);
         count--;
@@ -181,7 +184,7 @@ public:
         // actually doing something (like unique_ptr):
         for (IndexType i = 1; i <= Cap; ++i) {
             // Assign the default state to the item, so
-            // that its desctructor gets triggered.
+            // that its destructor gets triggered.
             static_cast<T&>(storage[i]) = T{};
         }
         head = Nil;
@@ -225,16 +228,29 @@ public:
 
         // Important: Return by value since the Pair is a temporary
         constexpr auto operator*() const {
-            return std::pair<IndexType, value_type&>{
-                current,
-                    static_cast<value_type&>(list->storage[current])
-            };
+            if constexpr (IsConst) {
+                return std::pair<IndexType, value_type&>{
+                    current,
+                        static_cast<value_type&>(list->read_access(current))
+                };
+            }
+            else {
+                return std::pair<IndexType, value_type&>{
+                    current,
+                        static_cast<value_type&>(list->write_access(current))
+                };
+            }
         }
 
         // For algorithms like std::find_if
         // (algorithms mostly expect the pure item, not a std::pair)
         constexpr value_type* operator->() const {
-            return &static_cast<value_type&>(list->storage[current]);
+            if constexpr (IsConst) {
+                return &static_cast<value_type&>(list->read_access(current));
+            }
+            else {
+                return &static_cast<value_type&>(list->write_access(current));
+            }
         }
 
         constexpr IteratorImpl& operator++() {
