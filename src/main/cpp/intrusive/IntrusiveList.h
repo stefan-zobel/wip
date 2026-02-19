@@ -393,15 +393,18 @@ private:
     }
 
     constexpr T& write_access(IndexType idx) {
-        return access(idx);
+        return access(idx, true);
     }
 
     constexpr const T& read_access(IndexType idx) const {
-        return access(idx);
+        return access(idx, false);
     }
 
+    static constexpr IndexType Clean = Nil;
+    static constexpr IndexType Dirty = 1;
+
     // common internal logic for read and write access paths
-    constexpr T& access(IndexType idx) const {
+    constexpr T& access(IndexType idx, bool is_write_intent) const {
         if (idx == Nil || idx > Cap) {
             if (std::is_constant_evaluated()) {
                 throw "Critical error: Access with illegal index!";
@@ -410,7 +413,19 @@ private:
             throw std::out_of_range("Critical error: Access with illegal index!");
 #endif
             auto& sentinel = const_cast<NodeType&>(storage[Nil]);
-            static_cast<T&>(sentinel) = T{};
+
+            if (sentinel.link.prev == Dirty) {
+                // The sentinel might have been contaminated
+                static_cast<T&>(sentinel) = T{};
+                sentinel.link.prev = Clean;
+            }
+
+            if (is_write_intent) {
+                // The caller could write to it, so
+                // we make provisions for that case
+                sentinel.link.prev = Dirty;
+            }
+
             return static_cast<T&>(sentinel);
         }
         return static_cast<T&>(const_cast<NodeType&>(storage[idx]));
