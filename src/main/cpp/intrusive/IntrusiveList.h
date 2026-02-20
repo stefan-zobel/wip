@@ -279,11 +279,13 @@ public:
         // sanity check: is the index legal?
         if (!is_valid_internal(pos)) {
             if (std::is_constant_evaluated()) {
-                throw "Insert with out-of-bounds index!";
+                throw "Critical error: Access with illegal index!";
             }
             else {
                 // Debug build
-                assert(false && "Insert with out-of-bounds index!");
+#ifdef _DEBUG
+                throw std::out_of_range("Critical error: Access with illegal index!");
+#endif
                 // Release build (do nothing, just return Nil)
                 return Nil;
             }
