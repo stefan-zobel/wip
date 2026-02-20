@@ -17,7 +17,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <cassert>
 #include <array>
 #include <concepts>
 
@@ -244,7 +243,7 @@ public:
 
         // For algorithms like std::find_if
         // (algorithms mostly expect the pure item, not a std::pair)
-        constexpr value_type* operator->() const {
+        constexpr pointer operator->() const {
             if constexpr (IsConst) {
                 return &static_cast<value_type&>(list->read_access(current));
             }
@@ -285,9 +284,10 @@ public:
                 // Debug build
 #ifdef _DEBUG
                 throw std::out_of_range("Critical error: Access with illegal index!");
-#endif
+#else
                 // Release build (do nothing, just return Nil)
                 return Nil;
+#endif
             }
         }
 
@@ -412,8 +412,9 @@ private:
                 throw "Critical error: Access with illegal index!";
             }
 #ifdef _DEBUG
+            is_write_intent; // suppress 'not referenced' warning
             throw std::out_of_range("Critical error: Access with illegal index!");
-#endif
+#else
             auto& sentinel = const_cast<NodeType&>(storage[Nil]);
 
             if (sentinel.link.prev == Dirty) {
@@ -429,6 +430,7 @@ private:
             }
 
             return static_cast<T&>(sentinel);
+#endif
         }
         return static_cast<T&>(const_cast<NodeType&>(storage[idx]));
     }
