@@ -111,10 +111,9 @@ union Value {
         // When the bit patterns are equal, the Values are equal.
         if (bits == other.bits) [[likely]] {
             // As a special case for Double: IEEE-754 says, that NaN != NaN.
-            // If we strictly follow the standard we'd have to check:
-            // return !isDouble() || !std::isnan(dbl);
-            // Most VMs don't do that, and for us also 'bits == bits'
-            // is sufficient for identity.
+            if (bits == CANONICAL_QNAN && other.bits == CANONICAL_QNAN) {
+                return false;
+            }
             return true;
         }
 
@@ -221,6 +220,10 @@ union Value {
         return Value{ 0xFFF7'0000'0000'0001ULL };
     }
 
+    static constexpr Value nan() noexcept {
+        return Value{ CANONICAL_QNAN };
+    }
+
     // Helper method for an open addressing HashTable (since 'bits' is private)
     [[nodiscard]] [[msvc::forceinline]]
     constexpr bool isTombstone() const noexcept {
@@ -310,6 +313,9 @@ static_assert(Value::Type::Integer == Value::fromSigned48(-101).type());
 static_assert(Value::Type::Integer == Value::fromRaw48(222'222).type());
 static_assert(Value::Type::Double  == Value::fromDouble(0.0).type());
 static_assert(Value::Type::Double  == Value::fromDouble(0.23455).type());
+static_assert(Value::Type::Double  == Value::nan().type());
+// Nan != NaN
+static_assert(Value::nan() != Value::nan());
 
 
 
