@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="Value">
+    <!-- 1. Tombstone -->
+    <DisplayString Condition="bits == 0xFFF7000000000001ULL">⚰️ tombstone</DisplayString>
+
+    <!-- 2. Double (Threshold TAG_PTR) -->
+    <DisplayString Condition="bits &lt; 0xFFF7000000000000ULL">{dbl, g}</DisplayString>
+
+    <!-- 3. Pointer (0xFFF7) -->
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFF7000000000000ULL">Ptr({(void*)(bits &amp; 0x0000FFFFFFFFFFFFULL)})</DisplayString>
+
+    <!-- 4. Integer (0xFFF8) - Use subtraction instead of shifts to work around a parser bug -->
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFF8000000000000ULL">Int: {(long long)(bits - 0xFFF8000000000000ULL)}</DisplayString>
+
+    <!-- 5. Boolean (0xFFF9) -->
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFF9000000000000ULL">Bool: {(bool)(bits &amp; 1ULL)}</DisplayString>
+
+    <!-- 6. Special Types (0xFFFA) -->
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFFA000000000000ULL &amp;&amp; (bits &amp; 0xFFULL) == 0">nil</DisplayString>
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFFA000000000000ULL &amp;&amp; (bits &amp; 0xFFULL) == 1">undefined</DisplayString>
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFFA000000000000ULL &amp;&amp; (bits &amp; 0xFFULL) == 2">Error({(bits &amp; 0x0000FFFFFFFFFFFFULL) / 256})</DisplayString>
+    <DisplayString Condition="(bits &amp; 0xFFFF000000000000ULL) == 0xFFFA000000000000ULL &amp;&amp; (bits &amp; 0xFFULL) == 3">Atom(#{ (bits &amp; 0x0000FFFFFFFFFFFFULL) / 256 })</DisplayString>
+
+    <DisplayString>Raw: {bits, x}</DisplayString>
+
+    <Expand>
+      <Item Name="[bits]">bits, x</Item>
+      <Item Name="[double]" Condition="bits &lt; 0xFFF7000000000000ULL">dbl</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>
