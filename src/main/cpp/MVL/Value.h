@@ -120,9 +120,12 @@ union Value {
         // The "Double path"
         // When the bits are different it could nevertheless be numerically
         // equal doubles (e.g., 0.0 == -0.0)
+        // We don't need this when we are mapping -0.0 to 0.0
+        /*
         if (isDouble() && other.isDouble()) {
             return dbl == other.dbl;
         }
+        */
 
         // Mixed types (e.g., Int 1 == Double 1.0)
         if (isInt() && other.isDouble()) {
@@ -159,6 +162,11 @@ union Value {
 
     [[nodiscard]] [[msvc::forceinline]]
     static constexpr Value fromDouble(double d) noexcept {
+        if (d == -0.0) {
+            // map -0.0 to 0.0 to avoid the problem that
+            // 0.0 == -0.0 but their bit patterns are different.
+            return Value{ 0x0000'0000'0000'0000ULL };
+        }
         // Get the bit pattern for the check
         const uint64_t d_bits = std::bit_cast<uint64_t>(d);
 
@@ -316,6 +324,8 @@ static_assert(Value::Type::Double  == Value::fromDouble(0.23455).type());
 static_assert(Value::Type::Double  == Value::nan().type());
 // Nan != NaN
 static_assert(Value::nan() != Value::nan());
+// hash(-0.0) == hash(0.0)
+static_assert(Value::fromDouble(-0.0).hash() == Value::fromDouble(0.0).hash());
 
 
 
