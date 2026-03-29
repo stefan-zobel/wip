@@ -17,7 +17,13 @@ namespace fk {
         using Base::Base; // all constructors of std::vector<octet> are available
 
         // read access
+        constexpr octet operator[](size_type index) const noexcept { // return by value
+            return Base::operator[](index);
+        }
         using Base::operator[];
+        constexpr octet at(size_type index) const { // return by value
+            return Base::at(index);
+        }
         using Base::at;
         using Base::data;
         using Base::size;
@@ -46,6 +52,18 @@ namespace fk {
         // Implicit conversion to std::span<octet> and std::span<const octet>
         constexpr operator std::span<octet>() { return std::span<octet>(Base::data(), Base::size()); }
         constexpr operator std::span<const octet>() const { return std::span<const octet>(Base::data(), Base::size()); }
+
+        // Standard Member Types (STL Compatibility)
+        using value_type = typename Base::value_type;
+        using size_type = typename Base::size_type;
+        using difference_type = typename Base::difference_type;
+        using pointer = typename Base::pointer;
+        using const_pointer = typename Base::const_pointer;
+        using reference = typename Base::reference;
+        using const_reference = typename Base::const_reference;
+
+        using iterator = typename Base::iterator;
+        using const_iterator = typename Base::const_iterator;
     };
 
 
@@ -103,5 +121,17 @@ namespace fk {
         // no memory accesses guaranteed (static constexpr)
         static constexpr std::size_t size() noexcept { return N; }
         static constexpr std::size_t capacity() noexcept { return N; }
+
+        // Standard Member Types (STL Compatibility)
+        using value_type = typename Base::value_type;
+        using size_type = typename Base::size_type;
+        using difference_type = typename Base::difference_type;
+        using pointer = typename Base::pointer;
+        using const_pointer = typename Base::const_pointer;
+        using reference = typename Base::reference;
+        using const_reference = typename Base::const_reference;
+
+        using iterator = typename Base::iterator;
+        using const_iterator = typename Base::const_iterator;
     };
 }
