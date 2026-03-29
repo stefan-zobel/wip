@@ -40,6 +40,10 @@ namespace fk {
             : value(std::move(v)) {
         }
 
+        constexpr StrongType() noexcept requires std::is_trivial_v<T>
+            : value(static_cast<T>(0)) {
+        }
+
         // Return T by value if sizeof(T) <= 8 Byte, otherwise return const T&
         using ReturnType = std::conditional_t<(sizeof(T) <= sizeof(void*)), T, const T&>;
 
