@@ -121,6 +121,69 @@ namespace fk {
             return StrongType(-static_cast<T>(v.value));
         }
 
+        // ====================================================================
+        // Increment / Decrement Operators
+        // Restricted to integers. Strictly excluding 'bool' because ++/-- on 
+        // boolean types is illogical and actively forbidden in modern C++.
+        // ====================================================================
+
+        // Pre-increment (++x)
+        constexpr StrongType& operator++() noexcept
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        {
+            ++static_cast<T&>(value);
+            return *this;
+        }
+
+        // Post-increment (x++)
+        constexpr StrongType operator++(int) noexcept
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        {
+            StrongType copy(*this);
+            ++static_cast<T&>(value);
+            return copy;
+        }
+
+        // Pre-decrement (--x)
+        constexpr StrongType& operator--() noexcept
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        {
+            --static_cast<T&>(value);
+            return *this;
+        }
+
+        // Post-decrement (x--)
+        constexpr StrongType operator--(int) noexcept
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        {
+            StrongType copy(*this);
+            --static_cast<T&>(value);
+            return copy;
+        }
+
+        // ====================================================================
+        // Dereference and Member Access Operators (for Pointers / Iterators)
+        // These are useful when creating StrongTypes around raw  pointers
+        // (like Handle or NodeID) or smart pointers.
+        // ====================================================================
+
+        // Dereference operator (*)
+        // Requires that T can be dereferenced and is not a void pointer
+        constexpr decltype(auto) operator*() const noexcept
+            requires requires(T t) { *t; } && (!std::is_same_v<T, void*>)
+        {
+            return *static_cast<const T&>(value);
+        }
+
+        // Arrow operator (->)
+        // Requires that T supports member access either natively (pointers) 
+        // or via an overloaded operator-> (smart pointers).
+        constexpr decltype(auto) operator->() const noexcept
+            requires std::is_pointer_v<T> || requires(T t) { t.operator->(); }
+        {
+            return static_cast<const T&>(value);
+        }
+
     protected:
         must_init<T> value;
     };
