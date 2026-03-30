@@ -19,6 +19,7 @@
 #include <utility>
 #include <type_traits>
 #include <functional> // For std::hash
+#include <cstddef>    // For std::byte
 
 namespace fk {
 
@@ -64,11 +65,6 @@ namespace fk {
 
         /**
          * @brief Defaulted C++20 three-way comparison (spaceship operator).
-         *
-         * @note Risk for pointers: If T is a raw pointer, this will perform
-         * identity comparison (address vs. address) rather than content comparison.
-         * For floating-point types, it returns a std::partial_ordering (handling NaN).
-         * For types without a defined <=> operator, this will fail at compile time.
          */
         auto operator<=>(const StrongType&) const = default;
 
@@ -105,9 +101,9 @@ namespace fk {
             return StrongType(static_cast<T>(lhs.value) / static_cast<T>(rhs.value));
         }
 
-        // Modulo is strictly limited to integral types
+        // Modulo is strictly limited to integral types (except boolean)
         friend constexpr StrongType operator%(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires std::is_integral_v<T>
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) % static_cast<T>(rhs.value));
         }
@@ -127,6 +123,27 @@ namespace fk {
             return *this;
         }
 
+        constexpr StrongType& operator*=(const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            static_cast<T&>(value) *= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator/=(const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            static_cast<T&>(value) /= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator%=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        {
+            static_cast<T&>(value) %= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
         // Unary minus (Ensure it is only defined for signed types)
         friend constexpr StrongType operator-(const StrongType& v) noexcept
             requires (std::is_arithmetic_v<T> && std::is_signed_v<T>)
@@ -138,7 +155,7 @@ namespace fk {
         // Bitwise Operators (Crucial for bitmasks, flags, or std::byte types)
         // Restricted to integers and non-boolean types.
         // ====================================================================
-        
+
         friend constexpr StrongType operator|(const StrongType& lhs, const StrongType& rhs) noexcept
             requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
         {
@@ -162,6 +179,56 @@ namespace fk {
         {
             return StrongType(~static_cast<T>(v.value));
         }
+
+        // Bitwise Shift operators (left/right)
+        friend constexpr StrongType operator<<(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(static_cast<T>(lhs.value) << static_cast<T>(rhs.value));
+        }
+
+        friend constexpr StrongType operator>>(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(static_cast<T>(lhs.value) >> static_cast<T>(rhs.value));
+        }
+
+        // Bitwise Assignment Operators
+        constexpr StrongType& operator|=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            static_cast<T&>(value) |= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator&=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            static_cast<T&>(value) &= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator^=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            static_cast<T&>(value) ^= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator<<=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            static_cast<T&>(value) <<= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator>>=(const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            static_cast<T&>(value) >>= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
 
         // ====================================================================
         // Increment / Decrement Operators
