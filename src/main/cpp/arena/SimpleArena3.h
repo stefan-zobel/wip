@@ -20,7 +20,18 @@ private:
         CleanupNode* next;
     };
 
+    // 64 Bytes is the standard size of an L1 CPU cache line. 
+    // Aligning safety markers to this boundary guarantees that no future SIMD/AVX 
+    // allocation will ever crash after a rollback, and it fully prevents false-sharing.
+    static constexpr size_t UNIVERSAL_MAX_ALIGN = 64;
+
 public:
+    // Represents an exact state/snapshot of the arena at a specific point in time
+    struct Marker {
+        size_t saved_offset;
+        void* saved_cleanup_head; 
+    };
+
     static constexpr size_t PAGE_SIZE = 4096;
     static constexpr size_t INITIAL_COMMIT = 64 * 1024;
 
@@ -44,7 +55,7 @@ public:
         return std::unique_ptr<SimpleArena3>(new SimpleArena3(base, reserve_size, initial_commit));
     }
 
-    void* allocate_raw_aligned(size_t size, size_t alignment) {
+    void* allocate_raw_aligned(size_t size, size_t alignment = UNIVERSAL_MAX_ALIGN) {
         size_t current_addr = reinterpret_cast<size_t>(base_ptr) + offset;
         
         // Since alignment is always a power of 2, we can replace the slow modulo (%) 
@@ -112,6 +123,29 @@ public:
         }
 
         return obj;
+    }
+
+    Marker get_marker() const noexcept {
+        // Rollbacks MUST snap to a universally safe boundary (Cache-Line size).
+        // This makes it completely immune to extreme AVX/SIMD instructions.
+        size_t current_addr = reinterpret_cast<size_t>(base_ptr) + offset;
+        size_t alignment = UNIVERSAL_MAX_ALIGN;
+        size_t padding = (alignment - (current_addr & (alignment - 1))) & (alignment - 1);
+        
+        return { offset + padding, cleanup_head };
+    }
+
+    void rollback(Marker target_marker) {
+        CleanupNode* current = cleanup_head;
+        CleanupNode* target = static_cast<CleanupNode*>(target_marker.saved_cleanup_head);
+
+        while (current != target && current != nullptr) {
+            current->dtor(current->ptr);
+            current = current->next;
+        }
+        
+        cleanup_head = target;
+        offset = target_marker.saved_offset;
     }
 
     void release() {

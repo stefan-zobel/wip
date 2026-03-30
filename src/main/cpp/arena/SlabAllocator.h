@@ -33,7 +33,7 @@ public:
 
     // Allocate memory of a specific size and alignment.
     // Highly optimized for O(1) bucket selection.
-    void* allocate(size_t size, size_t alignment = alignof(std::max_align_t)) {
+    void* allocate(size_t size, size_t alignment = 64) {
         sync_epoch();
 
         // Ensure we always allocate at least enough to store our intrusive Node
