@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <utility>
 #include <type_traits>
+#include <functional> // For std::hash
 
 namespace fk {
 
@@ -47,12 +48,18 @@ namespace fk {
         // Return T by value if sizeof(T) <= 8 Byte, otherwise return const T&
         using ReturnType = std::conditional_t<(sizeof(T) <= sizeof(void*)), T, const T&>;
 
+        // Implicit cast to underlying type
         constexpr operator ReturnType() const & noexcept {
             return value;
         }
 
         constexpr operator T&&() && noexcept {
             return std::move(value);
+        }
+
+        // Explicit getter (Useful when template deduction fails to naturally invoke the implicit cast)
+        constexpr ReturnType get() const noexcept {
+            return static_cast<const T&>(value);
         }
 
         /**
@@ -98,6 +105,13 @@ namespace fk {
             return StrongType(static_cast<T>(lhs.value) / static_cast<T>(rhs.value));
         }
 
+        // Modulo is strictly limited to integral types
+        friend constexpr StrongType operator%(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires std::is_integral_v<T>
+        {
+            return StrongType(static_cast<T>(lhs.value) % static_cast<T>(rhs.value));
+        }
+
         // Compound Assignments (+=, -=, etc.)
         constexpr StrongType& operator+=(const StrongType& rhs) noexcept
             requires std::is_arithmetic_v<T>
@@ -113,12 +127,40 @@ namespace fk {
             return *this;
         }
 
-        // Unary minus
-        // Ensure it is only defined for signed types!
+        // Unary minus (Ensure it is only defined for signed types)
         friend constexpr StrongType operator-(const StrongType& v) noexcept
-            requires (std::is_arithmetic_v<T>&& std::is_signed_v<T>)
+            requires (std::is_arithmetic_v<T> && std::is_signed_v<T>)
         {
             return StrongType(-static_cast<T>(v.value));
+        }
+
+        // ====================================================================
+        // Bitwise Operators (Crucial for bitmasks, flags, or std::byte types)
+        // Restricted to integers and non-boolean types.
+        // ====================================================================
+        
+        friend constexpr StrongType operator|(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(static_cast<T>(lhs.value) | static_cast<T>(rhs.value));
+        }
+
+        friend constexpr StrongType operator&(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(static_cast<T>(lhs.value) & static_cast<T>(rhs.value));
+        }
+
+        friend constexpr StrongType operator^(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(static_cast<T>(lhs.value) ^ static_cast<T>(rhs.value));
+        }
+
+        friend constexpr StrongType operator~(const StrongType& v) noexcept
+            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+        {
+            return StrongType(~static_cast<T>(v.value));
         }
 
         // ====================================================================
@@ -163,7 +205,7 @@ namespace fk {
 
         // ====================================================================
         // Dereference and Member Access Operators (for Pointers / Iterators)
-        // These are useful when creating StrongTypes around raw  pointers
+        // These are useful when creating StrongTypes around raw pointers
         // (like Handle or NodeID) or smart pointers.
         // ====================================================================
 
@@ -210,11 +252,20 @@ namespace fk {
     struct usize : public StrongType<size_t   , struct USIZETag> { using StrongType::StrongType; };
     struct isize : public StrongType<ptrdiff_t, struct ISIZETag> { using StrongType::StrongType; };
 
-
-    //// Just as an example of a more complex use case:
-    //struct StringIdentifier : public StrongType<std::string, struct STRINGTag> { using StrongType::StrongType; };
-    //// Usage:
-    //StringIdentifier hello{ "World" };
-    //std::cout << "Hello: " << (std::string)hello << "\n";
-
 } // namespace fk
+
+
+// ====================================================================
+// Standard Library Hash Injection
+// Enables 'StrongType' to be seamlessly used as a key in 
+// std::unordered_map and std::unordered_set.
+// ====================================================================
+namespace std {
+    template <typename T, typename Tag>
+    struct hash<fk::StrongType<T, Tag>> {
+        std::size_t operator()(const fk::StrongType<T, Tag>& st) const noexcept {
+            // Forward the hashing logic to the underlying type T
+            return std::hash<T>{}(st.get());
+        }
+    };
+}
