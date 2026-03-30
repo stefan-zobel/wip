@@ -65,6 +65,62 @@ namespace fk {
          */
         auto operator<=>(const StrongType&) const = default;
 
+        // ====================================================================
+        // Arithmetic operators (hidden friends, automatically generated)
+        // Restricted via C++20 Concepts to arithmetic base types
+        // ====================================================================
+
+        // Operator +
+        friend constexpr StrongType operator+(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            return StrongType(static_cast<T>(lhs.value) + static_cast<T>(rhs.value));
+        }
+
+        // Operator -
+        friend constexpr StrongType operator-(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            return StrongType(static_cast<T>(lhs.value) - static_cast<T>(rhs.value));
+        }
+
+        // Operator *
+        friend constexpr StrongType operator*(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            return StrongType(static_cast<T>(lhs.value) * static_cast<T>(rhs.value));
+        }
+
+        // Operator /
+        friend constexpr StrongType operator/(const StrongType& lhs, const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            return StrongType(static_cast<T>(lhs.value) / static_cast<T>(rhs.value));
+        }
+
+        // Compound Assignments (+=, -=, etc.)
+        constexpr StrongType& operator+=(const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            static_cast<T&>(value) += static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        constexpr StrongType& operator-=(const StrongType& rhs) noexcept
+            requires std::is_arithmetic_v<T>
+        {
+            static_cast<T&>(value) -= static_cast<const T&>(rhs.value);
+            return *this;
+        }
+
+        // Unary minus
+        // Ensure it is only defined for signed types!
+        friend constexpr StrongType operator-(const StrongType& v) noexcept
+            requires (std::is_arithmetic_v<T>&& std::is_signed_v<T>)
+        {
+            return StrongType(-static_cast<T>(v.value));
+        }
+
     protected:
         must_init<T> value;
     };
