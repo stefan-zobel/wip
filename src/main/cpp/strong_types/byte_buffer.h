@@ -11,20 +11,20 @@ namespace fk {
 
     using octet = fk::octet;
 
-    class HeapByteBuffer : private std::vector<octet> {
+    class HeapByteBuffer final : private std::vector<octet> {
         using Base = std::vector<octet>;
     public:
         using Base::Base; // all constructors of std::vector<octet> are available
 
         // read access
+        using Base::operator[];
         constexpr octet operator[](size_type index) const noexcept { // return by value
             return Base::operator[](index);
         }
-        using Base::operator[];
+        using Base::at;
         constexpr octet at(size_type index) const { // return by value
             return Base::at(index);
         }
-        using Base::at;
         using Base::data;
         using Base::size;
         using Base::empty;
@@ -69,7 +69,7 @@ namespace fk {
 
     // use 32 Byte alignment for AVX2
     template <std::size_t N, std::size_t Alignment = 32>
-    class alignas(Alignment) StackByteBuffer : private std::array<octet, N> {
+    class alignas(Alignment) StackByteBuffer final : private std::array<octet, N> {
         using Base = std::array<octet, N>;
     public:
 
@@ -77,11 +77,11 @@ namespace fk {
         constexpr StackByteBuffer() noexcept : Base{} {}
 
         // read access
+        using Base::operator[];
         // do return by value
         constexpr octet operator[](std::size_t index) const noexcept {
             return static_cast<const Base&>(*this)[index];
         }
-        using Base::operator[];
         using Base::at;
         using Base::data;
 

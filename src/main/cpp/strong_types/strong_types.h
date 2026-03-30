@@ -51,7 +51,7 @@ namespace fk {
             return value;
         }
 
-        constexpr operator T() && noexcept {
+        constexpr operator T&&() && noexcept {
             return std::move(value);
         }
 
