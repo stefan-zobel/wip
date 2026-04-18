@@ -18,19 +18,19 @@
         <!--dependency>
             <groupId>org.rocksdb</groupId>
             <artifactId>rocksdbjni</artifactId>
-            <version>10.4.2</version>
+            <version>10.5.1.1</version>
             <scope>compile</scope>
         </dependency-->
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>schwefel</artifactId>
-            <version>10.4.2.1</version>
+            <version>10.5.1.1</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>math-base</artifactId>
-            <version>1.4.0</version>
+            <version>[1.4.1,2.0)</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -42,13 +42,13 @@
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>jamu</artifactId>
-            <version>[1.4.6,2)</version>
+            <version>[1.4.7,2)</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.streamsupport</groupId>
             <artifactId>dynmode-decompJ</artifactId>
-            <version>0.9.5</version>
+            <version>[0.9.6,2.0)</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
