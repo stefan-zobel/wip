@@ -1,11 +1,11 @@
 #pragma once
 
-#include "SimpleArena3.h"
+#include "SimpleArena.h"
 #include <utility>
 #include <algorithm>
 
 template <typename T>
-class BlockPool3 {
+class BlockPool {
     // Embedded singly linked list node to store free blocks
     // This reuses the memory of the destructed object allowing zero-overhead recycling
     struct Node {
@@ -14,7 +14,7 @@ class BlockPool3 {
 
 public:
     // Bind the pool to a specific arena instance and snapshot its initial epoch
-    explicit BlockPool3(SimpleArena3& arena) 
+    explicit BlockPool(SimpleArena& arena) 
         : source_arena(arena), known_epoch(arena.get_epoch()) {}
 
     // Constructs an object of type T using perfect forwarding
@@ -71,7 +71,7 @@ private:
         return static_cast<T*>(source_arena.allocate_raw_aligned(size, alignment));
     }
 
-    SimpleArena3& source_arena;
+    SimpleArena& source_arena;
     Node* free_list = nullptr;
     size_t known_epoch = 0; 
 };

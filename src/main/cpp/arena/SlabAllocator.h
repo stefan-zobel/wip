@@ -4,11 +4,11 @@
 #include <array>
 #include <cassert>
 #include <algorithm>
-#include <cstddef>    // For std::max_align_t
+#include <cstddef>
 #include <utility>    // For std::forward
-#include "SimpleArena3.h"
+#include "SimpleArena.h"
 
-// A Slab/Size-Class Allocator built on top of SimpleArena3.
+// A Slab/Size-Class Allocator built on top of SimpleArena.
 // It manages memory in buckets of powers-of-two (8, 16, 32, ..., up to MAX_SIZE).
 // This allows fast O(1) allocations and O(1) recycling for arbitrary sized 
 // objects up to MAX_SIZE. Objects larger than MAX_SIZE bypass the pooling and 
@@ -26,7 +26,7 @@ class SlabAllocator {
     static constexpr size_t NUM_BINS = std::countr_zero(MAX_SIZE) - std::countr_zero(MIN_SIZE) + 1;
 
 public:
-    explicit SlabAllocator(SimpleArena3& arena) 
+    explicit SlabAllocator(SimpleArena& arena) 
         : source_arena(arena), known_epoch(arena.get_epoch()) {
         free_lists.fill(nullptr);
     }
@@ -114,7 +114,7 @@ private:
         }
     }
 
-    SimpleArena3& source_arena;
+    SimpleArena& source_arena;
     size_t known_epoch;
     
     // One free list for each size class (8, 16, 32, ..., MAX_SIZE)

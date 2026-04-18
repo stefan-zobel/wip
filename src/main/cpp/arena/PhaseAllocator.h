@@ -3,7 +3,7 @@
 #include <array>
 #include <memory>
 #include <utility>
-#include "SimpleArena3.h"
+#include "SimpleArena.h"
     
 // A PhaseAllocator (also known as a Frame Allocator or Ping-Pong Allocator).
 // It cycles through N underlying arenas (phases). When transitioning to a
@@ -18,7 +18,7 @@ public:
         std::unique_ptr<PhaseAllocator> allocator(new PhaseAllocator());
 
         for (size_t i = 0; i < N; ++i) {
-            allocator->arenas[i] = SimpleArena3::create(reserve_per_arena);
+            allocator->arenas[i] = SimpleArena::create(reserve_per_arena);
             if (!allocator->arenas[i]) return nullptr;
         }
 
@@ -54,6 +54,6 @@ public:
 private:
     PhaseAllocator() = default;
 
-    std::array<std::unique_ptr<SimpleArena3>, N> arenas;
+    std::array<std::unique_ptr<SimpleArena>, N> arenas;
     size_t current_phase = 0;
 };

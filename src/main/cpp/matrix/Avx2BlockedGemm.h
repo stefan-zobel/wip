@@ -76,7 +76,7 @@ inline void gemm_micro_kernel_dispatch(const double* packed_a,
 }
 
 template <Avx2GemmScalar T, bool TransA, bool TransB>
-static void gemm_accumulate_blocked_avx2_impl(SimpleArena3& scratch_arena,
+static void gemm_accumulate_blocked_avx2_impl(SimpleArena& scratch_arena,
                                               const MatrixView<const T>& a,
                                               const MatrixView<const T>& b,
                                               const MatrixView<T>& c,
@@ -202,7 +202,7 @@ static void gemm_accumulate_blocked_avx2_impl(SimpleArena3& scratch_arena,
 }
 
 template <Avx2GemmScalar T>
-void gemm_nn_accumulate_blocked_avx2(SimpleArena3& scratch_arena,
+void gemm_nn_accumulate_blocked_avx2(SimpleArena& scratch_arena,
                                      const MatrixView<const T>& a,
                                      const MatrixView<const T>& b,
                                      const MatrixView<T>& c,
@@ -211,7 +211,7 @@ void gemm_nn_accumulate_blocked_avx2(SimpleArena3& scratch_arena,
 }
 
 template <Avx2GemmScalar T>
-void gemm_nn_blocked_avx2(SimpleArena3& scratch_arena,
+void gemm_nn_blocked_avx2(SimpleArena& scratch_arena,
                           const MatrixView<const T>& a,
                           const MatrixView<const T>& b,
                           const MatrixView<T>& c,
@@ -221,7 +221,7 @@ void gemm_nn_blocked_avx2(SimpleArena3& scratch_arena,
 }
 
 template <Avx2GemmScalar T>
-void gemm_accumulate_blocked_avx2(SimpleArena3& scratch_arena,
+void gemm_accumulate_blocked_avx2(SimpleArena& scratch_arena,
                                   GemmTranspose op_a,
                                   GemmTranspose op_b,
                                   const MatrixView<const T>& a,
@@ -240,7 +240,7 @@ void gemm_accumulate_blocked_avx2(SimpleArena3& scratch_arena,
 }
 
 template <Avx2GemmScalar T>
-void gemm_blocked_avx2(SimpleArena3& scratch_arena,
+void gemm_blocked_avx2(SimpleArena& scratch_arena,
                        GemmTranspose op_a,
                        GemmTranspose op_b,
                        const MatrixView<const T>& a,

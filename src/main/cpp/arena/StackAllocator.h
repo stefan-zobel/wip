@@ -1,10 +1,10 @@
 #pragma once
 
 #include <utility>
-#include "SimpleArena3.h"
+#include "SimpleArena.h"
 
 
-// A StackAllocator implemented as a RAII strict scope wrapper around SimpleArena3.
+// A StackAllocator implemented as a RAII strict scope wrapper around SimpleArena.
 // Creating this object instantly takes a snapshot of the arena. 
 // When the StackAllocator goes out of scope (e.g. at the end of a function or a block {} ), 
 // it automatically rolls back the arena to exactly the state it was in, triggering 
@@ -12,7 +12,7 @@
 class StackAllocator {
 public:
     // Captures the current state of the backend arena completely automatically
-    explicit StackAllocator(SimpleArena3& underlying_arena)
+    explicit StackAllocator(SimpleArena& underlying_arena)
         : source_arena(underlying_arena), 
           marker(underlying_arena.get_marker()) {}
 
@@ -37,6 +37,6 @@ public:
     }
 
 private:
-    SimpleArena3& source_arena;
-    SimpleArena3::Marker marker;
+    SimpleArena& source_arena;
+    SimpleArena::Marker marker;
 };

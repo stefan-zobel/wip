@@ -8,11 +8,9 @@
 #include <algorithm>
 #include <windows.h>
 
-class SimpleArena3 {
+class SimpleArena {
 private:
     // Embedded node to keep track of destructors inside the arena memory itself.
-    // This avoids standard heap allocations (new / malloc) and keeps everything
-    // local to the arena.
     using DestructorFunc = void(*)(void*);
     struct CleanupNode {
         void* ptr;
@@ -35,14 +33,14 @@ public:
     static constexpr size_t PAGE_SIZE = 4096;
     static constexpr size_t INITIAL_COMMIT = 64 * 1024;
 
-    ~SimpleArena3() {
+    ~SimpleArena() {
         release();
         if (base_ptr) {
             VirtualFree(base_ptr, 0, MEM_RELEASE);
         }
     }
 
-    static std::unique_ptr<SimpleArena3> create(size_t reserve_size) {
+    static std::unique_ptr<SimpleArena> create(size_t reserve_size) {
         void* base = VirtualAlloc(nullptr, reserve_size, MEM_RESERVE, PAGE_NOACCESS);
         if (!base) return nullptr;
 
@@ -52,16 +50,12 @@ public:
             return nullptr;
         }
 
-        return std::unique_ptr<SimpleArena3>(new SimpleArena3(base, reserve_size, initial_commit));
+        return std::unique_ptr<SimpleArena>(new SimpleArena(base, reserve_size, initial_commit));
     }
 
     void* allocate_raw_aligned(size_t size, size_t alignment = UNIVERSAL_MAX_ALIGN) {
         size_t current_addr = reinterpret_cast<size_t>(base_ptr) + offset;
-        
-        // Since alignment is always a power of 2, we can replace the slow modulo (%) 
-        // with a significantly faster bitwise AND (&).
         size_t padding = (alignment - (current_addr & (alignment - 1))) & (alignment - 1);
-        
         size_t required_size = offset + padding + size;
 
         if (required_size > reserved_size) {
@@ -95,10 +89,6 @@ public:
     T* construct(Args&&... args) {
         void* node_ptr = nullptr;
         
-        // To maintain maximum cache locality for the actual objects T, we allocate
-        // the metadata (CleanupNode) before allocating the object. This ensures objects
-        // allocated consecutively aren't strictly separated by 24-byte padding blocks 
-        // interrupting the primary cache line of an array usage.
         if constexpr (!std::is_trivially_destructible_v<T>) {
             node_ptr = allocate_raw_aligned(sizeof(CleanupNode), alignof(CleanupNode));
             if (!node_ptr) return nullptr;
@@ -106,8 +96,6 @@ public:
 
         void* ptr = allocate_raw_aligned(sizeof(T), alignof(T));
         if (!ptr) {
-            // Offset logic can't easily be undone safely here, but that's
-            // standard for an Arena OOM
             return nullptr;
         }
 
@@ -181,6 +169,6 @@ private:
     size_t current_epoch = 0;
     CleanupNode* cleanup_head = nullptr;
 
-    SimpleArena3(void* base, size_t reserve, size_t commit)
+    SimpleArena(void* base, size_t reserve, size_t commit)
         : base_ptr(base), reserved_size(reserve), committed_size(commit) {}
 };
