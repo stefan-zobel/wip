@@ -20,11 +20,18 @@
 #include <utility>
 #include <vector>
 
-static void mul(const double* A, const size_t rowsA, const size_t colsA,
-    const double* B, const size_t colsB, double* C);
+#include "Avx2BlockedGemm.h"
 
 
 // This is just a small study on how the operator overloading of a matrix class could be designed
+
+
+// Define a thread_local memory arena for our AVX2 blocked GEMM computations
+inline SimpleArena& get_thread_scratch_arena() {
+    thread_local auto arena = SimpleArena::create(512 * 1024);
+    return *arena;
+}
+
 
 class Mat
 {
@@ -41,9 +48,15 @@ public:
     Mat& operator*=(const Mat& o) noexcept { puts("op*= called"); *this = *this * o; return *this; }
 public:
     friend Mat operator*(const Mat& a, const Mat& b) noexcept {
-        puts("friend operator* variant 1 called");
+        puts("friend operator* variant 1 called (using AVX2 Blocked GEMM)");
         Mat c{ a.rows_, b.cols_ };
-        mul(a.a.data(), a.rows_, a.cols_, b.a.data(), b.cols_, c.a.data());
+
+        MatrixView<const double> viewA{ a.a.data(), a.rows_, a.cols_, a.cols_ };
+        MatrixView<const double> viewB{ b.a.data(), b.rows_, b.cols_, b.cols_ };
+        MatrixView<double>       viewC{ c.a.data(), c.rows_, c.cols_, c.cols_ };
+
+        gemm_nn_blocked_avx2<double>(get_thread_scratch_arena(), viewA, viewB, viewC);
+
         return c; // NRVO
     }
     friend Mat operator-(const Mat& a, Mat&& tmpB) noexcept {
@@ -97,18 +110,4 @@ Mat operator-(Mat&& tmpA, Mat&& tmpB) noexcept {
 Mat operator+(Mat&& tmpA, Mat&& tmpB) noexcept {
     puts("operator+ variant 4 called");
     return std::move(tmpA += tmpB);
-}
-
-static void mul(const double* A, const size_t rowsA, const size_t colsA,
-    const double* B, const size_t colsB, double* C) {
-
-    for (size_t i = 0; i < rowsA; ++i) {
-        for (size_t j = 0; j < colsB; ++j) {
-            double sum = 0.0;
-            for (size_t k = 0; k < colsA; ++k) {
-                sum += A[i * colsA + k] * B[k * colsB + j];
-            }
-            C[i * colsB + j] = sum;
-        }
-    }
 }
