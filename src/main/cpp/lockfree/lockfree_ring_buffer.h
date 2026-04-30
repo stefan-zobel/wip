@@ -20,7 +20,7 @@ namespace fk {
     // ========================================================================
     template <typename T>
     class LockFreeRingBuffer final {
-        
+
         // ====================================================================
         // CRITICAL SAFETY GATES (Deadlock Prevention)
         // ====================================================================
@@ -77,10 +77,10 @@ namespace fk {
             }
 
             m_buffer_mask = capacity - 1;
-            
+
             // C++17/20 automatically calls 'new align_val_t' safely prioritizing the Cell alignment 
             m_buffer = std::make_unique<Cell[]>(capacity);
-            
+
             // Initialize the sequence trackers strictly for every cell.
             for (size_t i = 0; i < capacity; ++i) {
                 m_buffer[i].sequence.store(i, std::memory_order_relaxed);
@@ -112,10 +112,10 @@ namespace fk {
 
             while (true) {
                 cell = &m_buffer[pos & m_buffer_mask];
-                
+
                 // Acquire syncs with Release in pop() to ensure we read the utmost latest sequence.
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
-                
+
                 // FIX: Evaluate subtraction first as unsigned (natural modulo wrap-around), 
                 // THEN cast to signed integer diff_t. This is immune to architecture overflows 
                 // even if the server runs relentlessly for 500 years.
@@ -137,7 +137,7 @@ namespace fk {
                     pos = m_head.load(std::memory_order_relaxed);
                 }
             }
-            
+
             // EXCLUSIVELY OWNING CELL: We now operate fundamentally thread-safe without locks.
             cell->data.emplace(std::forward<U>(item));
 
@@ -160,7 +160,7 @@ namespace fk {
 
                 // Acquire syncs strictly with Release in push()
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
-                
+
                 // Consumers rigidly expect the sequence to be exactly (pos + 1)
                 diff_t diff = static_cast<diff_t>(seq - (pos + 1));
 
@@ -179,7 +179,7 @@ namespace fk {
                     pos = m_tail.load(std::memory_order_relaxed);
                 }
             }
-            
+
             // EXCLUSIVELY OWNING CELL
             // Thanks to static_assert, this std::move is strictly guaranteed to never throw.
             T extracted = std::move(*(cell->data));

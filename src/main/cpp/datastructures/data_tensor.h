@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <vector>
 #include <span>
 #include <stdexcept>
@@ -13,7 +14,7 @@ namespace fk {
     // A type-safe, strict 2D Tensor (Matrix) that internally wraps a flat 
     // std::vector using private inheritance.
     // ========================================================================
-    template <typename T = fk::f32>
+    template <std::default_initializable T = fk::f32>
     class DataTensor2D final : private std::vector<T> {
         using Base = std::vector<T>;
 
@@ -29,7 +30,7 @@ namespace fk {
         using const_iterator = typename Base::const_iterator;
 
         // Creates an initialized tensor of dimension rows x cols
-        DataTensor2D(size_type rows, size_type cols, T initial_value = T{0})
+        DataTensor2D(size_type rows, size_type cols, T initial_value = T{})
             : Base(rows * cols, initial_value), m_rows(rows), m_cols(cols) {}
 
         // Construct from an external flat container/span if dimensions match
@@ -111,7 +112,7 @@ namespace fk {
 
         // Resizes the underlying buffer and establishes a completely new geometric layout.
         // Drops existing values and resets them to the desired clear_value.
-        void resize_and_clear(size_type new_rows, size_type new_cols, T clear_value = T{0}) {
+        void resize_and_clear(size_type new_rows, size_type new_cols, T clear_value = T{}) {
             m_rows = new_rows;
             m_cols = new_cols;
             Base::assign(m_rows * m_cols, clear_value);
@@ -128,7 +129,7 @@ namespace fk {
     // A strict 3D Volume Tensor (Depth x Rows x Cols). Perfect for Voxel 
     // engines, MRI image data, or 3-Dimensional Physics grids.
     // ========================================================================
-    template <typename T = fk::f32>
+    template <std::default_initializable T = fk::f32>
     class DataTensor3D final : private std::vector<T> {
         using Base = std::vector<T>;
 
@@ -143,7 +144,7 @@ namespace fk {
         using iterator = typename Base::iterator;
         using const_iterator = typename Base::const_iterator;
 
-        DataTensor3D(size_type depth, size_type rows, size_type cols, T initial_value = T{0})
+        DataTensor3D(size_type depth, size_type rows, size_type cols, T initial_value = T{})
             : Base(depth * rows * cols, initial_value), m_depth(depth), m_rows(rows), m_cols(cols) {}
 
         DataTensor3D(size_type depth, size_type rows, size_type cols, std::span<const T> external_data)
@@ -213,7 +214,7 @@ namespace fk {
             std::fill(begin(), end(), value);
         }
 
-        void resize_and_clear(size_type nw_depth, size_type nw_rows, size_type nw_cols, T clear_value = T{0}) {
+        void resize_and_clear(size_type nw_depth, size_type nw_rows, size_type nw_cols, T clear_value = T{}) {
             m_depth = nw_depth;
             m_rows = nw_rows;
             m_cols = nw_cols;
