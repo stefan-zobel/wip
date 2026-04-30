@@ -213,8 +213,8 @@ namespace fk {
 
         // ====================================================================
         // Resolve (The Pointer Swizzler)
-        // Converts the abstract uint64_t handle back into a highly explosive RAM
-        // pointer. Safely rejects dead variables (use-after-free) and type-mismatches.
+        // Converts the abstract uint64_t handle back into a RAM pointer.
+        // Safely rejects dead variables (use-after-free) and type-mismatches.
         // ====================================================================
         template <typename T>
         T* resolve(GlobalHandle handle) {

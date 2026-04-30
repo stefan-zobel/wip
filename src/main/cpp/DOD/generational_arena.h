@@ -66,11 +66,11 @@ namespace fk {
         // - If has_value() is false -> Slot is DEAD.
         // (std::optional correctly calls the destructor of T when reset).
         std::optional<T> data;      
-        
+
         // If data is dead (nullopt), this index points to the NEXT dead slot, 
         // forming a blazing fast implicit linked list of free memory regions.
         uint64_t next_free_pos = 0; 
-        
+
         // Tracks how many times this specific index was destroyed and reused.
         uint32_t generation = 0;    
     };
@@ -82,7 +82,7 @@ namespace fk {
 
         // "UINT64_MAX" acts as our explicit null-pointer for the free-list
         uint64_t m_first_free = UINT64_MAX; 
-        
+
         // Tracks how many items are currently actively stored vs total capacity
         uint64_t m_num_taken = 0;           
 

@@ -13,9 +13,9 @@ namespace fk {
     // SoA Reference Proxy
     // 
     // This is the magical "phantom struct" the user interacts with. 
-    // When the user calls vector[5], they don't get a real struct. They get 
-    // this Proxy, which holds a bunch of references pointing directly 
-    // into the wildly separated internal arrays.
+    // When the user calls vector[5], they don't get a real struct. They
+    // get this Proxy, which holds a bunch of references pointing directly 
+    // into the separated internal arrays.
     // ========================================================================
     template <typename... Types>
     class SoARef {
@@ -67,7 +67,7 @@ namespace fk {
         std::tuple<std::vector<Types>...> m_arrays;
 
     public:
-        // C++ STL standard types
+
         using size_type = size_t;
         using reference = SoARef<Types...>;
 
@@ -89,7 +89,7 @@ namespace fk {
         }
 
         // ====================================================================
-        // Modifiers (magic push)
+        // Modifiers (push)
         // ====================================================================
 
         // You push values simultaneously, e.g., soa.push_back(1.0f, 2.0f, 3.0f, 'c');
@@ -101,7 +101,7 @@ namespace fk {
         // Proxy Access (struct illusion)
         // ====================================================================
 
-        // Operator[] returns the magic proxy structure holding hot references
+        // Operator[] returns the magic proxy structure holding the references
         reference operator[](size_type index) {
             return get_proxy_impl(index, std::index_sequence_for<Types...>{});
         }
@@ -145,7 +145,7 @@ namespace fk {
         template <size_t... Is>
         reference get_proxy_impl(size_type index, std::index_sequence<Is...>) {
             // Creates the phantom proxy struct by pulling the reference of element [index]
-            // from absolutely every internal array simultaneously!
+            // from absolutely every internal array simultaneously
             return reference(std::get<Is>(m_arrays)[index]...);
         }
     };
