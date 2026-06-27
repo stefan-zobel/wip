@@ -700,6 +700,18 @@ inline Var<T> autodiff_exp(Var<T> u) {
 }
 
 template <typename T>
+inline Var<T> autodiff_sigmoid(Var<T> x) {
+    // 1.0 / (1.0 + exp(-x))
+    return 1.0 / (1.0 + autodiff_exp(-x));
+}
+
+template <typename T>
+inline Var<T> autodiff_swish(Var<T> x) {
+    // x * sigmoid(x)
+    return x * autodiff_sigmoid(x);
+}
+
+template <typename T>
 inline Var<T> autodiff_asin(Var<T> u) {
     Tape<T>* t = u.tape;
     t->nodes.push_back(Node<T>{ .op = OpType::Asin, .val = Tape<T>::call_asin(u.value()), .left_idx = u.idx });
