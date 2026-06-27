@@ -58,11 +58,11 @@ namespace reverse_mode_detail {
 // Fixed-size POD - stays cache-friendly in a contiguous vector.
 template <typename T = double>
 struct Node {
-    OpType      op        { OpType::Input };
-    T           val       { reverse_mode_detail::zero<T>() };   // Primal value  - set during the forward pass
-    T           adj       { reverse_mode_detail::zero<T>() };   // Adjoint       - accumulated during backward pass
+    T           val{ reverse_mode_detail::zero<T>() };   // Primal value  - set during the forward pass
+    T           adj{ reverse_mode_detail::zero<T>() };   // Adjoint       - accumulated during backward pass
     std::size_t left_idx  { 0 };     // Index of left  parent; sole operand for unary ops
     std::size_t right_idx { 0 };     // Index of right parent; unused for unary ops
+    OpType      op{ OpType::Input };
 };
 
 template <typename T = double> struct Tape;  // forward declaration so Var can hold a Tape*
@@ -133,7 +133,7 @@ struct Tape {
 
 private:
     [[nodiscard]] Var<T> make_leaf(OpType op, const T& value) {
-        nodes.push_back(Node<T>{ .op = op, .val = value });
+        nodes.push_back(Node<T>{ .val = value, .op = op });
         return Var<T>{ nodes.size() - 1, this };
     }
 
@@ -428,7 +428,7 @@ public:
 
     template <std::size_t M, std::size_t N>
     [[nodiscard]] ReverseVectorArrayResult<T, M, N> evaluate(const std::array<Var<T>, M>& outputs,
-                                                              const std::array<Var<T>, N>& wrt) {
+                                                             const std::array<Var<T>, N>& wrt) {
         ReverseVectorArrayResult<T, M, N> result{};
         for (std::size_t k = 0; k < M; ++k) {
             result.values[k] = outputs[k].value();
@@ -575,7 +575,7 @@ template <typename V, typename L, typename U>
 template <typename T>
 inline Var<T> operator-(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Neg, .val = -u.value(), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = -u.value(), .left_idx = u.idx, .op = OpType::Neg });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -583,8 +583,8 @@ template <typename T>
 inline Var<T> autodiff_pow(Var<T> a, Var<T> b) {
     assert(a.tape == b.tape);
     Tape<T>* t = a.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Pow,
-        .val = Tape<T>::call_pow(a.value(), b.value()), .left_idx = a.idx, .right_idx = b.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_pow(a.value(), b.value()),
+        .left_idx = a.idx, .right_idx = b.idx, .op = OpType::Pow });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -597,8 +597,8 @@ template <typename T>
 inline Var<T> operator+(Var<T> a, Var<T> b) {
     assert(a.tape == b.tape);
     Tape<T>* t = a.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Add,
-        .val = a.value() + b.value(), .left_idx = a.idx, .right_idx = b.idx });
+    t->nodes.push_back(Node<T>{ .val = a.value() + b.value(),
+        .left_idx = a.idx, .right_idx = b.idx, .op = OpType::Add });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -606,8 +606,8 @@ template <typename T>
 inline Var<T> operator-(Var<T> a, Var<T> b) {
     assert(a.tape == b.tape);
     Tape<T>* t = a.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Sub,
-        .val = a.value() - b.value(), .left_idx = a.idx, .right_idx = b.idx });
+    t->nodes.push_back(Node<T>{ .val = a.value() - b.value(),
+        .left_idx = a.idx, .right_idx = b.idx, .op = OpType::Sub });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -615,8 +615,8 @@ template <typename T>
 inline Var<T> operator*(Var<T> a, Var<T> b) {
     assert(a.tape == b.tape);
     Tape<T>* t = a.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Mul,
-        .val = a.value() * b.value(), .left_idx = a.idx, .right_idx = b.idx });
+    t->nodes.push_back(Node<T>{ .val = a.value() * b.value(),
+        .left_idx = a.idx, .right_idx = b.idx, .op = OpType::Mul });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -624,8 +624,8 @@ template <typename T>
 inline Var<T> operator/(Var<T> a, Var<T> b) {
     assert(a.tape == b.tape);
     Tape<T>* t = a.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Div,
-        .val = a.value() / b.value(), .left_idx = a.idx, .right_idx = b.idx });
+    t->nodes.push_back(Node<T>{ .val = a.value() / b.value(),
+        .left_idx = a.idx, .right_idx = b.idx, .op = OpType::Div });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -674,28 +674,28 @@ template <typename T> inline Var<T> autodiff_pow(T c, Var<T> a) { return autodif
 template <typename T>
 inline Var<T> autodiff_sin(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Sin, .val = Tape<T>::call_sin(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_sin(u.value()), .left_idx = u.idx, .op = OpType::Sin });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_cos(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Cos, .val = Tape<T>::call_cos(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_cos(u.value()), .left_idx = u.idx, .op = OpType::Cos });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_tan(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Tan, .val = Tape<T>::call_tan(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_tan(u.value()), .left_idx = u.idx, .op = OpType::Tan });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_exp(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Exp, .val = Tape<T>::call_exp(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_exp(u.value()), .left_idx = u.idx, .op = OpType::Exp });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -714,21 +714,21 @@ inline Var<T> autodiff_swish(Var<T> x) {
 template <typename T>
 inline Var<T> autodiff_asin(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Asin, .val = Tape<T>::call_asin(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_asin(u.value()), .left_idx = u.idx, .op = OpType::Asin });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_acos(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Acos, .val = Tape<T>::call_acos(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_acos(u.value()), .left_idx = u.idx, .op = OpType::Acos });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_atan(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Atan, .val = Tape<T>::call_atan(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_atan(u.value()), .left_idx = u.idx, .op = OpType::Atan });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
@@ -736,50 +736,50 @@ template <typename T>
 inline Var<T> autodiff_atan2(Var<T> y, Var<T> x) {
     assert(y.tape == x.tape);
     Tape<T>* t = y.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Atan2,
-        .val = Tape<T>::call_atan2(y.value(), x.value()), .left_idx = y.idx, .right_idx = x.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_atan2(y.value(), x.value()),
+        .left_idx = y.idx, .right_idx = x.idx, .op = OpType::Atan2 });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_sinh(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Sinh, .val = Tape<T>::call_sinh(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_sinh(u.value()), .left_idx = u.idx, .op = OpType::Sinh });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_cosh(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Cosh, .val = Tape<T>::call_cosh(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_cosh(u.value()), .left_idx = u.idx, .op = OpType::Cosh });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_tanh(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Tanh, .val = Tape<T>::call_tanh(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_tanh(u.value()), .left_idx = u.idx, .op = OpType::Tanh });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_log(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Log, .val = Tape<T>::call_log(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_log(u.value()), .left_idx = u.idx, .op = OpType::Log });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_sqrt(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Sqrt, .val = Tape<T>::call_sqrt(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_sqrt(u.value()), .left_idx = u.idx, .op = OpType::Sqrt });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
 template <typename T>
 inline Var<T> autodiff_abs(Var<T> u) {
     Tape<T>* t = u.tape;
-    t->nodes.push_back(Node<T>{ .op = OpType::Abs, .val = Tape<T>::call_abs(u.value()), .left_idx = u.idx });
+    t->nodes.push_back(Node<T>{ .val = Tape<T>::call_abs(u.value()), .left_idx = u.idx, .op = OpType::Abs });
     return Var<T>{ t->nodes.size() - 1, t };
 }
 
