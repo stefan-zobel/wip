@@ -39,6 +39,8 @@ inline int run_simple_mlp_tests() {
         const std::array<MlpActivation, 2> activations{ MlpActivation::Tanh, MlpActivation::Tanh };
         SimpleMlp mlp(sizes, activations, 7u);
 
+        Tape<double> training_tape;
+
         const std::vector<MlpSample> xor_samples{
             { { -1.0, -1.0 }, { -1.0 } },
             { { -1.0,  1.0 }, {  1.0 } },
@@ -50,7 +52,7 @@ inline int run_simple_mlp_tests() {
         double epoch_loss = initial_loss;
 
         for (int epoch = 0; epoch < 4000; ++epoch) {
-            epoch_loss = mlp.train_epoch(xor_samples, 0.1);
+            epoch_loss = mlp.train_epoch(xor_samples, 0.1, training_tape);
         }
 
         const double final_loss = mlp.dataset_loss(xor_samples);
@@ -69,6 +71,8 @@ inline int run_simple_mlp_tests() {
         const std::array<MlpActivation, 1> activations{ MlpActivation::Linear };
         SimpleMlp mlp(sizes, activations, 13u);
 
+        Tape<double> training_tape;
+
         const std::vector<MlpSample> regression_samples{
             { { -1.0 }, { -1.0 } },
             { {  0.0 }, {  1.0 } },
@@ -76,7 +80,7 @@ inline int run_simple_mlp_tests() {
         ;
 
         for (int epoch = 0; epoch < 400; ++epoch) {
-            mlp.train_epoch(regression_samples, 0.05);
+            mlp.train_epoch(regression_samples, 0.05, training_tape);
         }
 
         const auto pred_a = mlp.predict(std::array{ -0.5 });

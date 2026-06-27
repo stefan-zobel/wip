@@ -135,11 +135,11 @@ public:
         return total / static_cast<double>(samples.size());
     }
 
-    double train_step(std::span<const double> input, std::span<const double> target, double learning_rate) {
+    double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
         assert_shape(input.size(), input_size(), "input");
         assert_shape(target.size(), output_size(), "target");
 
-        Tape<double> tape;
+        tape.reset();
         tape.reserve(estimate_required_nodes(input.size()));
 
         std::vector<Var<double>> activations;
@@ -215,14 +215,14 @@ public:
         return loss.value();
     }
 
-    double train_epoch(std::span<const MlpSample> samples, double learning_rate) {
+    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape) {
         if (samples.empty()) {
             return 0.0;
         }
 
         double total = 0.0;
         for (const MlpSample& sample : samples) {
-            total += train_step(sample.input, sample.target, learning_rate);
+            total += train_step(sample.input, sample.target, learning_rate, tape);
         }
         return total / static_cast<double>(samples.size());
     }
@@ -244,6 +244,15 @@ private:
             nodes += layer.weights.size();
             nodes += layer.biases.size();
             nodes += layer.output_size * (2 * current_width + 1);
+
+            // Account for Swish / Sigmoid / Tanh operator overhead
+            if (layer.activation == MlpActivation::Swish) {
+                nodes += layer.output_size * 5;
+            }
+            else if (layer.activation != MlpActivation::Linear) {
+                nodes += layer.output_size * 2;
+            }
+
             current_width = layer.output_size;
         }
 

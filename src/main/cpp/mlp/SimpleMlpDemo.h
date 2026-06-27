@@ -83,6 +83,9 @@ inline void run_simple_mlp_demo() {
 
     constexpr int epochs = 3000;
 
+    // Instantiate global tape for this thread
+    Tape<double> training_tape;
+
     double lr_max = 0.03;   // max learning rate
     double lr_min = 0.0001; // min learning rate
     double max_epochs = epochs;
@@ -96,7 +99,7 @@ inline void run_simple_mlp_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate);
+        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);
