@@ -59,12 +59,19 @@ struct DenseLayer {
 };
 
 class SimpleMlp {
+    /*
     struct LayerVars {
         std::size_t input_size{};
         std::size_t output_size{};
         MlpActivation activation{ MlpActivation::Tanh };
         std::vector<Var<double>> weights{};
         std::vector<Var<double>> biases{};
+    };
+    */
+    // Structural layout mirroring the old LayerVars but for internal reuse
+    struct ReusableLayerVars {
+        std::vector<Var<double>> weights;
+        std::vector<Var<double>> biases;
     };
 
 public:
@@ -94,6 +101,9 @@ public:
             layers_.emplace_back(layer_sizes[i], layer_sizes[i + 1], activations[i]);
             layers_.back().initialize(rng);
         }
+
+        // Allocate memory arenas for runtime reuse
+        initialize_reusable_buffers();
     }
 
     [[nodiscard]] std::size_t input_size() const {
@@ -135,6 +145,7 @@ public:
         return total / static_cast<double>(samples.size());
     }
 
+    /*
     double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
         assert_shape(input.size(), input_size(), "input");
         assert_shape(target.size(), output_size(), "target");
@@ -214,6 +225,79 @@ public:
 
         return loss.value();
     }
+    */
+
+    // Execution with 0 allocations
+    double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
+        assert_shape(input.size(), input_size(), "input");
+        assert_shape(target.size(), output_size(), "target");
+
+        // 1. Reset tape memory
+        tape.reset();
+        tape.reserve(estimate_required_nodes(input.size()));
+
+        // 2. Prepare raw inputs
+        activation_buffer_a_.clear();
+        for (double value : input) {
+            activation_buffer_a_.push_back(tape.constant(value));
+        }
+
+        // 3. Build the layer execution graph inplace
+        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            const DenseLayer& layer = layers_[layer_idx];
+            ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+
+            ad_layer.weights.clear();
+            ad_layer.biases.clear();
+
+            for (double weight : layer.weights) {
+                ad_layer.weights.push_back(tape.input(weight));
+            }
+            for (double bias : layer.biases) {
+                ad_layer.biases.push_back(tape.input(bias));
+            }
+
+            // Ping-pong buffer swap allocation assignment
+            auto& current_input = (layer_idx % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
+            auto& current_output = (layer_idx % 2 == 0) ? activation_buffer_b_ : activation_buffer_a_;
+
+            current_output.clear();
+            forward_layer_inplace(layer, ad_layer, current_input, current_output);
+        }
+
+        // 4. Trace graph down to loss evaluation
+        auto& final_activations = (layers_.size() % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
+
+        Var<double> loss = tape.constant(0.0);
+        for (std::size_t i = 0; i < final_activations.size(); ++i) {
+            const Var<double> diff = final_activations[i] - target[i];
+            loss += 0.5 * diff * diff;
+        }
+
+        tape.backward(loss);
+
+        // 5. Apply weights using Momentum SGD
+        const double momentum_factor = 0.9;
+        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            DenseLayer& numeric_layer = layers_[layer_idx];
+            const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+
+            for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                numeric_layer.weight_velocities[i] =
+                    momentum_factor * numeric_layer.weight_velocities[i]
+                    + learning_rate * ad_layer.weights[i].gradient();
+                numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
+            }
+            for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
+                numeric_layer.bias_velocities[i] =
+                    momentum_factor * numeric_layer.bias_velocities[i]
+                    + learning_rate * ad_layer.biases[i].gradient();
+                numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
+            }
+        }
+
+        return loss.value();
+    }
 
     double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape) {
         if (samples.empty()) {
@@ -230,10 +314,31 @@ public:
 private:
     std::vector<DenseLayer> layers_{};
 
+    // Class-level pre-allocated structures
+    std::vector<ReusableLayerVars> reusable_ad_layers_{};
+    std::vector<Var<double>> activation_buffer_a_{};
+    std::vector<Var<double>> activation_buffer_b_{};
+
     static void assert_shape(std::size_t actual, std::size_t expected, const char* name) {
         if (actual != expected) {
             throw std::invalid_argument(std::string(name) + " dimension mismatch.");
         }
+    }
+
+    // dynamic sizing based on the instantiated topology
+    void initialize_reusable_buffers() {
+        reusable_ad_layers_.resize(layers_.size());
+        std::size_t max_layer_width = input_size();
+
+        for (std::size_t i = 0; i < layers_.size(); ++i) {
+            reusable_ad_layers_[i].weights.reserve(layers_[i].weights.size());
+            reusable_ad_layers_[i].biases.reserve(layers_[i].biases.size());
+            max_layer_width = std::max(max_layer_width, layers_[i].output_size);
+        }
+
+        // Ensure ping-pong buffers can fit the widest layer layer outputs without resizing
+        activation_buffer_a_.reserve(max_layer_width);
+        activation_buffer_b_.reserve(max_layer_width);
     }
 
     [[nodiscard]] std::size_t estimate_required_nodes(std::size_t input_count) const {
@@ -307,6 +412,7 @@ private:
         return output;
     }
 
+    /*
     static std::vector<Var<double>> forward_layer(const LayerVars& layer, std::span<const Var<double>> input) {
         std::vector<Var<double>> output;
         output.reserve(layer.output_size);
@@ -321,6 +427,21 @@ private:
         }
 
         return output;
+    }
+    */
+
+    // Inplace forward graph execution
+    static void forward_layer_inplace(const DenseLayer& config, const ReusableLayerVars& layer,
+        std::span<const Var<double>> input, std::vector<Var<double>>& output) {
+
+        for (std::size_t row = 0; row < config.output_size; ++row) {
+            Var<double> z = layer.biases[row];
+            const std::size_t offset = row * config.input_size;
+            for (std::size_t col = 0; col < config.input_size; ++col) {
+                z += layer.weights[offset + col] * input[col];
+            }
+            output.push_back(apply_activation(config.activation, z));
+        }
     }
 
     static double mse_loss(std::span<const double> prediction, std::span<const double> target) {
