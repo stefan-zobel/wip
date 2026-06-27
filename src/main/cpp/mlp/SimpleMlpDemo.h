@@ -137,6 +137,14 @@ inline void run_simple_mlp_demo() {
                   << "\n";
     }
 
+//    Sample predictions :
+//    x = -0.90000  y = -0.60000  pred = -0.02714  target = -0.01964  abs_err = 0.00751
+//    x = -0.35000  y = 0.80000  pred = -0.36299  target = -0.35934  abs_err = 0.00365
+//    x = 0.00000  y = 0.00000  pred = 0.00742  target = 0.00000  abs_err = 0.00742
+//    x = 0.45000  y = -0.25000  pred = 0.88152  target = 0.87876  abs_err = 0.00277
+//    x = 0.70000  y = 0.55000  pred = 0.64137  target = 0.64091  abs_err = 0.00045
+//    x = 0.95000  y = -0.90000  pred = -0.22930  target = -0.23203  abs_err = 0.00272
+
     const double final_train_loss = mlp.dataset_loss(training_samples);
     const double final_valid_rmse = rmse(mlp, validation_samples);
     std::cout << "\nFinal train loss: " << final_train_loss << "\n";
