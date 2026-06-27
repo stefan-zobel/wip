@@ -52,7 +52,7 @@ inline int run_simple_mlp_tests() {
         double epoch_loss = initial_loss;
 
         for (int epoch = 0; epoch < 4000; ++epoch) {
-            epoch_loss = mlp.train_epoch(xor_samples, 0.1, training_tape);
+            epoch_loss = mlp.train_epoch(xor_samples, 0.1, training_tape, epoch, MlpOptimizer::MomentumSgd);
         }
 
         const double final_loss = mlp.dataset_loss(xor_samples);
@@ -80,7 +80,7 @@ inline int run_simple_mlp_tests() {
         ;
 
         for (int epoch = 0; epoch < 400; ++epoch) {
-            mlp.train_epoch(regression_samples, 0.05, training_tape);
+            mlp.train_epoch(regression_samples, 0.05, training_tape, epoch, MlpOptimizer::MomentumSgd);
         }
 
         const auto pred_a = mlp.predict(std::array{ -0.5 });

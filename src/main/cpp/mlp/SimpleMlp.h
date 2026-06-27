@@ -22,6 +22,11 @@ enum class MlpActivation {
     Relu
 };
 
+enum class MlpOptimizer {
+    MomentumSgd,
+    Adam
+};
+
 struct MlpSample {
     std::vector<double> input{};
     std::vector<double> target{};
@@ -34,16 +39,21 @@ struct DenseLayer {
     std::vector<double> weights{};
     std::vector<double> biases{};
 
-    // for momentum SGD
+    // for momentum SGD (or Adam's first moment 'm')
     std::vector<double> weight_velocities;
     std::vector<double> bias_velocities;
+
+    // for Adam's second moment 'v'
+    std::vector<double> v_weights;
+    std::vector<double> v_biases;
 
     DenseLayer() = default;
 
     DenseLayer(std::size_t in, std::size_t out, MlpActivation act)
         : input_size(in), output_size(out), activation(act),
           weights(in * out, 0.0), biases(out, 0.0),
-          weight_velocities(in* out, 0.0), bias_velocities(out, 0.0) {
+          weight_velocities(in* out, 0.0), bias_velocities(out, 0.0),
+          v_weights(in* out, 0.0), v_biases(out, 0.0) {
     }
 
     void initialize(std::mt19937& rng) {
@@ -55,19 +65,14 @@ struct DenseLayer {
         }
 
         std::fill(biases.begin(), biases.end(), 0.0);
+        std::fill(weight_velocities.begin(), weight_velocities.end(), 0.0);
+        std::fill(bias_velocities.begin(), bias_velocities.end(), 0.0);
+        std::fill(v_weights.begin(), v_weights.end(), 0.0);
+        std::fill(v_biases.begin(), v_biases.end(), 0.0);
     }
 };
 
 class SimpleMlp {
-    /*
-    struct LayerVars {
-        std::size_t input_size{};
-        std::size_t output_size{};
-        MlpActivation activation{ MlpActivation::Tanh };
-        std::vector<Var<double>> weights{};
-        std::vector<Var<double>> biases{};
-    };
-    */
     // Structural layout mirroring the old LayerVars but for internal reuse
     struct ReusableLayerVars {
         std::vector<Var<double>> weights;
@@ -146,87 +151,6 @@ public:
     }
 
     /*
-    double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
-        assert_shape(input.size(), input_size(), "input");
-        assert_shape(target.size(), output_size(), "target");
-
-        tape.reset();
-        tape.reserve(estimate_required_nodes(input.size()));
-
-        std::vector<Var<double>> activations;
-        activations.reserve(input.size());
-        for (double value : input) {
-            activations.push_back(tape.constant(value));
-        }
-
-        std::vector<LayerVars> trainable_layers;
-        trainable_layers.reserve(layers_.size());
-
-        for (const DenseLayer& layer : layers_) {
-            LayerVars vars{};
-            vars.input_size = layer.input_size;
-            vars.output_size = layer.output_size;
-            vars.activation = layer.activation;
-            vars.weights.reserve(layer.weights.size());
-            vars.biases.reserve(layer.biases.size());
-
-            for (double weight : layer.weights) {
-                vars.weights.push_back(tape.input(weight));
-            }
-            for (double bias : layer.biases) {
-                vars.biases.push_back(tape.input(bias));
-            }
-
-            activations = forward_layer(vars, activations);
-            trainable_layers.push_back(std::move(vars));
-        }
-
-        Var<double> loss = tape.constant(0.0);
-        for (std::size_t i = 0; i < activations.size(); ++i) {
-            const Var<double> diff = activations[i] - target[i];
-            loss += 0.5 * diff * diff;
-        }
-
-        tape.backward(loss);
-
-        const double momentum_factor = 0.9;
-
-        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-            DenseLayer& numeric_layer = layers_[layer_idx];
-            const LayerVars& ad_layer = trainable_layers[layer_idx];
-
-            for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-//                standard SGD (no momentum)
-//                numeric_layer.weights[i] -= learning_rate * ad_layer.weights[i].gradient();
-
-                // momentum SGD
-                // v = alpha * v + lr * grad
-                numeric_layer.weight_velocities[i] =
-                    momentum_factor * numeric_layer.weight_velocities[i]
-                        + learning_rate * ad_layer.weights[i].gradient();
-
-                // w = w - v
-                numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
-            }
-            for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-//                standard SGD (no momentum)
-//                numeric_layer.biases[i] -= learning_rate * ad_layer.biases[i].gradient();
-
-                // momentum SGD
-                // v = alpha * v + lr * grad
-                numeric_layer.bias_velocities[i] =
-                    momentum_factor * numeric_layer.bias_velocities[i]
-                        + learning_rate * ad_layer.biases[i].gradient();
-
-                // b = b - v
-                numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
-            }
-        }
-
-        return loss.value();
-    }
-    */
-
     // Execution with 0 allocations
     double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
         assert_shape(input.size(), input_size(), "input");
@@ -298,7 +222,131 @@ public:
 
         return loss.value();
     }
+    */
 
+    // Execution with 0 allocations supporting dual optimizers
+    double train_step(std::span<const double> input,
+        std::span<const double> target,
+        double learning_rate,
+        Tape<double>& tape,
+        int epoch,
+        MlpOptimizer optimizer) {
+        assert_shape(input.size(), input_size(), "input");
+        assert_shape(target.size(), output_size(), "target");
+
+        // 1. Reset tape memory using your exact tape.reset() call
+        tape.reset();
+        tape.reserve(estimate_required_nodes(input.size()));
+
+        // 2. Prepare raw inputs
+        activation_buffer_a_.clear();
+        for (double value : input) {
+            activation_buffer_a_.push_back(tape.constant(value));
+        }
+
+        // 3. Build the layer execution graph inplace
+        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            const DenseLayer& layer = layers_[layer_idx];
+            ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+
+            ad_layer.weights.clear();
+            ad_layer.biases.clear();
+
+            for (double weight : layer.weights) {
+                ad_layer.weights.push_back(tape.input(weight));
+            }
+            for (double bias : layer.biases) {
+                ad_layer.biases.push_back(tape.input(bias));
+            }
+
+            // Ping-pong buffer swap allocation assignment
+            auto& current_input = (layer_idx % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
+            auto& current_output = (layer_idx % 2 == 0) ? activation_buffer_b_ : activation_buffer_a_;
+
+            current_output.clear();
+            forward_layer_inplace(layer, ad_layer, current_input, current_output);
+        }
+
+        // 4. Trace graph down to loss evaluation
+        auto& final_activations = (layers_.size() % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
+
+        Var<double> loss = tape.constant(0.0);
+        for (std::size_t i = 0; i < final_activations.size(); ++i) {
+            const Var<double> diff = final_activations[i] - target[i];
+            loss += 0.5 * diff * diff;
+        }
+
+        tape.backward(loss);
+
+        // 5. Select Optimization Path
+        if (optimizer == MlpOptimizer::MomentumSgd) {
+            const double momentum_factor = 0.9;
+            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+                DenseLayer& numeric_layer = layers_[layer_idx];
+                const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+
+                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                    numeric_layer.weight_velocities[i] =
+                        momentum_factor * numeric_layer.weight_velocities[i]
+                        + learning_rate * ad_layer.weights[i].gradient();
+                    numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
+                }
+                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
+                    numeric_layer.bias_velocities[i] =
+                        momentum_factor * numeric_layer.bias_velocities[i]
+                        + learning_rate * ad_layer.biases[i].gradient();
+                    numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
+                }
+            }
+        }
+        else if (optimizer == MlpOptimizer::Adam) {
+            constexpr double beta1 = 0.9;
+            constexpr double beta2 = 0.999;
+            constexpr double epsilon = 1e-8;
+
+            // Safe guard scaling step index tracking
+            const int t = std::max(1, epoch);
+            const double bias_correction1 = 1.0 - std::pow(beta1, t);
+            const double bias_correction2 = 1.0 - std::pow(beta2, t);
+
+            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+                DenseLayer& numeric_layer = layers_[layer_idx];
+                const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+
+                // Adam Weight Updates
+                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                    const double grad = ad_layer.weights[i].gradient();
+
+                    // Re-use weight_velocities vector array for Adam's first moment (m)
+                    numeric_layer.weight_velocities[i] = beta1 * numeric_layer.weight_velocities[i] + (1.0 - beta1) * grad;
+                    numeric_layer.v_weights[i] = beta2 * numeric_layer.v_weights[i] + (1.0 - beta2) * grad * grad;
+
+                    const double m_hat = numeric_layer.weight_velocities[i] / bias_correction1;
+                    const double v_hat = numeric_layer.v_weights[i] / bias_correction2;
+
+                    numeric_layer.weights[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
+                }
+
+                // Adam Bias Updates
+                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
+                    const double grad = ad_layer.biases[i].gradient();
+
+                    // Re-use bias_velocities vector array for Adam's first moment (m)
+                    numeric_layer.bias_velocities[i] = beta1 * numeric_layer.bias_velocities[i] + (1.0 - beta1) * grad;
+                    numeric_layer.v_biases[i] = beta2 * numeric_layer.v_biases[i] + (1.0 - beta2) * grad * grad;
+
+                    const double m_hat = numeric_layer.bias_velocities[i] / bias_correction1;
+                    const double v_hat = numeric_layer.v_biases[i] / bias_correction2;
+
+                    numeric_layer.biases[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
+                }
+            }
+        }
+
+        return loss.value();
+    }
+
+    /*
     double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape) {
         if (samples.empty()) {
             return 0.0;
@@ -307,6 +355,19 @@ public:
         double total = 0.0;
         for (const MlpSample& sample : samples) {
             total += train_step(sample.input, sample.target, learning_rate, tape);
+        }
+        return total / static_cast<double>(samples.size());
+    }
+    */
+
+    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, int epoch, MlpOptimizer optimizer) {
+        if (samples.empty()) {
+            return 0.0;
+        }
+
+        double total = 0.0;
+        for (const MlpSample& sample : samples) {
+            total += train_step(sample.input, sample.target, learning_rate, tape, epoch, optimizer);
         }
         return total / static_cast<double>(samples.size());
     }
@@ -411,24 +472,6 @@ private:
 
         return output;
     }
-
-    /*
-    static std::vector<Var<double>> forward_layer(const LayerVars& layer, std::span<const Var<double>> input) {
-        std::vector<Var<double>> output;
-        output.reserve(layer.output_size);
-
-        for (std::size_t row = 0; row < layer.output_size; ++row) {
-            Var<double> z = layer.biases[row];
-            const std::size_t offset = row * layer.input_size;
-            for (std::size_t col = 0; col < layer.input_size; ++col) {
-                z += layer.weights[offset + col] * input[col];
-            }
-            output.push_back(apply_activation(layer.activation, z));
-        }
-
-        return output;
-    }
-    */
 
     // Inplace forward graph execution
     static void forward_layer_inplace(const DenseLayer& config, const ReusableLayerVars& layer,

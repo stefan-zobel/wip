@@ -99,7 +99,7 @@ inline void run_simple_mlp_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape);
+        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::MomentumSgd);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);
