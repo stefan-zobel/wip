@@ -150,80 +150,6 @@ public:
         return total / static_cast<double>(samples.size());
     }
 
-    /*
-    // Execution with 0 allocations
-    double train_step(std::span<const double> input, std::span<const double> target, double learning_rate, Tape<double>& tape) {
-        assert_shape(input.size(), input_size(), "input");
-        assert_shape(target.size(), output_size(), "target");
-
-        // 1. Reset tape memory
-        tape.reset();
-        tape.reserve(estimate_required_nodes(input.size()));
-
-        // 2. Prepare raw inputs
-        activation_buffer_a_.clear();
-        for (double value : input) {
-            activation_buffer_a_.push_back(tape.constant(value));
-        }
-
-        // 3. Build the layer execution graph inplace
-        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-            const DenseLayer& layer = layers_[layer_idx];
-            ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
-
-            ad_layer.weights.clear();
-            ad_layer.biases.clear();
-
-            for (double weight : layer.weights) {
-                ad_layer.weights.push_back(tape.input(weight));
-            }
-            for (double bias : layer.biases) {
-                ad_layer.biases.push_back(tape.input(bias));
-            }
-
-            // Ping-pong buffer swap allocation assignment
-            auto& current_input = (layer_idx % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
-            auto& current_output = (layer_idx % 2 == 0) ? activation_buffer_b_ : activation_buffer_a_;
-
-            current_output.clear();
-            forward_layer_inplace(layer, ad_layer, current_input, current_output);
-        }
-
-        // 4. Trace graph down to loss evaluation
-        auto& final_activations = (layers_.size() % 2 == 0) ? activation_buffer_a_ : activation_buffer_b_;
-
-        Var<double> loss = tape.constant(0.0);
-        for (std::size_t i = 0; i < final_activations.size(); ++i) {
-            const Var<double> diff = final_activations[i] - target[i];
-            loss += 0.5 * diff * diff;
-        }
-
-        tape.backward(loss);
-
-        // 5. Apply weights using Momentum SGD
-        const double momentum_factor = 0.9;
-        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-            DenseLayer& numeric_layer = layers_[layer_idx];
-            const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
-
-            for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-                numeric_layer.weight_velocities[i] =
-                    momentum_factor * numeric_layer.weight_velocities[i]
-                    + learning_rate * ad_layer.weights[i].gradient();
-                numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
-            }
-            for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-                numeric_layer.bias_velocities[i] =
-                    momentum_factor * numeric_layer.bias_velocities[i]
-                    + learning_rate * ad_layer.biases[i].gradient();
-                numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
-            }
-        }
-
-        return loss.value();
-    }
-    */
-
     // Execution with 0 allocations supporting dual optimizers
     double train_step(std::span<const double> input,
         std::span<const double> target,
@@ -355,20 +281,6 @@ public:
 
         return loss.value();
     }
-
-    /*
-    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape) {
-        if (samples.empty()) {
-            return 0.0;
-        }
-
-        double total = 0.0;
-        for (const MlpSample& sample : samples) {
-            total += train_step(sample.input, sample.target, learning_rate, tape);
-        }
-        return total / static_cast<double>(samples.size());
-    }
-    */
 
     double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, int epoch, MlpOptimizer optimizer, double weight_decay = 0.0) {
         if (samples.empty()) {
