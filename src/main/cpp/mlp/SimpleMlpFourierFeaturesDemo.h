@@ -115,6 +115,7 @@ inline void run_simple_mlp_fourier_demo() {
     // Select your optimizer to use here
     constexpr MlpOptimizer optimizer = MlpOptimizer::Adam;
 
+    constexpr double weight_decay = 1e-4;
     // ADJUST HYPERPARAMETERS FOR ADAM
     // If using MomentumSgd: set lr_max = 0.03, lr_min = 0.0001
     // If using Adam:        set lr_max = 0.001, lr_min = 0.0001 (or keep flat 0.001)
@@ -131,7 +132,7 @@ inline void run_simple_mlp_fourier_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::Adam);
+        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::Adam, weight_decay);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);
@@ -177,13 +178,21 @@ inline void run_simple_mlp_fourier_demo() {
 //   x = 0.70000  y = 0.55000  pred = 0.64144  target = 0.64091  abs_err = 0.00052
 //   x = 0.95000  y = -0.90000  pred = -0.23265  target = -0.23203  abs_err = 0.00062
 
-//    Sample predictions (Adam) :
+//    Sample predictions (Adam, weight decay=0) :
 //    x = -0.90000  y = -0.60000  pred = -0.01998  target = -0.01964  abs_err = 0.00034
 //    x = -0.35000  y = 0.80000  pred = -0.35976  target = -0.35934  abs_err = 0.00043
 //    x = 0.00000  y = 0.00000  pred = 0.00022  target = 0.00000  abs_err = 0.00022
 //    x = 0.45000  y = -0.25000  pred = 0.87813  target = 0.87876  abs_err = 0.00063
 //    x = 0.70000  y = 0.55000  pred = 0.64093  target = 0.64091  abs_err = 0.00001
 //    x = 0.95000  y = -0.90000  pred = -0.23251  target = -0.23203  abs_err = 0.00049
+
+//    Sample predictions (Adam, weight decay=1e-4) :
+//    x = -0.90000  y = -0.60000  pred = -0.01976  target = -0.01964  abs_err = 0.00012
+//    x = -0.35000  y = 0.80000  pred = -0.35987  target = -0.35934  abs_err = 0.00053
+//    x = 0.00000  y = 0.00000  pred = 0.00018  target = 0.00000  abs_err = 0.00018
+//    x = 0.45000  y = -0.25000  pred = 0.87835  target = 0.87876  abs_err = 0.00040
+//    x = 0.70000  y = 0.55000  pred = 0.64123  target = 0.64091  abs_err = 0.00032
+//    x = 0.95000  y = -0.90000  pred = -0.23201  target = -0.23203  abs_err = 0.00002
 
     const double final_train_loss = mlp.dataset_loss(training_samples);
     const double final_valid_rmse = rmse(mlp, validation_samples);

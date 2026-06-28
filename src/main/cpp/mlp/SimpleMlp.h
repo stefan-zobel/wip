@@ -230,11 +230,12 @@ public:
         double learning_rate,
         Tape<double>& tape,
         int epoch,
-        MlpOptimizer optimizer) {
+        MlpOptimizer optimizer,
+        double weight_decay) {
         assert_shape(input.size(), input_size(), "input");
         assert_shape(target.size(), output_size(), "target");
 
-        // 1. Reset tape memory using your exact tape.reset() call
+        // 1. Reset tape memory
         tape.reset();
         tape.reserve(estimate_required_nodes(input.size()));
 
@@ -278,22 +279,25 @@ public:
 
         tape.backward(loss);
 
-        // 5. Select Optimization Path
+        // 5. Select Optimization Path (Parameter updates with inline L2 Regularization)
         if (optimizer == MlpOptimizer::MomentumSgd) {
             const double momentum_factor = 0.9;
             for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
                 DenseLayer& numeric_layer = layers_[layer_idx];
                 const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
 
+                // Weights update with weight Decay
                 for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-                    numeric_layer.weight_velocities[i] =
-                        momentum_factor * numeric_layer.weight_velocities[i]
-                        + learning_rate * ad_layer.weights[i].gradient();
+                    // Regularized Gradient: grad = raw_grad + lambda * weight
+                    const double grad = ad_layer.weights[i].gradient() + weight_decay * numeric_layer.weights[i];
+
+                    numeric_layer.weight_velocities[i] = momentum_factor * numeric_layer.weight_velocities[i]
+                        + learning_rate * grad;
                     numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
                 }
+                // Biases update (no weight decay)
                 for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-                    numeric_layer.bias_velocities[i] =
-                        momentum_factor * numeric_layer.bias_velocities[i]
+                    numeric_layer.bias_velocities[i] = momentum_factor * numeric_layer.bias_velocities[i]
                         + learning_rate * ad_layer.biases[i].gradient();
                     numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
                 }
@@ -313,21 +317,27 @@ public:
                 DenseLayer& numeric_layer = layers_[layer_idx];
                 const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
 
-                // Adam Weight Updates
+                // Adam Weight Updates with weight Decay (AdamW style variant)
                 for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                    // 1. Calculate the gradient without weight decay
                     const double grad = ad_layer.weights[i].gradient();
 
-                    // Re-use weight_velocities vector array for Adam's first moment (m)
+                    // 2. Update Adam moments exactly as normal
                     numeric_layer.weight_velocities[i] = beta1 * numeric_layer.weight_velocities[i] + (1.0 - beta1) * grad;
                     numeric_layer.v_weights[i] = beta2 * numeric_layer.v_weights[i] + (1.0 - beta2) * grad * grad;
 
                     const double m_hat = numeric_layer.weight_velocities[i] / bias_correction1;
                     const double v_hat = numeric_layer.v_weights[i] / bias_correction2;
 
+                    // 3. Apply the standard Adam update step
                     numeric_layer.weights[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
+
+                    // 4. decoupled weight decay (AdamW Step):
+                    // Directly shrink the weight proportional to the current learning rate
+                    numeric_layer.weights[i] -= learning_rate * weight_decay * numeric_layer.weights[i];
                 }
 
-                // Adam Bias Updates
+                // Adam Bias Updates (no weight decay)
                 for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
                     const double grad = ad_layer.biases[i].gradient();
 
@@ -360,14 +370,14 @@ public:
     }
     */
 
-    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, int epoch, MlpOptimizer optimizer) {
+    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, int epoch, MlpOptimizer optimizer, double weight_decay = 0.0) {
         if (samples.empty()) {
             return 0.0;
         }
 
         double total = 0.0;
         for (const MlpSample& sample : samples) {
-            total += train_step(sample.input, sample.target, learning_rate, tape, epoch, optimizer);
+            total += train_step(sample.input, sample.target, learning_rate, tape, epoch, optimizer, weight_decay);
         }
         return total / static_cast<double>(samples.size());
     }

@@ -60,7 +60,7 @@ inline void run_simple_mlp_demo() {
     std::cout << "\n=== Simple MLP demo: 2D nonlinear regression ===\n";
     std::cout << "Target: f(x,y) = sin(pi*x) * cos(0.5*pi*y) + 0.3*x*y\n";
 
-    const std::array<std::size_t, 4> sizes{ 2, 24, 24, 1 };
+    const std::array<std::size_t, 4> sizes{ 2, 32, 32, 1 };
     const std::array<MlpActivation, 3> activations{
         MlpActivation::Swish,
         MlpActivation::Swish,
@@ -69,8 +69,8 @@ inline void run_simple_mlp_demo() {
 
     SimpleMlp mlp(sizes, activations, 20260626u);
 
-    std::vector<MlpSample> training_samples = make_regression_grid(13);
-    const std::vector<MlpSample> validation_samples = make_regression_grid(25);
+    std::vector<MlpSample> training_samples = make_regression_grid(32);
+    const std::vector<MlpSample> validation_samples = make_regression_grid(33);
 
     std::mt19937 rng(20260626u);
 
@@ -86,6 +86,7 @@ inline void run_simple_mlp_demo() {
     // Instantiate global tape for this thread
     Tape<double> training_tape;
 
+    constexpr double weight_decay = 0.0;
     double lr_max = 0.03;   // max learning rate
     double lr_min = 0.0001; // min learning rate
     double max_epochs = epochs;
@@ -99,7 +100,7 @@ inline void run_simple_mlp_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::MomentumSgd);
+        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::MomentumSgd, weight_decay);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);
@@ -137,13 +138,21 @@ inline void run_simple_mlp_demo() {
                   << "\n";
     }
 
-//    Sample predictions :
+//    Sample predictions (24x24, 13, 25):
 //    x = -0.90000  y = -0.60000  pred = -0.02714  target = -0.01964  abs_err = 0.00751
 //    x = -0.35000  y = 0.80000  pred = -0.36299  target = -0.35934  abs_err = 0.00365
 //    x = 0.00000  y = 0.00000  pred = 0.00742  target = 0.00000  abs_err = 0.00742
 //    x = 0.45000  y = -0.25000  pred = 0.88152  target = 0.87876  abs_err = 0.00277
 //    x = 0.70000  y = 0.55000  pred = 0.64137  target = 0.64091  abs_err = 0.00045
 //    x = 0.95000  y = -0.90000  pred = -0.22930  target = -0.23203  abs_err = 0.00272
+
+//    Sample predictions (48x48, 32, 33):
+//    x = -0.90000  y = -0.60000  pred = -0.02084  target = -0.01964  abs_err = 0.00120
+//    x = -0.35000  y = 0.80000  pred = -0.35713  target = -0.35934  abs_err = 0.00220
+//    x = 0.00000  y = 0.00000  pred = 0.00049  target = 0.00000  abs_err = 0.00049
+//    x = 0.45000  y = -0.25000  pred = 0.88050  target = 0.87876  abs_err = 0.00174
+//    x = 0.70000  y = 0.55000  pred = 0.63954  target = 0.64091  abs_err = 0.00137
+//    x = 0.95000  y = -0.90000  pred = -0.23099  target = -0.23203  abs_err = 0.00103
 
     const double final_train_loss = mlp.dataset_loss(training_samples);
     const double final_valid_rmse = rmse(mlp, validation_samples);
