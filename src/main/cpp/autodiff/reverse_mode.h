@@ -119,6 +119,8 @@ struct ReverseArrayResult {
     std::array<T, N> gradients{};
 };
 
+// jacobian[i][k] = partial f_k / partial x_i  (inputs along the outer dimension, outputs along the inner).
+// Note: this is the transpose of the standard row-major Jacobian convention (J[k][i] = partial f_k / partial x_i).
 template <typename T, std::size_t M, std::size_t N>
 struct ReverseVectorArrayResult {
     std::array<T, M> values{};
@@ -132,6 +134,8 @@ struct Tape {
     std::vector<Node<T>> nodes;
 
 private:
+    std::vector<uint8_t> active_;  // reusable working buffer for backward(); avoids per-call allocation
+
     [[nodiscard]] Var<T> make_leaf(OpType op, const T& value) {
         nodes.push_back(Node<T>{ .val = value, .op = op });
         return Var<T>{ nodes.size() - 1, this };
@@ -223,7 +227,7 @@ public:
             node.adj = reverse_mode_detail::zero<T>();
         }
 
-        std::vector<bool> active(nodes.size(), false);
+        active_.assign(nodes.size(), 0);
         std::vector<std::size_t> stack;
         stack.reserve(losses.size());
 
@@ -237,8 +241,8 @@ public:
             const std::size_t idx = stack.back();
             stack.pop_back();
 
-            if (active[idx]) continue;
-            active[idx] = true;
+            if (active_[idx]) continue;
+            active_[idx] = 1;
 
             const Node<T>& nd = nodes[idx];
             switch (nd.op) {
@@ -277,7 +281,7 @@ public:
         }
 
         for (std::size_t i = nodes.size(); i-- > 0;) {
-            if (!active[i]) continue;
+            if (!active_[i]) continue;
 
             const Node<T>& nd = nodes[i];
             const T a = nd.adj;
