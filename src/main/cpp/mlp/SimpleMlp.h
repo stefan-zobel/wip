@@ -36,6 +36,7 @@ struct DenseLayer {
     std::size_t input_size{};
     std::size_t output_size{};
     MlpActivation activation{ MlpActivation::Tanh };
+    double dropout_rate{ 0.0 };
     std::vector<double> weights{};
     std::vector<double> biases{};
 
@@ -49,19 +50,28 @@ struct DenseLayer {
 
     DenseLayer() = default;
 
-    DenseLayer(std::size_t in, std::size_t out, MlpActivation act)
-        : input_size(in), output_size(out), activation(act),
+    DenseLayer(std::size_t in, std::size_t out, MlpActivation act, double dropout = 0.0)
+        : input_size(in), output_size(out), activation(act), dropout_rate(dropout),
           weights(in * out, 0.0), biases(out, 0.0),
           weight_velocities(in* out, 0.0), bias_velocities(out, 0.0),
           v_weights(in* out, 0.0), v_biases(out, 0.0) {
     }
 
-    void initialize(std::mt19937& rng) {
-        const double bound = std::sqrt(6.0 / static_cast<double>(input_size + output_size));
-        std::uniform_real_distribution<double> dist(-bound, bound);
-
-        for (double& weight : weights) {
-            weight = dist(rng);
+    void initialize(std::mt19937& rng, MlpActivation activation) {
+        // He initialization (normal) for ReLU/Swish: std = sqrt(2 / fan_in)
+        // Glorot/Xavier uniform for Tanh/Sigmoid/Linear: bound = sqrt(6 / (fan_in + fan_out))
+        if (activation == MlpActivation::Relu || activation == MlpActivation::Swish) {
+            const double std_dev = std::sqrt(2.0 / static_cast<double>(input_size));
+            std::normal_distribution<double> dist(0.0, std_dev);
+            for (double& weight : weights) {
+                weight = dist(rng);
+            }
+        } else {
+            const double bound = std::sqrt(6.0 / static_cast<double>(input_size + output_size));
+            std::uniform_real_distribution<double> dist(-bound, bound);
+            for (double& weight : weights) {
+                weight = dist(rng);
+            }
         }
 
         std::fill(biases.begin(), biases.end(), 0.0);
@@ -88,8 +98,22 @@ public:
         reset(layer_sizes, activations, seed);
     }
 
+    SimpleMlp(std::span<const std::size_t> layer_sizes,
+              std::span<const MlpActivation> activations,
+              std::span<const double> dropout_rates,
+              std::uint32_t seed = 20260626u) {
+        reset(layer_sizes, activations, dropout_rates, seed);
+    }
+
     void reset(std::span<const std::size_t> layer_sizes,
                std::span<const MlpActivation> activations,
+               std::uint32_t seed = 20260626u) {
+        reset(layer_sizes, activations, {}, seed);
+    }
+
+    void reset(std::span<const std::size_t> layer_sizes,
+               std::span<const MlpActivation> activations,
+               std::span<const double> dropout_rates,
                std::uint32_t seed = 20260626u) {
         if (layer_sizes.size() < 2) {
             throw std::invalid_argument("SimpleMlp requires at least input and output sizes.");
@@ -97,15 +121,26 @@ public:
         if (activations.size() != layer_sizes.size() - 1) {
             throw std::invalid_argument("SimpleMlp needs one activation per dense layer.");
         }
+        if (!dropout_rates.empty() && dropout_rates.size() != activations.size()) {
+            throw std::invalid_argument("SimpleMlp needs either zero dropout rates or one dropout rate per dense layer.");
+        }
 
         std::mt19937 rng(seed);
+        dropout_rng_.seed(seed ^ 0x9E3779B9u);
         layers_.clear();
         layers_.reserve(layer_sizes.size() - 1);
 
         for (std::size_t i = 0; i + 1 < layer_sizes.size(); ++i) {
-            layers_.emplace_back(layer_sizes[i], layer_sizes[i + 1], activations[i]);
-            layers_.back().initialize(rng);
+            const double dropout_rate = dropout_rates.empty() ? 0.0 : dropout_rates[i];
+            if (dropout_rate < 0.0 || dropout_rate >= 1.0) {
+                throw std::invalid_argument("Dropout rates must be in the range [0, 1). ");
+            }
+            layers_.emplace_back(layer_sizes[i], layer_sizes[i + 1], activations[i], dropout_rate);
+            layers_.back().initialize(rng, activations[i]);
         }
+
+        // Reset Adam step counter whenever the network is rebuilt
+        adam_step_ = 0;
 
         // Allocate memory arenas for runtime reuse
         initialize_reusable_buffers();
@@ -155,7 +190,6 @@ public:
         std::span<const double> target,
         double learning_rate,
         Tape<double>& tape,
-        int epoch,
         MlpOptimizer optimizer,
         double weight_decay) {
         assert_shape(input.size(), input_size(), "input");
@@ -191,7 +225,7 @@ public:
             auto& current_output = (layer_idx % 2 == 0) ? activation_buffer_b_ : activation_buffer_a_;
 
             current_output.clear();
-            forward_layer_inplace(layer, ad_layer, current_input, current_output);
+            forward_layer_inplace(layer, ad_layer, current_input, current_output, dropout_rng_);
         }
 
         // 4. Trace graph down to loss evaluation
@@ -200,12 +234,35 @@ public:
         Var<double> loss = tape.constant(0.0);
         for (std::size_t i = 0; i < final_activations.size(); ++i) {
             const Var<double> diff = final_activations[i] - target[i];
-            loss += 0.5 * diff * diff;
+            loss += diff * diff;
+        }
+        if (!final_activations.empty()) {
+            loss = loss / static_cast<double>(final_activations.size());
         }
 
         tape.backward(loss);
 
-        // 5. Select Optimization Path (Parameter updates with inline L2 Regularization)
+        // 5a. Gradient clipping: rescale all parameter gradients so their global L2 norm <= max_grad_norm
+        constexpr double max_grad_norm = 5.0;
+        {
+            double sq_norm = 0.0;
+            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+                const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
+                for (const Var<double>& w : ad_layer.weights) {
+                    const double g = w.gradient();
+                    sq_norm += g * g;
+                }
+                for (const Var<double>& b : ad_layer.biases) {
+                    const double g = b.gradient();
+                    sq_norm += g * g;
+                }
+            }
+            clip_scale_ = (sq_norm > max_grad_norm * max_grad_norm)
+                ? max_grad_norm / std::sqrt(sq_norm)
+                : 1.0;
+        }
+
+        // 5b. Select Optimization Path (Parameter updates with inline L2 Regularization)
         if (optimizer == MlpOptimizer::MomentumSgd) {
             const double momentum_factor = 0.9;
             for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
@@ -215,7 +272,7 @@ public:
                 // Weights update with weight Decay
                 for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
                     // Regularized Gradient: grad = raw_grad + lambda * weight
-                    const double grad = ad_layer.weights[i].gradient() + weight_decay * numeric_layer.weights[i];
+                    const double grad = clip_scale_ * ad_layer.weights[i].gradient() + weight_decay * numeric_layer.weights[i];
 
                     numeric_layer.weight_velocities[i] = momentum_factor * numeric_layer.weight_velocities[i]
                         + learning_rate * grad;
@@ -224,7 +281,7 @@ public:
                 // Biases update (no weight decay)
                 for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
                     numeric_layer.bias_velocities[i] = momentum_factor * numeric_layer.bias_velocities[i]
-                        + learning_rate * ad_layer.biases[i].gradient();
+                        + learning_rate * clip_scale_ * ad_layer.biases[i].gradient();
                     numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
                 }
             }
@@ -234,10 +291,10 @@ public:
             constexpr double beta2 = 0.999;
             constexpr double epsilon = 1e-8;
 
-            // Safe guard scaling step index tracking
-            const int t = std::max(1, epoch);
-            const double bias_correction1 = 1.0 - std::pow(beta1, t);
-            const double bias_correction2 = 1.0 - std::pow(beta2, t);
+            // Increment per-update step counter (correct Adam bias correction)
+            ++adam_step_;
+            const double bias_correction1 = 1.0 - std::pow(beta1, adam_step_);
+            const double bias_correction2 = 1.0 - std::pow(beta2, adam_step_);
 
             for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
                 DenseLayer& numeric_layer = layers_[layer_idx];
@@ -245,8 +302,8 @@ public:
 
                 // Adam Weight Updates with weight Decay (AdamW style variant)
                 for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-                    // 1. Calculate the gradient without weight decay
-                    const double grad = ad_layer.weights[i].gradient();
+                    // 1. Clipped gradient (no weight decay term in moment estimates)
+                    const double grad = clip_scale_ * ad_layer.weights[i].gradient();
 
                     // 2. Update Adam moments exactly as normal
                     numeric_layer.weight_velocities[i] = beta1 * numeric_layer.weight_velocities[i] + (1.0 - beta1) * grad;
@@ -258,14 +315,14 @@ public:
                     // 3. Apply the standard Adam update step
                     numeric_layer.weights[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
 
-                    // 4. decoupled weight decay (AdamW Step):
+                    // 4. Decoupled weight decay (AdamW step):
                     // Directly shrink the weight proportional to the current learning rate
                     numeric_layer.weights[i] -= learning_rate * weight_decay * numeric_layer.weights[i];
                 }
 
                 // Adam Bias Updates (no weight decay)
                 for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-                    const double grad = ad_layer.biases[i].gradient();
+                    const double grad = clip_scale_ * ad_layer.biases[i].gradient();
 
                     // Re-use bias_velocities vector array for Adam's first moment (m)
                     numeric_layer.bias_velocities[i] = beta1 * numeric_layer.bias_velocities[i] + (1.0 - beta1) * grad;
@@ -282,14 +339,14 @@ public:
         return loss.value();
     }
 
-    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, int epoch, MlpOptimizer optimizer, double weight_decay = 0.0) {
+    double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, MlpOptimizer optimizer, double weight_decay = 0.0) {
         if (samples.empty()) {
             return 0.0;
         }
 
         double total = 0.0;
         for (const MlpSample& sample : samples) {
-            total += train_step(sample.input, sample.target, learning_rate, tape, epoch, optimizer, weight_decay);
+            total += train_step(sample.input, sample.target, learning_rate, tape, optimizer, weight_decay);
         }
         return total / static_cast<double>(samples.size());
     }
@@ -301,6 +358,12 @@ private:
     std::vector<ReusableLayerVars> reusable_ad_layers_{};
     std::vector<Var<double>> activation_buffer_a_{};
     std::vector<Var<double>> activation_buffer_b_{};
+    std::mt19937 dropout_rng_{};
+
+    // Per-update step counter for correct Adam bias correction (not per-epoch)
+    long long adam_step_ = 0;
+    // Gradient clipping scale factor, recomputed each train_step before parameter updates
+    double clip_scale_ = 1.0;
 
     static void assert_shape(std::size_t actual, std::size_t expected, const char* name) {
         if (actual != expected) {
@@ -333,11 +396,22 @@ private:
             nodes += layer.biases.size();
             nodes += layer.output_size * (2 * current_width + 1);
 
-            // Account for Swish / Sigmoid / Tanh operator overhead
+            // Account for activation operator overhead (nodes beyond the pre-activation z)
             if (layer.activation == MlpActivation::Swish) {
-                nodes += layer.output_size * 5;
+                // Swish = x * sigmoid(x): sigmoid itself costs ~6 nodes, plus 1 Mul = 7 extra
+                nodes += layer.output_size * 7;
+            }
+            else if (layer.activation == MlpActivation::Sigmoid) {
+                // 1/(1+exp(-x)): Neg + Exp + Constant(1) + Add + Constant(1) + Div = 6 extra
+                nodes += layer.output_size * 6;
             }
             else if (layer.activation != MlpActivation::Linear) {
+                // Tanh: 1 op; ReLU: 1 op (autodiff_max adds a Constant + if_else path)
+                nodes += layer.output_size * 2;
+            }
+
+            if (layer.dropout_rate > 0.0) {
+                // Inverted dropout is implemented as a scalar multiply by either 0 or 1 / keep_prob.
                 nodes += layer.output_size * 2;
             }
 
@@ -362,6 +436,17 @@ private:
             return std::max(0.0, x);
         }
         return x;
+    }
+
+    static Var<double> apply_dropout(Var<double> x, double dropout_rate, std::mt19937& rng) {
+        if (dropout_rate <= 0.0) {
+            return x;
+        }
+
+        const double keep_prob = 1.0 - dropout_rate;
+        std::bernoulli_distribution keep_dist(keep_prob);
+        const double scale = keep_dist(rng) ? (1.0 / keep_prob) : 0.0;
+        return x * scale;
     }
 
     static Var<double> apply_activation(MlpActivation activation, Var<double> x) {
@@ -397,7 +482,7 @@ private:
 
     // Inplace forward graph execution
     static void forward_layer_inplace(const DenseLayer& config, const ReusableLayerVars& layer,
-        std::span<const Var<double>> input, std::vector<Var<double>>& output) {
+        std::span<const Var<double>> input, std::vector<Var<double>>& output, std::mt19937& dropout_rng) {
 
         for (std::size_t row = 0; row < config.output_size; ++row) {
             Var<double> z = layer.biases[row];
@@ -405,7 +490,8 @@ private:
             for (std::size_t col = 0; col < config.input_size; ++col) {
                 z += layer.weights[offset + col] * input[col];
             }
-            output.push_back(apply_activation(config.activation, z));
+            Var<double> a = apply_activation(config.activation, z);
+            output.push_back(apply_dropout(a, config.dropout_rate, dropout_rng));
         }
     }
 
@@ -418,8 +504,8 @@ private:
         double total = 0.0;
         for (std::size_t i = 0; i < prediction.size(); ++i) {
             const double diff = prediction[i] - target[i];
-            total += 0.5 * diff * diff;
+            total += diff * diff;
         }
-        return total;
+        return total / static_cast<double>(prediction.size());
     }
 };

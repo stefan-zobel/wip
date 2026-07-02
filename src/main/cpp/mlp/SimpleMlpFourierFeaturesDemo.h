@@ -21,7 +21,7 @@ namespace simple_mlp_fourier_demo_detail {
 
     // Instead of: mlp.forward({x, y}) -> Input size 2
     // Try a Fourier Mapping -> Input size 8 (2 raw + 3 sines + 3 cosines)
-    std::vector<double> fourier_features(double x, double y) {
+    inline std::vector<double> fourier_features(double x, double y) {
         std::vector<double> features;
 
         // 1. Keep the raw coordinates (helps with the 0.3xy term)
@@ -64,7 +64,7 @@ namespace simple_mlp_fourier_demo_detail {
         return samples;
     }
 
-    inline double rmse(SimpleMlp& mlp, const std::vector<MlpSample>& samples) {
+    inline double rmse(const SimpleMlp& mlp, const std::vector<MlpSample>& samples) {
         if (samples.empty()) {
             return 0.0;
         }
@@ -94,6 +94,7 @@ inline void run_simple_mlp_fourier_demo() {
     };
 
     SimpleMlp mlp(sizes, activations, 20260626u);
+    SimpleMlp best_mlp = mlp;
 
     std::vector<MlpSample> training_samples = make_regression_grid(25);
     const std::vector<MlpSample> validation_samples = make_regression_grid(26);
@@ -107,7 +108,7 @@ inline void run_simple_mlp_fourier_demo() {
     std::cout << "Initial train loss: " << initial_train_loss << "\n";
     std::cout << "Initial validation RMSE: " << initial_valid_rmse << "\n";
 
-    constexpr int epochs = 3000;
+    constexpr int epochs = 3500;
 
     // Instantiate global tape for this thread
     Tape<double> training_tape;
@@ -123,8 +124,8 @@ inline void run_simple_mlp_fourier_demo() {
     double lr_min = (optimizer == MlpOptimizer::Adam) ? 0.0001 : 0.0001;
     double max_epochs = epochs;
 
-    double min_valid_rmse = std::numeric_limits<double>::max();
-    int min_epoch = std::numeric_limits<int>::max();
+    double min_valid_rmse = initial_valid_rmse;
+    int min_epoch = 0;
 
     for (int epoch = 1; epoch <= epochs; ++epoch) {
         std::shuffle(training_samples.begin(), training_samples.end(), rng);
@@ -132,24 +133,24 @@ inline void run_simple_mlp_fourier_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, epoch, MlpOptimizer::Adam, weight_decay);
+        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, optimizer, weight_decay);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);
             if (valid_rmse < min_valid_rmse) {
                 min_valid_rmse = valid_rmse;
                 min_epoch = epoch;
+                best_mlp = mlp;
             }
             std::cout << "Epoch " << std::setw(4) << epoch
                       << "  lr=" << std::fixed << std::setprecision(5) << learning_rate
-                      << "  train_loss=" << epoch_loss
+                      << "  train_loss=" << std::scientific << epoch_loss << std::fixed
                       << "  valid_rmse=" << valid_rmse
                       << "  min_valid_rmse=" << min_valid_rmse
                       << "  min_epoch=" << min_epoch << "\n";;
         }
     }
 
-    std::cout << "\nSample predictions:\n";
     const std::array<std::array<double, 2>, 6> probe_points{{
         { -0.90, -0.60 },
         { -0.35,  0.80 },
@@ -159,16 +160,31 @@ inline void run_simple_mlp_fourier_demo() {
         {  0.95, -0.90 }
     }};
 
-    for (const auto& point : probe_points) {
-        const auto prediction = mlp.predict(fourier_features(point[0], point[1]));
-        const double expected = target_function(point[0], point[1]);
-        std::cout << "x=" << std::setw(6) << point[0]
-                  << "  y=" << std::setw(6) << point[1]
-                  << "  pred=" << std::setw(10) << prediction[0]
-                  << "  target=" << std::setw(10) << expected
-                  << "  abs_err=" << std::setw(10) << std::abs(prediction[0] - expected)
-                  << "\n";
-    }
+    auto print_predictions = [&](const char* title, const SimpleMlp& model) {
+        std::cout << "\n" << title << "\n";
+        for (const auto& point : probe_points) {
+            const auto prediction = model.predict(fourier_features(point[0], point[1]));
+            const double expected = target_function(point[0], point[1]);
+            std::cout << "x=" << std::setw(6) << point[0]
+                      << "  y=" << std::setw(6) << point[1]
+                      << "  pred=" << std::setw(10) << prediction[0]
+                      << "  target=" << std::setw(10) << expected
+                      << "  abs_err=" << std::setw(10) << std::abs(prediction[0] - expected)
+                      << "\n";
+        }
+    };
+
+    auto print_summary = [&](const char* title, const SimpleMlp& model, int epoch_tag) {
+        const double train_loss = model.dataset_loss(training_samples);
+        const double valid_loss = rmse(model, validation_samples);
+        std::cout << "\n" << title << "\n"
+                  << "  epoch:            " << epoch_tag << "\n"
+                  << "  train_mse:        " << std::scientific << train_loss << "\n"
+                  << "  validation_rmse:  " << std::fixed << std::setprecision(6) << valid_loss << "\n";
+    };
+
+    print_predictions("Sample predictions (last model):", mlp);
+    print_predictions("Sample predictions (best validation model):", best_mlp);
 
 //   Sample predictions (Momentum SGD) :
 //   x = -0.90000  y = -0.60000  pred = -0.01842  target = -0.01964  abs_err = 0.00122
@@ -194,8 +210,14 @@ inline void run_simple_mlp_fourier_demo() {
 //    x = 0.70000  y = 0.55000  pred = 0.64123  target = 0.64091  abs_err = 0.00032
 //    x = 0.95000  y = -0.90000  pred = -0.23201  target = -0.23203  abs_err = 0.00002
 
-    const double final_train_loss = mlp.dataset_loss(training_samples);
-    const double final_valid_rmse = rmse(mlp, validation_samples);
-    std::cout << "\nFinal train loss: " << final_train_loss << "\n";
-    std::cout << "Final validation RMSE: " << final_valid_rmse << "\n";
+//    Sample predictions (Adam, weight decay=1e-4, He-Initialization, gradient clipping, adam_steps) :
+//    x = -0.90000  y = -0.60000  pred = -0.01922  target = -0.01964  abs_err = 0.00042
+//    x = -0.35000  y = 0.80000  pred = -0.35958  target = -0.35934  abs_err = 0.00025
+//    x = 0.00000  y = 0.00000  pred = -0.00004  target = 0.00000  abs_err = 0.00004
+//    x = 0.45000  y = -0.25000  pred = 0.87892  target = 0.87876  abs_err = 0.00017
+//    x = 0.70000  y = 0.55000  pred = 0.64103  target = 0.64091  abs_err = 0.00012
+//    x = 0.95000  y = -0.90000  pred = -0.23213  target = -0.23203  abs_err = 0.00010
+
+    print_summary("Summary (last model):", mlp, epochs);
+    print_summary("Summary (best validation model):", best_mlp, min_epoch);
 }
