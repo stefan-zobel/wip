@@ -26,8 +26,8 @@ package math.complex;
  * stays real even where the modulus is not a number. A NaN spreads
  * componentwise too; only against an infinite operand does a NaN component
  * count as zero, so that the direction survives. {@code equals} sees one value
- * in every NaN and does not tell {@code +0.0} from {@code -0.0};
- * {@code hashCode} follows.
+ * in every NaN but tells {@code +0.0} from {@code -0.0}, because the branch
+ * cuts do; {@code hashCode} follows.
  */
 public final class ComplexF {
 
@@ -791,18 +791,26 @@ public final class ComplexF {
             if (other.isNan()) {
                 return this.isNan();
             }
-            return re == other.re && im == other.im;
+            // the two zeros stay apart: every function here reads the sign of a
+            // zero off the branch cut
+            return Float.floatToIntBits(re) == Float.floatToIntBits(other.re)
+                    && Float.floatToIntBits(im) == Float.floatToIntBits(other.im);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        // equals() sees one value in every NaN and does not tell the zeros apart
+        // equals() sees one value in every NaN but tells the two zeros
+        // apart, and the sign of a zero sits in the top bit alone, so the
+        // mixing has to spread it before the second component arrives
         boolean nan = isNan();
-        int h = 0x7FFFF + Float.floatToIntBits(nan ? Float.NaN : re + 0.0f);
-        h = ((h << 19) - h) + Float.floatToIntBits(nan ? Float.NaN : im + 0.0f);
-        return (h << 19) - h;
+        long h = 0xCBF29CE484222325L;
+        h = (h ^ (Float.floatToIntBits(nan ? Float.NaN : re) & 0xFFFFFFFFL)) * 0x100000001B3L;
+        h ^= h >>> 29;
+        h = (h ^ (Float.floatToIntBits(nan ? Float.NaN : im) & 0xFFFFFFFFL)) * 0x100000001B3L;
+        h ^= h >>> 29;
+        return (int) (h ^ (h >>> 32));
     }
 
     public static ComplexF NaN() {

@@ -1861,14 +1861,14 @@ public final class ComplexFTest {
         assertTrue("NaN class", new ComplexF(NAN, 1.0f).equals(ComplexF.NaN()));
         assertTrue("NaN class", ComplexF.NaN().equals(new ComplexF(1.0f, NAN)));
         assertFalse("NaN against a number", a.equals(ComplexF.NaN()));
-        // the two zeros are not told apart
-        assertTrue("signed zero", ComplexF.Zero().equals(new ComplexF(-0.0f, -0.0f)));
+        // the two zeros are told apart, because the branch cuts tell them apart
+        assertFalse("signed zero", ComplexF.Zero().equals(new ComplexF(-0.0f, -0.0f)));
     }
 
     @Test
     public void testHashCodeFollowsEquals() {
-        assertEquals("the two zeros", ComplexF.Zero().hashCode(), new ComplexF(-0.0f, -0.0f).hashCode());
-        assertEquals("the two zeros", new ComplexF(0.0f, -0.0f).hashCode(), new ComplexF(-0.0f, 0.0f).hashCode());
+        assertTrue("the two zeros", ComplexF.Zero().hashCode() != new ComplexF(-0.0f, -0.0f).hashCode());
+        assertTrue("the two zeros", new ComplexF(0.0f, -0.0f).hashCode() != new ComplexF(-0.0f, 0.0f).hashCode());
         assertEquals("every NaN", ComplexF.NaN().hashCode(), new ComplexF(NAN, 1.0f).hashCode());
         assertEquals("every NaN", new ComplexF(1.0f, NAN).hashCode(), new ComplexF(NAN, 0.0f).hashCode());
         ComplexF a = new ComplexF(3.0f, 4.0f);
@@ -1877,6 +1877,75 @@ public final class ComplexFTest {
         // and it still separates ordinary values
         assertTrue("(3,4) against (4,3)", a.hashCode() != new ComplexF(4.0f, 3.0f).hashCode());
         assertTrue("(3,4) against (3,5)", a.hashCode() != new ComplexF(3.0f, 5.0f).hashCode());
+    }
+
+    @Test
+    public void testTheFourZerosAreFourValues() {
+        // the branch cuts read the sign of a zero, so equals does too
+        ComplexF[] zeros = { new ComplexF(0.0f, 0.0f), new ComplexF(-0.0f, -0.0f),
+                new ComplexF(0.0f, -0.0f), new ComplexF(-0.0f, 0.0f) };
+        for (int i = 0; i < zeros.length; ++i) {
+            for (int j = i + 1; j < zeros.length; ++j) {
+                assertFalse("zero " + i + " equals zero " + j, zeros[i].equals(zeros[j]));
+                assertTrue("zero " + i + " and " + j + " hashed alike",
+                        zeros[i].hashCode() != zeros[j].hashCode());
+            }
+        }
+        // and sqrt is one of the five that tell them apart
+        same("sqrt(-4,+0)", 0.0f, 2.0f, new ComplexF(-4.0f, 0.0f).sqrt());
+        same("sqrt(-4,-0)", 0.0f, -2.0f, new ComplexF(-4.0f, -0.0f).sqrt());
+    }
+
+    @Test
+    public void testHashCodeSpreadsARegularGrid() {
+        // the mixing this replaced folded a regular grid onto 3.9 percent of
+        // its values, and a regular grid is what numerical code produces
+        java.util.HashSet<Integer> seen = new java.util.HashSet<Integer>();
+        int n = 0;
+        for (int i = -160; i <= 160; ++i) {
+            for (int j = -160; j <= 160; ++j) {
+                ++n;
+                seen.add(new ComplexF(i * 0.25f, j * 0.25f).hashCode());
+            }
+        }
+        assertTrue(seen.size() + " distinct hashes for " + n + " values", seen.size() > 0.99 * n);
+    }
+
+    @Test
+    public void testTheEqualsContract() {
+        float[] vals = { 0.0f, -0.0f, 1.0f, -1.0f, 2.5f, INF, -INF, NAN, 1.4e-45f, 1.0e38f };
+        ComplexF[] zs = new ComplexF[vals.length * vals.length];
+        for (int i = 0; i < vals.length; ++i) {
+            for (int j = 0; j < vals.length; ++j) {
+                zs[i * vals.length + j] = new ComplexF(vals[i], vals[j]);
+            }
+        }
+        for (int i = 0; i < zs.length; ++i) {
+            assertTrue("reflexive: " + zs[i], zs[i].equals(zs[i]));
+            assertFalse("null: " + zs[i], zs[i].equals(null));
+            assertFalse("a foreign class: " + zs[i], zs[i].equals("z"));
+            for (int j = 0; j < zs.length; ++j) {
+                assertEquals("symmetric: " + zs[i] + " / " + zs[j],
+                        zs[i].equals(zs[j]), zs[j].equals(zs[i]));
+                if (zs[i].equals(zs[j])) {
+                    assertEquals("hashCode: " + zs[i] + " / " + zs[j],
+                            zs[i].hashCode(), zs[j].hashCode());
+                }
+            }
+        }
+        for (int i = 0; i < zs.length; ++i) {
+            for (int j = 0; j < zs.length; ++j) {
+                if (!zs[i].equals(zs[j])) {
+                    continue;
+                }
+                for (int k = 0; k < zs.length; ++k) {
+                    if (zs[j].equals(zs[k])) {
+                        assertTrue("transitive: " + zs[i] + " / " + zs[j] + " / " + zs[k],
+                                zs[i].equals(zs[k]));
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -2033,6 +2102,6 @@ public final class ComplexFTest {
     private static final long NEG_DIGEST = 0x241D88E6D9266867L;
     private static final long ABS_DIGEST = 0x33688208A5C817EFL;
     private static final long ARG_DIGEST = 0xE488086C72363CF4L;
-    private static final long HASH_DIGEST = 0x472B56AA2AC59225L;
+    private static final long HASH_DIGEST = 0x1976D33F39315065L;
     private static final long STRING_DIGEST = 0xF2471CAD00267BD5L;
 }
