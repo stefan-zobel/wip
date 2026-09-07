@@ -467,6 +467,15 @@ public final class ComplexD {
         return new ComplexD(u.im, -u.re);
     }
 
+    /** below this modulus the reciprocal overflows, and the asymptotic takes over */
+    private static final double TINY = 0x1p-996;
+
+    /** an exact power of two, big enough to lift any subnormal into the normals */
+    private static final double SCALE = 0x1p600;
+
+    /** how close to +-1 the identity acsc = PI/2 - asec is the better form */
+    private static final double NEAR = 0.3;
+
     /** ln(2), which the inverse hyperbolic sine needs far from the origin */
     private static final double LN2 = 0.6931471805599453094172321;
 
@@ -560,7 +569,51 @@ public final class ComplexD {
         // 1 - z^2 is (1 - z)(1 + z); the roots taken apart, so nothing cancels
         ComplexD p = new ComplexD(1.0 - x, -y).sqrt();
         ComplexD q = new ComplexD(1.0 + x, y).sqrt();
+        return acosFromRoots(p, q);
+    }
+
+    // Kahan's ending, shared with asec, which supplies its own roots
+    private static ComplexD acosFromRoots(ComplexD p, ComplexD q) {
         return new ComplexD(2.0 * Math.atan2(p.re, q.re), realAsinh(q.re * p.im - q.im * p.re));
+    }
+
+    private static ComplexD asecOf(double x, double y) {
+        if (x == 0.0 && y == 0.0) {
+            // the modulus is unbounded and the real part is whatever direction
+            // one came from, so there is no value with a direction here
+            return INF;
+        }
+        if (modulus(x, y) < TINY) {
+            // the reciprocal would overflow. This is the asymptotic acos itself
+            // uses, with the scale cancelled out of the angle and taken out of
+            // the logarithm; the power of two is exact and lifts subnormals,
+            // which otherwise carry ten bits into the log
+            double a = x * SCALE;
+            double b = y * SCALE;
+            double log = Math.log(modulus(a, b)) - 600.0 * LN2;
+            return new ComplexD(Math.atan2(Math.abs(b), a), Math.copySign(LN2 - log, y));
+        }
+        if (modulus(x - Math.copySign(1.0, x), y) < 1.0) {
+            // next to +-1 the reciprocal throws the distance to the branch point
+            // away; 1 -+ 1/z written as (z -+ 1)/z keeps it, because the
+            // numerator is exact there
+            ComplexD z = new ComplexD(x, y);
+            return acosFromRoots(new ComplexD(x - 1.0, y).div(z).sqrt(),
+                    new ComplexD(x + 1.0, y).div(z).sqrt());
+        }
+        // away from them that quotient is the one that cancels, and the plain
+        // reciprocal does not
+        ComplexD w = new ComplexD(x, y).inv();
+        return acosOf(w.re, w.im);
+    }
+
+    private static ComplexD asechOf(double x, double y) {
+        if (x == 0.0 && y == 0.0) {
+            return INF;
+        }
+        // the same quarter turn acosh is
+        ComplexD w = asecOf(x, y);
+        return new ComplexD(Math.abs(w.im), Math.copySign(w.re, -w.im));
     }
 
     private static ComplexD acoshOf(double x, double y) {
@@ -591,6 +644,274 @@ public final class ComplexD {
      */
     public ComplexD acosh() {
         return acoshOf(re, im);
+    }
+
+    /**
+     * Inverse secant, with its cut on the segment {@code (-1, 1)}.
+     *
+     * @return the inverse secant of this complex number
+     */
+    public ComplexD asec() {
+        return asecOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic secant, with its cuts on the real rays
+     * {@code (-inf, 0]} and {@code (1, inf)}.
+     *
+     * @return the inverse hyperbolic secant of this complex number
+     */
+    public ComplexD asech() {
+        return asechOf(re, im);
+    }
+
+    private static ComplexD acscOf(double x, double y) {
+        if (x == 0.0 && y == 0.0) {
+            // the modulus is unbounded and the real part is whatever direction
+            // one came from, so there is no value with a direction here
+            return INF;
+        }
+        if (modulus(x, y) < TINY) {
+            // the reciprocal would overflow. This is asin's asymptotic, with
+            // PI/2 - atan2(|y|, x) written as atan2(x, |y|) so that nothing
+            // cancels, and the subnormals lifted the way asec lifts them
+            double a = x * SCALE;
+            double b = y * SCALE;
+            double log = Math.log(modulus(a, b)) - 600.0 * LN2;
+            return new ComplexD(Math.atan2(a, Math.abs(b)), Math.copySign(LN2 - log, -y));
+        }
+        if (modulus(x - Math.copySign(1.0, x), y) < NEAR) {
+            // asin + acos = PI/2 exactly, and this close to +-1 asec is nowhere
+            // near PI/2, so the subtraction costs nothing and asec's accuracy
+            // at its branch points carries over
+            ComplexD w = asecOf(x, y);
+            return new ComplexD(Math.PI / 2.0 - w.re, -w.im);
+        }
+        // further out that subtraction is the one that cancels - PI/2 - asec
+        // goes to 3e4 ulp by |z| = 1 - while 1/z is harmless there
+        return new ComplexD(x, y).inv().asin();
+    }
+
+    private static ComplexD acschOf(double x, double y) {
+        if (x == 0.0 && y == 0.0) {
+            return INF;
+        }
+        // asinh(u) = i * asin(-i * u), so acsch(z) = i * acsc(i * z)
+        ComplexD u = acscOf(-y, x);
+        return new ComplexD(-u.im, u.re);
+    }
+
+    /**
+     * Inverse cosecant, with its cut on the segment {@code (-1, 1)}.
+     *
+     * @return the inverse cosecant of this complex number
+     */
+    public ComplexD acsc() {
+        return acscOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic cosecant, with its cut on the imaginary segment
+     * {@code i*(-1, 1)}.
+     *
+     * @return the inverse hyperbolic cosecant of this complex number
+     */
+    public ComplexD acsch() {
+        return acschOf(re, im);
+    }
+    /**
+     * Cotangent.
+     *
+     * @return the cotangent of this complex number
+     */
+    public ComplexD cot() {
+        return tan().inv();
+    }
+
+    /**
+     * Hyperbolic cotangent.
+     *
+     * @return the hyperbolic cotangent of this complex number
+     */
+    public ComplexD coth() {
+        return tanh().inv();
+    }
+
+    private static ComplexD sechOf(double x, double y) {
+        ComplexD w = coshOf(x, y).inv();
+        if (w.re() == 0.0 && w.im() == 0.0 && Double.isFinite(x)) {
+            // the quotient underflowed on the way: cosh overflows at 710.48 and
+            // inv a little before that, while 1/cosh is representable to
+            // 745.13. That far out cosh and sinh are equal to the last bit, so
+            // what is left is a magnitude times a unit vector
+            double e = 2.0 * Math.exp(-Math.abs(x));
+            return new ComplexD(e * Math.cos(y), -Math.copySign(e, x) * Math.sin(y));
+        }
+        return w;
+    }
+
+    private static ComplexD cschOf(double x, double y) {
+        ComplexD w = sinhOf(x, y).inv();
+        if (w.re() == 0.0 && w.im() == 0.0 && Double.isFinite(x)) {
+            // the same band, except that sinh carries the sign of x through
+            double e = 2.0 * Math.exp(-Math.abs(x));
+            return new ComplexD(Math.copySign(e, x) * Math.cos(y), -e * Math.sin(y));
+        }
+        return w;
+    }
+
+    /**
+     * Secant.
+     *
+     * @return the secant of this complex number
+     */
+    public ComplexD sec() {
+        // sec(z) = sech(i * z)
+        return sechOf(-im, re);
+    }
+
+    /**
+     * Cosecant.
+     *
+     * @return the cosecant of this complex number
+     */
+    public ComplexD csc() {
+        // csc(z) = i * csch(i * z)
+        ComplexD u = cschOf(-im, re);
+        if (u.isInfinite()) {
+            // the pole, and this library has one infinity without a direction
+            return INF;
+        }
+        if (isInfinite()) {
+            // and one zero without one either, which the turn would undo
+            return u;
+        }
+        return new ComplexD(-u.im, u.re);
+    }
+
+    /**
+     * Hyperbolic secant.
+     *
+     * @return the hyperbolic secant of this complex number
+     */
+    public ComplexD sech() {
+        return sechOf(re, im);
+    }
+
+    /**
+     * Hyperbolic cosecant.
+     *
+     * @return the hyperbolic cosecant of this complex number
+     */
+    public ComplexD csch() {
+        return cschOf(re, im);
+    }
+
+    private static ComplexD sincOf(double x, double y) {
+        if (x == 0.0 && y == 0.0) {
+            // one one, and no direction
+            return ONE;
+        }
+        if (Double.isInfinite(y)) {
+            // the modulus is unbounded, the direction is not settled
+            return INF;
+        }
+        ComplexD z = new ComplexD(x, y);
+        ComplexD w = z.sin().div(z);
+        if (w.isInfinite() && Double.isFinite(x) && Double.isFinite(y)) {
+            // sin(z) overflows a long way before sin(z)/z does
+            double c = (y < 0.0) ? -Math.cos(x) : Math.cos(x);
+            ComplexD t = new ComplexD(Math.sin(x), c).div(z);
+            double h = Math.exp(0.25 * Math.abs(y));
+            return new ComplexD(raise(t.re, h), raise(t.im, h));
+        }
+        return w;
+    }
+
+    // half of v times h to the fourth, component by component so that one
+    // overflowing does not erase the other, and in quarters because halving
+    // the exponent is exact where dividing it is not
+    private static double raise(double v, double h) {
+        double t = product(0.5 * v, h);
+        t = product(t, h);
+        t = product(t, h);
+        return product(t, h);
+    }
+
+    /**
+     * Cardinal sine, sin(z) / z, which is 1 at the origin.
+     *
+     * @return the cardinal sine of this complex number
+     */
+    public ComplexD sinc() {
+        return sincOf(re, im);
+    }
+
+    /**
+     * Cardinal hyperbolic sine, sinh(z) / z, which is 1 at the origin.
+     *
+     * @return the cardinal hyperbolic sine of this complex number
+     */
+    public ComplexD sinhc() {
+        // sinc(i * z) = sinh(z) / z
+        return sincOf(-im, re);
+    }
+
+    private static ComplexD acotOf(double x, double y) {
+        double h = modulus(x, y);
+        if (h <= 1.0) {
+            // inside the unit disc atan stays well clear of PI/2, so nothing
+            // cancels here - and the subtraction keeps the distance to the
+            // branch points +-i, which taking the reciprocal would throw away
+            ComplexD t = new ComplexD(x, y).atan();
+            return new ComplexD(Math.PI / 2.0 - t.re(), -t.im());
+        }
+        if (h <= 4.0) {
+            // just outside, the reciprocal loses the distance to +-i; one
+            // factor of (y-1)*(y+1) is exact there, so this form keeps it.
+            // log1p takes the ratio that stays positive, the other cancels
+            double re = Math.atan2(2.0 * x, x * x + (y - 1.0) * (y + 1.0)) / 2.0;
+            double im = (y >= 0.0)
+                    ? -Math.log1p(4.0 * y / (x * x + (y - 1.0) * (y - 1.0))) / 4.0
+                    : Math.log1p(-4.0 * y / (x * x + (y + 1.0) * (y + 1.0))) / 4.0;
+            return lift(re, im, x);
+        }
+        // far out atan(z) runs into PI/2 and that subtraction loses every
+        // digit; atan(1/z) does not, and no branch point is near
+        ComplexD t = new ComplexD(x, y).inv().atan();
+        return lift(t.re(), t.im(), x);
+    }
+
+    // both forms above cut the segment (-i, i); lifting the left half plane by
+    // PI moves the cut onto the rays. copySign, because -0.0 < 0.0 is false
+    private static ComplexD lift(double re, double im, double x) {
+        if (Math.copySign(1.0, x) < 0.0) {
+            return new ComplexD(re + Math.PI, im);
+        }
+        return new ComplexD(re, im);
+    }
+
+    /**
+     * Inverse cotangent, continuous at the origin, with its cuts on the rays
+     * {@code |Im z| >= 1}. Note that this is not {@code atan(1/z)}, which
+     * differs by PI in the left half plane.
+     *
+     * @return the inverse cotangent of this complex number
+     */
+    public ComplexD acot() {
+        return acotOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic cotangent, continuous at the origin, with its cuts on
+     * the rays {@code |Re z| >= 1}.
+     *
+     * @return the inverse hyperbolic cotangent of this complex number
+     */
+    public ComplexD acoth() {
+        // coth(w) = i * cot(i * w), so acoth(z) = -i * acot(-i * z)
+        ComplexD u = acotOf(im, -re);
+        return new ComplexD(u.im, -u.re);
     }
 
     public ComplexD pow(double exponent) {
@@ -760,25 +1081,22 @@ public final class ComplexD {
      *         syntax
      */
     public String toString(String format) {
-        double re_ = re;
-        double im_ = im;
-        // fix negative zero
-        if (re_ == 0.0) {
-            re_ = 0.0;
-        }
-        if (im_ == 0.0) {
-            im_ = 0.0;
-        }
         StringBuilder buf = new StringBuilder(40);
-        if (re_ >= 0.0) {
+        if (needsPlus(re)) {
             buf.append("+");
         }
-        buf.append(String.format(format, re_)).append("  ");
-        if (im_ >= 0.0) {
+        buf.append(String.format(format, re)).append("  ");
+        if (needsPlus(im)) {
             buf.append("+");
         }
-        buf.append(String.format(format, im_)).append("i");
+        buf.append(String.format(format, im)).append("i");
         return buf.toString();
+    }
+
+    // format writes the sign itself, so prepend one only for a positive value;
+    // a negative zero keeps its sign, the branch cuts read it
+    private static boolean needsPlus(double x) {
+        return !Double.isNaN(x) && Math.copySign(1.0, x) > 0.0;
     }
 
     @Override

@@ -37,6 +37,15 @@ public final class ComplexF {
     private static final ComplexF ONE = new ComplexF(1.0f, 0.0f);
     private static final ComplexF I = new ComplexF(0.0f, 1.0f);
 
+    /** ln(2), which asin's asymptotic needs */
+    private static final double LN2 = 0.6931471805599453094172321;
+
+    /** below this modulus the float reciprocal overflows */
+    private static final double TINY = 0x1p-120;
+
+    /** how close to +-1 the identity acsc = PI/2 - asec is the better form */
+    private static final double NEAR = 0.3;
+
     private final float re;
     private final float im;
 
@@ -561,8 +570,84 @@ public final class ComplexF {
         double[] r = new double[4];
         sqrtInto(1.0 - x, -y, r, 0);
         sqrtInto(1.0 + x, y, r, 2);
+        return acosFromRoots(r);
+    }
+
+    // Kahan's ending, shared with asec, which supplies its own roots
+    private static ComplexF acosFromRoots(double[] r) {
         return new ComplexF((float) (2.0 * Math.atan2(r[0], r[2])),
                 (float) realAsinh(r[2] * r[1] - r[3] * r[0]));
+    }
+
+    // 1 / (x + i y) in double, in inv()'s shape, which differs from div()'s by
+    // exactly the sign of a zero
+    private static void invInto(double x, double y, double[] r, int k) {
+        if (Math.abs(x) < Math.abs(y)) {
+            double q = x / y;
+            double denom = x * q + y;
+            r[k] = q / denom;
+            r[k + 1] = -1.0 / denom;
+            return;
+        }
+        double q = y / x;
+        double denom = y * q + x;
+        r[k] = 1.0 / denom;
+        r[k + 1] = -q / denom;
+    }
+
+    // (u + i v) / (x + i y) in double, in div()'s shape, which is what keeps
+    // the sign of a zero; a float squared cannot overflow a double
+    private static void divInto(double u, double v, double x, double y, double[] r, int k) {
+        if (Math.abs(x) < Math.abs(y)) {
+            double q = x / y;
+            double denom = x * q + y;
+            r[k] = (u * q + v) / denom;
+            r[k + 1] = (v * q - u) / denom;
+            return;
+        }
+        double q = y / x;
+        double denom = y * q + x;
+        r[k] = (v * q + u) / denom;
+        r[k + 1] = (v - u * q) / denom;
+    }
+    private static ComplexF asecOf(float x, float y) {
+        if (x == 0.0f && y == 0.0f) {
+            // the modulus is unbounded and the real part is whatever direction
+            // one came from, so there is no value with a direction here
+            return INF;
+        }
+        if (Float.isInfinite(x) || Float.isInfinite(y)) {
+            // the reciprocal of an infinity is the zero without a direction
+            return acosOf(0.0f, 0.0f);
+        }
+        double[] r = new double[4];
+        double[] t = new double[2];
+        if (wideModulus(x - Math.copySign(1.0f, x), y) < 1.0) {
+            // next to +-1 the reciprocal throws the distance to the branch point
+            // away; 1 -+ 1/z written as (z -+ 1)/z keeps it, because the
+            // numerator is exact there
+            divInto((double) x - 1.0, y, x, y, t, 0);
+            sqrtInto(t[0], t[1], r, 0);
+            divInto((double) x + 1.0, y, x, y, t, 0);
+            sqrtInto(t[0], t[1], r, 2);
+            return acosFromRoots(r);
+        }
+        // away from them that quotient is the one that cancels; the reciprocal
+        // is taken in double, where a float cannot overflow it, and in inv's
+        // shape, which is what keeps the sign of the zero
+        invInto(x, y, t, 0);
+        sqrtInto(1.0 - t[0], -t[1], r, 0);
+        sqrtInto(1.0 + t[0], t[1], r, 2);
+        return acosFromRoots(r);
+    }
+
+    private static ComplexF asechOf(float x, float y) {
+        if (x == 0.0f && y == 0.0f) {
+            return INF;
+        }
+        // the same quarter turn acosh is
+        ComplexF w = asecOf(x, y);
+        return new ComplexF(Math.abs(w.im), Math.copySign(w.re, -w.im));
     }
 
     private static ComplexF acoshOf(float x, float y) {
@@ -593,6 +678,281 @@ public final class ComplexF {
      */
     public ComplexF acosh() {
         return acoshOf(re, im);
+    }
+
+    /**
+     * Inverse secant, with its cut on the segment {@code (-1, 1)}.
+     *
+     * @return the inverse secant of this complex number
+     */
+    public ComplexF asec() {
+        return asecOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic secant, with its cuts on the real rays
+     * {@code (-inf, 0]} and {@code (1, inf)}.
+     *
+     * @return the inverse hyperbolic secant of this complex number
+     */
+    public ComplexF asech() {
+        return asechOf(re, im);
+    }
+
+    private static ComplexF acscOf(float x, float y) {
+        if (x == 0.0f && y == 0.0f) {
+            // the modulus is unbounded and the real part is whatever direction
+            // one came from, so there is no value with a direction here
+            return INF;
+        }
+        double h = wideModulus(x, y);
+        if (h < TINY) {
+            // the reciprocal would overflow in float. This is asin's asymptotic,
+            // with PI/2 - atan2(|y|, x) written as atan2(x, |y|) so that nothing
+            // cancels; widening to double is what lifts the subnormals here
+            return new ComplexF((float) Math.atan2(x, Math.abs((double) y)),
+                    (float) Math.copySign(LN2 - Math.log(h), -y));
+        }
+        if (wideModulus(x - Math.copySign(1.0f, x), y) < NEAR) {
+            // asin + acos = PI/2 exactly, and this close to +-1 asec is nowhere
+            // near PI/2, so the subtraction costs nothing and asec's accuracy
+            // at its branch points carries over
+            ComplexF w = asecOf(x, y);
+            return new ComplexF((float) (Math.PI / 2.0 - w.re()), -w.im());
+        }
+        // further out that subtraction is the one that cancels, while 1/z is
+        // harmless there
+        return new ComplexF(x, y).inv().asin();
+    }
+
+    private static ComplexF acschOf(float x, float y) {
+        if (x == 0.0f && y == 0.0f) {
+            return INF;
+        }
+        // asinh(u) = i * asin(-i * u), so acsch(z) = i * acsc(i * z)
+        ComplexF u = acscOf(-y, x);
+        return new ComplexF(-u.im, u.re);
+    }
+
+    /**
+     * Inverse cosecant, with its cut on the segment {@code (-1, 1)}.
+     *
+     * @return the inverse cosecant of this complex number
+     */
+    public ComplexF acsc() {
+        return acscOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic cosecant, with its cut on the imaginary segment
+     * {@code i*(-1, 1)}.
+     *
+     * @return the inverse hyperbolic cosecant of this complex number
+     */
+    public ComplexF acsch() {
+        return acschOf(re, im);
+    }
+
+    /**
+     * Cotangent.
+     *
+     * @return the cotangent of this complex number
+     */
+    public ComplexF cot() {
+        return tan().inv();
+    }
+
+    /**
+     * Hyperbolic cotangent.
+     *
+     * @return the hyperbolic cotangent of this complex number
+     */
+    public ComplexF coth() {
+        return tanh().inv();
+    }
+
+    private static ComplexF sechOf(float x, float y) {
+        ComplexF w = coshOf(x, y).inv();
+        if (w.re() == 0.0f && w.im() == 0.0f && Float.isFinite(x)) {
+            // the quotient underflowed on the way: cosh overflows at 89.42 and
+            // inv a little before that, while 1/cosh is representable to
+            // 104.67. That far out cosh and sinh are equal to the last bit, so
+            // what is left is a magnitude times a unit vector
+            double e = 2.0 * Math.exp(-Math.abs((double) x));
+            return new ComplexF((float) (e * Math.cos(y)),
+                    (float) (-Math.copySign(e, x) * Math.sin(y)));
+        }
+        return w;
+    }
+
+    private static ComplexF cschOf(float x, float y) {
+        ComplexF w = sinhOf(x, y).inv();
+        if (w.re() == 0.0f && w.im() == 0.0f && Float.isFinite(x)) {
+            // the same band, except that sinh carries the sign of x through
+            double e = 2.0 * Math.exp(-Math.abs((double) x));
+            return new ComplexF((float) (Math.copySign(e, x) * Math.cos(y)),
+                    (float) (-e * Math.sin(y)));
+        }
+        return w;
+    }
+
+    /**
+     * Secant.
+     *
+     * @return the secant of this complex number
+     */
+    public ComplexF sec() {
+        // sec(z) = sech(i * z)
+        return sechOf(-im, re);
+    }
+
+    /**
+     * Cosecant.
+     *
+     * @return the cosecant of this complex number
+     */
+    public ComplexF csc() {
+        // csc(z) = i * csch(i * z)
+        ComplexF u = cschOf(-im, re);
+        if (u.isInfinite()) {
+            // the pole, and this library has one infinity without a direction
+            return INF;
+        }
+        if (isInfinite()) {
+            // and one zero without one either, which the turn would undo
+            return u;
+        }
+        return new ComplexF(-u.im, u.re);
+    }
+
+    /**
+     * Hyperbolic secant.
+     *
+     * @return the hyperbolic secant of this complex number
+     */
+    public ComplexF sech() {
+        return sechOf(re, im);
+    }
+
+    /**
+     * Hyperbolic cosecant.
+     *
+     * @return the hyperbolic cosecant of this complex number
+     */
+    public ComplexF csch() {
+        return cschOf(re, im);
+    }
+
+    private static ComplexF sincOf(float x, float y) {
+        if (x == 0.0f && y == 0.0f) {
+            // one one, and no direction
+            return ONE;
+        }
+        if (Float.isInfinite(y)) {
+            // the modulus is unbounded, the direction is not settled
+            return INF;
+        }
+        if (Float.isInfinite(x)) {
+            // the sine stays bounded along the real axis, the quotient dies
+            return ZERO;
+        }
+        if (Float.isNaN(x) || Float.isNaN(y)) {
+            return NAN;
+        }
+        double a = x;
+        double b = y;
+        if (Math.abs(b) <= 700.0) {
+            // sin(z) in double, where it cannot overflow before the quotient
+            // does, so this rounds only once
+            double[] r = new double[2];
+            divInto(product(Math.sin(a), Math.cosh(b)), product(Math.cos(a), Math.sinh(b)), a, b,
+                    r, 0);
+            return new ComplexF((float) r[0], (float) r[1]);
+        }
+        // beyond that no float can hold the value, but the direction still can
+        double c = (b < 0.0) ? -Math.cos(a) : Math.cos(a);
+        double[] r = new double[2];
+        divInto(Math.sin(a), c, a, b, r, 0);
+        double h = 0.5 * Math.exp(Math.abs(b));
+        return new ComplexF((float) product(r[0], h), (float) product(r[1], h));
+    }
+
+    /**
+     * Cardinal sine, sin(z) / z, which is 1 at the origin.
+     *
+     * @return the cardinal sine of this complex number
+     */
+    public ComplexF sinc() {
+        return sincOf(re, im);
+    }
+
+    /**
+     * Cardinal hyperbolic sine, sinh(z) / z, which is 1 at the origin.
+     *
+     * @return the cardinal hyperbolic sine of this complex number
+     */
+    public ComplexF sinhc() {
+        // sinc(i * z) = sinh(z) / z
+        return sincOf(-im, re);
+    }
+
+    private static ComplexF acotOf(float x, float y) {
+        double h = wideModulus(x, y);
+        if (h <= 1.0) {
+            // inside the unit disc atan stays well clear of PI/2, so nothing
+            // cancels here - and the subtraction keeps the distance to the
+            // branch points +-i, which taking the reciprocal would throw away
+            ComplexF t = new ComplexF(x, y).atan();
+            return new ComplexF((float) (Math.PI / 2.0 - t.re()), -t.im());
+        }
+        if (h <= 4.0) {
+            // just outside, the reciprocal loses the distance to +-i; one
+            // factor of (y-1)*(y+1) is exact there, so this form keeps it.
+            // log1p takes the ratio that stays positive, the other cancels
+            double dx = x;
+            double dy = y;
+            double re = Math.atan2(2.0 * dx, dx * dx + (dy - 1.0) * (dy + 1.0)) / 2.0;
+            double im = (dy >= 0.0)
+                    ? -Math.log1p(4.0 * dy / (dx * dx + (dy - 1.0) * (dy - 1.0))) / 4.0
+                    : Math.log1p(-4.0 * dy / (dx * dx + (dy + 1.0) * (dy + 1.0))) / 4.0;
+            return lift(re, im, x);
+        }
+        // far out atan(z) runs into PI/2 and that subtraction loses every
+        // digit; atan(1/z) does not, and no branch point is near
+        ComplexF t = new ComplexF(x, y).inv().atan();
+        return lift(t.re(), t.im(), x);
+    }
+
+    // both forms above cut the segment (-i, i); lifting the left half plane by
+    // PI moves the cut onto the rays. copySign, because -0.0f < 0.0f is false
+    private static ComplexF lift(double re, double im, float x) {
+        if (Math.copySign(1.0f, x) < 0.0f) {
+            return new ComplexF((float) (re + Math.PI), (float) im);
+        }
+        return new ComplexF((float) re, (float) im);
+    }
+
+    /**
+     * Inverse cotangent, continuous at the origin, with its cuts on the rays
+     * {@code |Im z| >= 1}. Note that this is not {@code atan(1/z)}, which
+     * differs by PI in the left half plane.
+     *
+     * @return the inverse cotangent of this complex number
+     */
+    public ComplexF acot() {
+        return acotOf(re, im);
+    }
+
+    /**
+     * Inverse hyperbolic cotangent, continuous at the origin, with its cuts on
+     * the rays {@code |Re z| >= 1}.
+     *
+     * @return the inverse hyperbolic cotangent of this complex number
+     */
+    public ComplexF acoth() {
+        // coth(w) = i * cot(i * w), so acoth(z) = -i * acot(-i * z)
+        ComplexF u = acotOf(im, -re);
+        return new ComplexF(u.im, -u.re);
     }
 
     public ComplexF pow(float exponent) {
@@ -760,25 +1120,22 @@ public final class ComplexF {
      *         syntax
      */
     public String toString(String format) {
-        float re_ = re;
-        float im_ = im;
-        // fix negative zero
-        if (re_ == 0.0f) {
-            re_ = 0.0f;
-        }
-        if (im_ == 0.0f) {
-            im_ = 0.0f;
-        }
         StringBuilder buf = new StringBuilder(40);
-        if (re_ >= 0.0f) {
+        if (needsPlus(re)) {
             buf.append("+");
         }
-        buf.append(String.format(format, re_)).append("  ");
-        if (im_ >= 0.0f) {
+        buf.append(String.format(format, re)).append("  ");
+        if (needsPlus(im)) {
             buf.append("+");
         }
-        buf.append(String.format(format, im_)).append("i");
+        buf.append(String.format(format, im)).append("i");
         return buf.toString();
+    }
+
+    // format writes the sign itself, so prepend one only for a positive value;
+    // a negative zero keeps its sign, the branch cuts read it
+    private static boolean needsPlus(float x) {
+        return !Float.isNaN(x) && Math.copySign(1.0f, x) > 0.0f;
     }
 
     @Override

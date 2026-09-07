@@ -1765,6 +1765,34 @@ public final class ComplexFTest {
                 h = fold(h, v.acos());
             } else if (op.equals("acosh")) {
                 h = fold(h, v.acosh());
+            } else if (op.equals("cot")) {
+                h = fold(h, v.cot());
+            } else if (op.equals("coth")) {
+                h = fold(h, v.coth());
+            } else if (op.equals("acot")) {
+                h = fold(h, v.acot());
+            } else if (op.equals("acoth")) {
+                h = fold(h, v.acoth());
+            } else if (op.equals("sec")) {
+                h = fold(h, v.sec());
+            } else if (op.equals("csc")) {
+                h = fold(h, v.csc());
+            } else if (op.equals("sech")) {
+                h = fold(h, v.sech());
+            } else if (op.equals("csch")) {
+                h = fold(h, v.csch());
+            } else if (op.equals("asec")) {
+                h = fold(h, v.asec());
+            } else if (op.equals("asech")) {
+                h = fold(h, v.asech());
+            } else if (op.equals("acsc")) {
+                h = fold(h, v.acsc());
+            } else if (op.equals("acsch")) {
+                h = fold(h, v.acsch());
+            } else if (op.equals("sinc")) {
+                h = fold(h, v.sinc());
+            } else if (op.equals("sinhc")) {
+                h = fold(h, v.sinhc());
             } else if (op.equals("neg")) {
                 h = fold(h, v.neg());
             } else if (op.equals("abs")) {
@@ -1837,6 +1865,20 @@ public final class ComplexFTest {
         assertEquals("asin changed", ASIN_DIGEST, unary("asin"));
         assertEquals("acos changed", ACOS_DIGEST, unary("acos"));
         assertEquals("acosh changed", ACOSH_DIGEST, unary("acosh"));
+        assertEquals("cot changed", COT_DIGEST, unary("cot"));
+        assertEquals("coth changed", COTH_DIGEST, unary("coth"));
+        assertEquals("acot changed", ACOT_DIGEST, unary("acot"));
+        assertEquals("acoth changed", ACOTH_DIGEST, unary("acoth"));
+        assertEquals("sec changed", SEC_DIGEST, unary("sec"));
+        assertEquals("csc changed", CSC_DIGEST, unary("csc"));
+        assertEquals("sech changed", SECH_DIGEST, unary("sech"));
+        assertEquals("csch changed", CSCH_DIGEST, unary("csch"));
+        assertEquals("asec changed", ASEC_DIGEST, unary("asec"));
+        assertEquals("asech changed", ASECH_DIGEST, unary("asech"));
+        assertEquals("acsc changed", ACSC_DIGEST, unary("acsc"));
+        assertEquals("acsch changed", ACSCH_DIGEST, unary("acsch"));
+        assertEquals("sinc changed", SINC_DIGEST, unary("sinc"));
+        assertEquals("sinhc changed", SINHC_DIGEST, unary("sinhc"));
         assertEquals("conj changed", CONJ_DIGEST, unary("conj"));
         assertEquals("neg changed", NEG_DIGEST, unary("neg"));
         assertEquals("abs changed", ABS_DIGEST, unary("abs"));
@@ -1950,7 +1992,7 @@ public final class ComplexFTest {
 
     @Test
     public void testEveryNanBitPatternIsOneValue() {
-        // doubleToLongBits canonicalises them, and that part of the old
+        // doubleToLongBits canonicalizes them, and that part of the old
         // convention stays; doubleToRawLongBits would break it quietly
         ComplexF odd = new ComplexF(Float.intBitsToFloat(0x7fc00001), 1.0f);
         ComplexF plain = new ComplexF(NAN, 1.0f);
@@ -1970,7 +2012,8 @@ public final class ComplexFTest {
                 { -5.0f, NAN }, { INF, NAN }, { NAN, INF }, { 1.0f, NAN }, { NAN, 1.0f }, { NAN, NAN },
                 { -INF, NAN }, { NAN, -INF }, { 0.0f, 0.0f }, { -0.0f, -0.0f }, { 0.0f, -0.0f } };
         String[] ops = { "exp", "ln", "sqrt", "sinh", "cosh", "tanh", "asinh", "asin", "acos",
-                "acosh", "atanh", "atan", "inv", "conj", "neg" };
+                "acosh", "atanh", "atan", "cot", "coth", "acot", "acoth", "sec", "csc", "sech", "csch", "asec", "asech", "acsc", "acsch", "sinc", "sinhc", "inv", "conj",
+                "neg" };
         for (int o = 0; o < ops.length; ++o) {
             for (int i = 0; i < pts.length; ++i) {
                 for (int j = 0; j < pts.length; ++j) {
@@ -2009,6 +2052,34 @@ public final class ComplexFTest {
             return z.acosh();
         } else if (op.equals("atanh")) {
             return z.atanh();
+        } else if (op.equals("cot")) {
+            return z.cot();
+        } else if (op.equals("coth")) {
+            return z.coth();
+        } else if (op.equals("acot")) {
+            return z.acot();
+        } else if (op.equals("acoth")) {
+            return z.acoth();
+        } else if (op.equals("sec")) {
+            return z.sec();
+        } else if (op.equals("csc")) {
+            return z.csc();
+        } else if (op.equals("sech")) {
+            return z.sech();
+        } else if (op.equals("csch")) {
+            return z.csch();
+        } else if (op.equals("asec")) {
+            return z.asec();
+        } else if (op.equals("asech")) {
+            return z.asech();
+        } else if (op.equals("acsc")) {
+            return z.acsc();
+        } else if (op.equals("acsch")) {
+            return z.acsch();
+        } else if (op.equals("sinc")) {
+            return z.sinc();
+        } else if (op.equals("sinhc")) {
+            return z.sinhc();
         } else if (op.equals("atan")) {
             return z.atan();
         } else if (op.equals("inv")) {
@@ -2057,9 +2128,37 @@ public final class ComplexFTest {
     public void testToString() {
         // six digits here, ten in ComplexD
         assertEquals("+1.500000E+00  -2.500000E+00i", new ComplexF(1.5f, -2.5f).toString());
-        // both zeros print as positive
-        assertEquals("+0.000000E+00  +0.000000E+00i", new ComplexF(-0.0f, -0.0f).toString());
+        // the branch cuts read the sign of a zero, so the printout keeps it
+        assertEquals("-0.000000E+00  -0.000000E+00i", new ComplexF(-0.0f, -0.0f).toString());
         assertEquals("+1.50  -2.50i", new ComplexF(1.5f, -2.5f).toString("%.2f"));
+        assertEquals("-0.00  +0.00i", new ComplexF(-0.0f, 0.0f).toString("%.2f"));
+    }
+
+    @Test
+    public void testToStringTellsTheFourZerosApart() {
+        // printing both zeros alike had hidden three wrong expectations
+        ComplexF[] zeros = { new ComplexF(0.0f, 0.0f), new ComplexF(-0.0f, -0.0f),
+                new ComplexF(0.0f, -0.0f), new ComplexF(-0.0f, 0.0f) };
+        java.util.HashSet<String> seen = new java.util.HashSet<String>();
+        for (int i = 0; i < zeros.length; ++i) {
+            seen.add(zeros[i].toString());
+        }
+        assertEquals("four zeros, four printouts", 4, seen.size());
+        assertEquals("+0.000000E+00  -0.000000E+00i", new ComplexF(0.0f, -0.0f).toString());
+        assertEquals("-0.000000E+00  +0.000000E+00i", new ComplexF(-0.0f, 0.0f).toString());
+        // and sqrt is one of the operations that tell them apart
+        assertEquals("+0.000000E+00  +2.000000E+00i", new ComplexF(-4.0f, 0.0f).sqrt().toString());
+        assertEquals("+0.000000E+00  -2.000000E+00i", new ComplexF(-4.0f, -0.0f).sqrt().toString());
+    }
+
+    @Test
+    public void testToStringLeavesNanAndInfinityAlone() {
+        // only the zeros moved; format writes no sign of its own for a NaN
+        assertEquals("NAN  NANi", new ComplexF(NAN, NAN).toString());
+        assertEquals("a NaN carrying the sign bit", "NAN  NANi",
+                new ComplexF(Float.intBitsToFloat(0xffc00000), NAN).toString());
+        assertEquals("+INFINITY  -INFINITYi", new ComplexF(INF, -INF).toString());
+        assertEquals("-INFINITY  +INFINITYi", new ComplexF(-INF, INF).toString());
     }
 
     @Test
@@ -2077,6 +2176,641 @@ public final class ComplexFTest {
         assertEquals("isInfinite", "00000000000001111111000011", infinite.toString());
     }
 
+
+    @Test
+    public void testCotIsTheReciprocalOfTan() {
+        // the only thing cot has to be, and inv is exact enough that it is
+        for (int i = 0; i < SPECIAL.length; ++i) {
+            ComplexF z = z(i);
+            if (z.isNan() || z.cot().isNan()) {
+                continue;
+            }
+            ComplexF one = z.cot().mul(z.tan());
+            if (one.isNan() || one.isInfinite()) {
+                continue;
+            }
+            assertTrue("cot * tan at " + z + " gives " + one,
+                    Math.abs(one.re() - 1.0f) <= 2.0f * Math.ulp(1.0f)
+                            && Math.abs(one.im()) <= 2.0f * Math.ulp(1.0f));
+        }
+        // the float chain is a ulp off correctly rounded, which is what it is
+        assertEquals("cot(1)", (float) 0.6420926159343306,
+                new ComplexF(1.0f, 0.0f).cot().re(), 2.0f * Math.ulp(0.64f));
+        assertEquals("coth(1)", (float) 1.3130352854993315,
+                new ComplexF(1.0f, 0.0f).coth().re(), 2.0f * Math.ulp(1.31f));
+    }
+
+    @Test
+    public void testCotInTheFarFieldAndAtThePole() {
+        // tanh runs into 1 long before the range ends, so cot runs into -i
+        same("cot(1+90i)", 0.0f, -1.0f, new ComplexF(1.0f, 90.0f).cot());
+        same("coth(90+i)", 1.0f, -0.0f, new ComplexF(90.0f, 1.0f).coth());
+        // the pole is inv(0), the one infinity without a direction
+        same("cot(0)", INF, INF, new ComplexF(0.0f, 0.0f).cot());
+        same("coth(0)", INF, INF, new ComplexF(0.0f, 0.0f).coth());
+        same("coth(inf)", 1.0f, -0.0f, new ComplexF(INF, 0.0f).coth());
+    }
+
+    @Test
+    public void testAcotIsAnalyticAtTheOrigin() {
+        // the cut runs along the rays |Im z| >= 1, not through the origin, so
+        // all four zeros answer PI/2 and only the zero of the result turns
+        float h = (float) (Math.PI / 2.0);
+        same("acot(+0,+0)", h, -0.0f, new ComplexF(0.0f, 0.0f).acot());
+        same("acot(-0,+0)", h, -0.0f, new ComplexF(-0.0f, 0.0f).acot());
+        same("acot(+0,-0)", h, 0.0f, new ComplexF(0.0f, -0.0f).acot());
+        same("acot(-0,-0)", h, 0.0f, new ComplexF(-0.0f, -0.0f).acot());
+        // and the neighborhood agrees from every direction
+        assertTrue("from +x", Math.abs(new ComplexF(1.0e-5f, 0.0f).acot().re() - h) < 2.0e-5);
+        assertTrue("from -x", Math.abs(new ComplexF(-1.0e-5f, 0.0f).acot().re() - h) < 2.0e-5);
+        assertTrue("from +y", Math.abs(new ComplexF(0.0f, 1.0e-5f).acot().re() - h) < 2.0e-5);
+        assertTrue("from -y", Math.abs(new ComplexF(0.0f, -1.0e-5f).acot().re() - h) < 2.0e-5);
+        // acoth is the same statement turned by i
+        same("acoth(+0,+0)", 0.0f, -h, new ComplexF(0.0f, 0.0f).acoth());
+        same("acoth(-0,+0)", -0.0f, -h, new ComplexF(-0.0f, 0.0f).acoth());
+    }
+
+    @Test
+    public void testAcotPutsItsCutOnTheRays() {
+        // on the cut the sign of the zero picks the side, a difference of PI
+        float v = (float) 0.5493061443340549;
+        same("acot(+0+2i)", 0.0f, -v, new ComplexF(0.0f, 2.0f).acot());
+        same("acot(-0+2i)", (float) Math.PI, -v, new ComplexF(-0.0f, 2.0f).acot());
+        same("acot(+0-2i)", 0.0f, v, new ComplexF(0.0f, -2.0f).acot());
+        same("acot(-0-2i)", (float) Math.PI, v, new ComplexF(-0.0f, -2.0f).acot());
+        // the branch points themselves
+        float h = (float) (Math.PI / 2.0);
+        same("acot(i)", h, -INF, new ComplexF(0.0f, 1.0f).acot());
+        same("acot(-i)", h, INF, new ComplexF(0.0f, -1.0f).acot());
+        // inside the unit disc there is no cut at all
+        float worst = 0.0f;
+        ComplexF prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexF w = new ComplexF((float) (0.9 * Math.cos(ang)),
+                    (float) (0.9 * Math.sin(ang))).acot();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " inside the unit disc", worst < 0.01f);
+        // and outside it there is one, of exactly PI
+        float up = new ComplexF(1.0e-7f, 2.0f).acot().re();
+        float dn = new ComplexF(-1.0e-7f, 2.0f).acot().re();
+        assertTrue("the ray does not jump by PI: " + (dn - up),
+                Math.abs(dn - up - (float) Math.PI) < 1.0e-5f);
+    }
+
+    @Test
+    public void testAcotIsNotAtanOfTheReciprocal() {
+        // the price of the continuous branch: they differ by exactly PI in the
+        // left half plane, and agree in the right one
+        for (float x : new float[] { -0.5f, -1.0f, -2.0f, -100.0f }) {
+            ComplexF z = new ComplexF(x, 0.0f);
+            float diff = z.acot().re() - z.inv().atan().re();
+            assertTrue("at " + x + " the difference is " + diff,
+                    Math.abs(diff - (float) Math.PI) < 1.0e-6f);
+        }
+        for (float x : new float[] { 0.5f, 1.0f, 2.0f, 100.0f }) {
+            ComplexF z = new ComplexF(x, 0.0f);
+            assertEquals("at " + x, z.inv().atan().re(), z.acot().re(), 1.0e-7f);
+        }
+    }
+
+    @Test
+    public void testAcotFarOutWhereTheSubtractionWouldDie() {
+        // PI/2 - atan(z) loses every digit here, which is why the reciprocal
+        // form carries the far field
+        for (float x : new float[] { 1.0e4f, 1.0e8f, 1.0e15f, 1.0e30f }) {
+            float want = 1.0f / x;
+            float got = new ComplexF(x, 0.0f).acot().re();
+            assertTrue("acot(" + x + ") = " + got + ", want " + want,
+                    Math.abs(got - want) <= 4.0f * Math.ulp(want));
+        }
+        same("acot(inf)", 0.0f, 0.0f, new ComplexF(INF, 0.0f).acot());
+        same("acot(-inf)", (float) Math.PI, 0.0f, new ComplexF(-INF, 0.0f).acot());
+        // below 1/MAX_VALUE the reciprocal overflows, and PI/2 is still right
+        assertEquals("acot of a subnormal", (float) (Math.PI / 2.0),
+                new ComplexF(1.0e-42f, 0.0f).acot().re(), 0.0f);
+    }
+
+    @Test
+    public void testAcothIsAcotTurnedByI() {
+        // coth(w) = i * cot(i * w), so acoth(z) = -i * acot(-i * z)
+        float v = (float) 0.5493061443340549;
+        same("acoth(2)", v, -0.0f, new ComplexF(2.0f, 0.0f).acoth());
+        same("acoth(-2)", -v, -0.0f, new ComplexF(-2.0f, 0.0f).acoth());
+        same("acoth(2i)", 0.0f, (float) -0.4636476090008061, new ComplexF(0.0f, 2.0f).acoth());
+        // its cut is the mirror image, on the real rays |Re z| >= 1
+        float up = new ComplexF(2.0f, 1.0e-7f).acoth().im();
+        float dn = new ComplexF(2.0f, -1.0e-7f).acoth().im();
+        assertTrue("the real ray does not jump by PI: " + (up - dn),
+                Math.abs(Math.abs(up - dn) - (float) Math.PI) < 1.0e-5f);
+        // the branch points
+        float h = (float) (Math.PI / 2.0);
+        same("acoth(1)", INF, -h, new ComplexF(1.0f, 0.0f).acoth());
+        same("acoth(-1)", -INF, -h, new ComplexF(-1.0f, 0.0f).acoth());
+    }
+
+    @Test
+    public void testAcotAndAcothSpreadNan() {
+        same("acot(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).acot());
+        same("acot(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).acot());
+        same("acoth(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).acoth());
+        same("acoth(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).acoth());
+        same("cot(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).cot());
+        same("coth(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).coth());
+    }
+
+    @Test
+    public void testAcotIsSharpNextToTheBranchPoints() {
+        // the ring just outside the unit circle, where the reciprocal form
+        // threw the distance to +-i away; the double intermediates make every
+        // one of these correctly rounded, so the comparison is bitwise
+        same("acot(0.0553,-1.03645)", 0.4804397f, 1.7130831f,
+                new ComplexF(0.0553f, -1.03645f).acot());
+        same("acot(0.01,1)", 0.7828982f, -2.649165f, new ComplexF(0.01f, 1.0f).acot());
+        same("acot(-0.01,1)", 2.3586946f, -2.649165f, new ComplexF(-0.01f, 1.0f).acot());
+        same("acot(0.001,-0.9995)", 1.0169812f, 3.7445357f,
+                new ComplexF(0.001f, -0.9995f).acot());
+        same("acot(1e-4,1.01)", 0.004974962f, -2.651628f,
+                new ComplexF(1.0e-4f, 1.01f).acot());
+        same("acot(-1e-4,-1.0001)", 2.74896f, 4.7784405f,
+                new ComplexF(-1.0e-4f, -1.0001f).acot());
+        same("acot(0.25,1.05)", 0.6260245f, -1.0459526f, new ComplexF(0.25f, 1.05f).acot());
+        same("acot(3.9,0.5)", 0.24734169f, -0.030414125f, new ComplexF(3.9f, 0.5f).acot());
+        // and acoth is the same statement turned by i
+        same("acoth(1.03645,0.0553)", 1.7130831f, -0.4804397f,
+                new ComplexF(1.03645f, 0.0553f).acoth());
+    }
+
+    @Test
+    public void testAcotHasNoSeamWhereTheFormChanges() {
+        // the form changes at |z| = 1 and at |z| = 4, and crossing must not step
+        for (double seam : new double[] { 1.0, 4.0 }) {
+            for (int k = 0; k < 720; ++k) {
+                double ang = 2.0 * Math.PI * k / 720.0;
+                double c = Math.cos(ang);
+                double s = Math.sin(ang);
+                if (seam == 1.0 && Math.abs(c) < 1.0e-3) {
+                    continue; // the branch points, where acot is unbounded
+                }
+                double in = seam * (1.0 - 1.0e-7);
+                double out = seam * (1.0 + 1.0e-7);
+                ComplexF lo = new ComplexF((float) (in * c), (float) (in * s)).acot();
+                ComplexF hi = new ComplexF((float) (out * c), (float) (out * s)).acot();
+                float step = Math.max(Math.abs(hi.re() - lo.re()), Math.abs(hi.im() - lo.im()));
+                assertTrue("a step of " + step + " across |z| = " + seam, step < 1.0e-3f);
+            }
+        }
+    }
+
+    /** how far f * parent is from one, in ulp, or zero where it says nothing */
+    private static double off(ComplexF f, ComplexF parent) {
+        if (f.isNan() || f.isInfinite() || parent.isNan() || parent.isInfinite()) {
+            return 0.0;
+        }
+        ComplexF p = f.mul(parent);
+        if (p.isNan() || p.isInfinite()) {
+            return 0.0;
+        }
+        return Math.max(Math.abs(p.re() - 1.0f), Math.abs(p.im())) / Math.ulp(1.0f);
+    }
+
+    @Test
+    public void testTheReciprocalsAreTheReciprocals() {
+        // the only thing the four have to be, and inv is exact enough that
+        // they are - so this identity is the whole accuracy test outside the
+        // overflow band
+        double worst = 0.0;
+        for (int e = -12; e <= 12; ++e) {
+            double m = Math.pow(10.0, e);
+            for (int k = 0; k < 16; ++k) {
+                double ang = 2.0 * Math.PI * k / 16.0;
+                ComplexF z = new ComplexF((float) (m * Math.cos(ang)), (float) (m * Math.sin(ang)));
+                worst = Math.max(worst, off(z.sec(), z.cos()));
+                worst = Math.max(worst, off(z.csc(), z.sin()));
+                worst = Math.max(worst, off(z.sech(), z.cosh()));
+                worst = Math.max(worst, off(z.csch(), z.sinh()));
+            }
+        }
+        for (int i = 0; i < SPECIAL.length; ++i) {
+            ComplexF z = z(i);
+            worst = Math.max(worst, off(z.sec(), z.cos()));
+            worst = Math.max(worst, off(z.csc(), z.sin()));
+            worst = Math.max(worst, off(z.sech(), z.cosh()));
+            worst = Math.max(worst, off(z.csch(), z.sinh()));
+        }
+        assertTrue("the reciprocal identity is off by " + worst + " ulp", worst <= 2.0);
+        same("sec(1)", 1.8508158f, 0.0f, new ComplexF(1.0f, 0.0f).sec());
+        same("csc(1)", 1.1883951f, -0.0f, new ComplexF(1.0f, 0.0f).csc());
+        same("sech(1)", 0.64805424f, -0.0f, new ComplexF(1.0f, 0.0f).sech());
+        same("csch(1)", 0.8509181f, -0.0f, new ComplexF(1.0f, 0.0f).csch());
+    }
+
+    @Test
+    public void testSechAndCschSurviveTheOverflowBand() {
+        // cosh overflows at 89.42 and inv a little earlier, but 1/cosh is
+        // representable to 104.67 - that whole band came back as a flat zero
+        for (float x : new float[] { 89.5f, 90.0f, 95.0f, 100.0f, 103.0f }) {
+            ComplexF z = new ComplexF(x, 1.0f);
+            ComplexF h = new ComplexF(x / 2.0f, 0.5f).exp();
+            for (ComplexF f : new ComplexF[] { z.sech(), z.csch() }) {
+                assertTrue("a flat zero at x = " + x, f.re() != 0.0f || f.im() != 0.0f);
+                // exp is verified, and f * e^z is two out here; the tolerance is
+                // the subnormal's own resolution, nothing else
+                ComplexF two = f.mul(h).mul(h);
+                float tol = 8.0f * Math.ulp(f.re()) / Math.abs(f.re());
+                assertEquals("f * e^z at x = " + x, 2.0f, two.re(), tol);
+                assertEquals("and its imaginary part at x = " + x, 0.0f, two.im(), tol);
+            }
+        }
+        // past the band the value is gone for good, and only the sign is left
+        same("sech(105,1)", 0.0f, -0.0f, new ComplexF(105.0f, 1.0f).sech());
+        same("csch(105,1)", 0.0f, -0.0f, new ComplexF(105.0f, 1.0f).csch());
+    }
+
+    @Test
+    public void testSechIsEvenAndCschIsOddInTheBand() {
+        // the direction is the second thing the flat zero used to destroy
+        for (float y : new float[] { 1.0f, -1.0f, 2.5f, -2.5f }) {
+            ComplexF p = new ComplexF(95.0f, y);
+            ComplexF m = new ComplexF(-95.0f, -y);
+            same("sech even at " + y, p.sech().re(), p.sech().im(), m.sech());
+            same("csch odd at " + y, -p.csch().re(), -p.csch().im(), m.csch());
+        }
+    }
+
+    @Test
+    public void testTheOverflowBandHasNoSeam() {
+        // walking into the band, every step must be the ordinary e^0.01
+        float prev = Float.NaN;
+        for (float x = 88.0f; x < 91.0f; x += 0.01f) {
+            float v = new ComplexF(x, 1.0f).sech().re();
+            assertTrue("a flat zero at x = " + x, v != 0.0f);
+            if (!Float.isNaN(prev)) {
+                float q = prev / v;
+                assertTrue("a step of " + q + " at x = " + x, q > 1.0f && q < 1.02f);
+            }
+            prev = v;
+        }
+    }
+
+    @Test
+    public void testTheReciprocalsAtThePolesAndAtInfinity() {
+        // csc and csch have their pole at the origin, and this library has one
+        // infinity without a direction; the turn in csc must not give it one
+        for (int i = 0; i < 4; ++i) {
+            same("csc at zero " + i, INF, INF, z(i).csc());
+            same("csch at zero " + i, INF, INF, z(i).csch());
+        }
+        same("sec(+0,+0)", 1.0f, 0.0f, new ComplexF(0.0f, 0.0f).sec());
+        same("sec(-0,+0)", 1.0f, -0.0f, new ComplexF(-0.0f, 0.0f).sec());
+        same("sech(+0,+0)", 1.0f, -0.0f, new ComplexF(0.0f, 0.0f).sech());
+        same("sech(-0,+0)", 1.0f, 0.0f, new ComplexF(-0.0f, 0.0f).sech());
+        // at infinity the reciprocal is a zero, and that has no direction either
+        same("sech(inf)", 0.0f, 0.0f, new ComplexF(INF, 0.0f).sech());
+        same("csch(-inf)", 0.0f, 0.0f, new ComplexF(-INF, 0.0f).csch());
+        same("sec(0,inf)", 0.0f, 0.0f, new ComplexF(0.0f, INF).sec());
+        same("csc(0,inf)", 0.0f, 0.0f, new ComplexF(0.0f, INF).csc());
+        same("csc(0,-inf)", 0.0f, 0.0f, new ComplexF(0.0f, -INF).csc());
+        // cos of an infinite real is NaN, so its reciprocal is one too
+        same("sec(inf)", NAN, NAN, new ComplexF(INF, 0.0f).sec());
+        same("csc(inf)", NAN, NAN, new ComplexF(INF, 0.0f).csc());
+        same("sech(1,inf)", NAN, NAN, new ComplexF(1.0f, INF).sech());
+        same("csc(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).csc());
+        same("sech(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).sech());
+        same("csch(NaN,NaN)", NAN, NAN, new ComplexF(NAN, NAN).csch());
+    }
+
+    @Test
+    public void testAsecIsSharpNextToTheBranchPoints() {
+        // taking the reciprocal first throws the distance to +-1 away, which
+        // costs up to 4.8e11 ulp; the double intermediates make every one of
+        // these correctly rounded, so the comparison is bitwise
+        same("asec(1.01,1e-4)", 0.1408376f, 6.9835345e-4f,
+                new ComplexF(1.01f, 1.0e-4f).asec());
+        same("asec(0.999,-5e-4)", 0.010878537f, -0.046038758f,
+                new ComplexF(0.999f, -5.0e-4f).asec());
+        same("asec(-1.02,0.003)", 2.9426665f, 0.014590759f,
+                new ComplexF(-1.02f, 0.003f).asec());
+        same("asec(-0.9995,-2e-4)", 3.1353827f, -0.032232918f,
+                new ComplexF(-0.9995f, -2.0e-4f).asec());
+        same("asec(1,1e-8)", 1.0e-4f, 1.0e-4f, new ComplexF(1.0f, 1.0e-8f).asec());
+        same("asec(-1,1e-6)", 3.1405926f, 9.999996e-4f,
+                new ComplexF(-1.0f, 1.0e-6f).asec());
+        same("asec(0.5,0.25)", 0.53523844f, 1.2321615f,
+                new ComplexF(0.5f, 0.25f).asec());
+        // and asech is the same statement turned by i
+        same("asech(1.01,1e-4)", 6.9835345e-4f, -0.1408376f,
+                new ComplexF(1.01f, 1.0e-4f).asech());
+    }
+
+    @Test
+    public void testAsecPutsItsCutOnTheSegment() {
+        // on (-1, 1) the sign of the zero picks the side, and +0 is the limit
+        // from above
+        float v = (float) 1.3169578969248166;
+        same("asec(0.5+0i)", 0.0f, v, new ComplexF(0.5f, 0.0f).asec());
+        same("asec(0.5-0i)", 0.0f, -v, new ComplexF(0.5f, -0.0f).asec());
+        same("asec(-0.5+0i)", (float) Math.PI, v, new ComplexF(-0.5f, 0.0f).asec());
+        same("asec(-0.5-0i)", (float) Math.PI, -v, new ComplexF(-0.5f, -0.0f).asec());
+        assertEquals("the +0 side is not the limit from above", v,
+                new ComplexF(0.5f, 1.0e-30f).asec().im(), 0.0f);
+        // the branch points, and outside the segment there is no cut at all
+        same("asec(1)", 0.0f, 0.0f, new ComplexF(1.0f, 0.0f).asec());
+        same("asec(-1)", (float) Math.PI, 0.0f, new ComplexF(-1.0f, 0.0f).asec());
+        same("asec(2+0i)", (float) 1.0471975511965979, 0.0f, new ComplexF(2.0f, 0.0f).asec());
+        same("asec(2-0i)", (float) 1.0471975511965979, -0.0f, new ComplexF(2.0f, -0.0f).asec());
+        // a circle of radius 2 never meets the segment, so nothing jumps on it
+        float worst = 0.0f;
+        ComplexF prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexF w = new ComplexF((float) (2.0 * Math.cos(ang)),
+                    (float) (2.0 * Math.sin(ang))).asec();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " outside the segment", worst < 0.01f);
+    }
+
+    @Test
+    public void testAsechPutsItsCutsOnTheRealRays() {
+        // asech's cuts are the mirror image, (-inf, 0] and (1, inf)
+        float v = (float) 1.0471975511965979;
+        same("asech(2+0i)", 0.0f, -v, new ComplexF(2.0f, 0.0f).asech());
+        same("asech(2-0i)", 0.0f, v, new ComplexF(2.0f, -0.0f).asech());
+        same("asech(-2+0i)", 0.0f, (float) -2.0943951023931953,
+                new ComplexF(-2.0f, 0.0f).asech());
+        same("asech(-0.5+0i)", (float) 1.3169578969248166, (float) -Math.PI,
+                new ComplexF(-0.5f, 0.0f).asech());
+        // and between 0 and 1 there is no cut
+        same("asech(0.5+0i)", (float) 1.3169578969248166, -0.0f,
+                new ComplexF(0.5f, 0.0f).asech());
+        same("asech(0.5-0i)", (float) 1.3169578969248166, 0.0f,
+                new ComplexF(0.5f, -0.0f).asech());
+        same("asech(1)", 0.0f, -0.0f, new ComplexF(1.0f, 0.0f).asech());
+        same("asech(-1)", 0.0f, (float) -Math.PI, new ComplexF(-1.0f, 0.0f).asech());
+    }
+
+    @Test
+    public void testAsecSurvivesWhereTheReciprocalOverflows() {
+        // inv works in float and overflows at the bottom of the range; asec
+        // takes its reciprocal in double, so the value is still there
+        assertTrue("the reciprocal does not overflow here after all",
+                new ComplexF(Float.MIN_VALUE, Float.MIN_VALUE).inv().isInfinite());
+        same("asec(MIN,MIN)", 0.7853982f, 103.6255f,
+                new ComplexF(Float.MIN_VALUE, Float.MIN_VALUE).asec());
+        same("asec(1e-38,2e-38)", 1.1071488f, 87.386665f,
+                new ComplexF(1.0e-38f, 2.0e-38f).asec());
+        same("asec(1e30)", 1.5707964f, 0.0f, new ComplexF(1.0e30f, 0.0f).asec());
+    }
+
+    @Test
+    public void testAsecAtThePolesAndAtInfinity() {
+        // at the origin the modulus is unbounded and the real part is whatever
+        // direction one came from, so the one infinity stands there
+        for (int i = 0; i < 4; ++i) {
+            same("asec at zero " + i, INF, INF, z(i).asec());
+            same("asech at zero " + i, INF, INF, z(i).asech());
+        }
+        // an infinite modulus makes the reciprocal zero, whatever the direction
+        float h = (float) (Math.PI / 2.0);
+        same("asec(inf)", h, -0.0f, new ComplexF(INF, 0.0f).asec());
+        same("asec(-inf)", h, -0.0f, new ComplexF(-INF, 0.0f).asec());
+        same("asec(0,inf)", h, -0.0f, new ComplexF(0.0f, INF).asec());
+        same("asec(NaN,inf)", h, -0.0f, new ComplexF(NAN, INF).asec());
+        same("asech(inf)", 0.0f, h, new ComplexF(INF, 0.0f).asech());
+        same("asec(i)", h, (float) 0.881373587019543, new ComplexF(0.0f, 1.0f).asec());
+        same("asech(i)", (float) 0.881373587019543, -h, new ComplexF(0.0f, 1.0f).asech());
+        same("asec(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).asec());
+        same("asec(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).asec());
+        same("asech(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).asech());
+        same("asech(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).asech());
+    }
+
+    @Test
+    public void testAcscIsSharpNextToTheBranchPoints() {
+        // asin(inv(z)) throws the distance to +-1 away and costs up to 3.6e11
+        // ulp here; these are the correctly rounded values
+        same("acsc(1.01,1e-4)", 1.4299587f, -6.9835345e-4f,
+                new ComplexF(1.01f, 1.0e-4f).acsc());
+        same("acsc(0.999,-5e-4)", 1.5599178f, 0.046038758f,
+                new ComplexF(0.999f, -5.0e-4f).acsc());
+        same("acsc(-1.02,0.003)", -1.3718702f, -0.014590759f,
+                new ComplexF(-1.02f, 0.003f).acsc());
+        same("acsc(-0.9995,-2e-4)", -1.5645863f, 0.032232918f,
+                new ComplexF(-0.9995f, -2.0e-4f).acsc());
+        same("acsc(1,1e-8)", 1.5706964f, -1.0e-4f, new ComplexF(1.0f, 1.0e-8f).acsc());
+        same("acsc(-1,1e-6)", -1.5697962f, -9.999996e-4f,
+                new ComplexF(-1.0f, 1.0e-6f).acsc());
+        // and just outside the switch, where the identity would cancel instead
+        same("acsc(1.2,0.1)", 0.96420467f, -0.120684005f,
+                new ComplexF(1.2f, 0.1f).acsc());
+        same("acsc(3,-4)", 0.11875073f, 0.16044553f, new ComplexF(3.0f, -4.0f).acsc());
+        // acsch has its branch points at +-i, and gets there by the turn
+        same("acsch(1e-4,1.01)", 6.9835345e-4f, -1.4299587f,
+                new ComplexF(1.0e-4f, 1.01f).acsch());
+    }
+
+    @Test
+    public void testAcscPutsItsCutOnTheSegment() {
+        // on (-1, 1) the sign of the zero picks the side, and +0 is the limit
+        // from above
+        float v = (float) 1.3169578969248166;
+        float h = (float) (Math.PI / 2.0);
+        same("acsc(0.5+0i)", h, -v, new ComplexF(0.5f, 0.0f).acsc());
+        same("acsc(0.5-0i)", h, v, new ComplexF(0.5f, -0.0f).acsc());
+        same("acsc(-0.5+0i)", -h, -v, new ComplexF(-0.5f, 0.0f).acsc());
+        same("acsc(-0.5-0i)", -h, v, new ComplexF(-0.5f, -0.0f).acsc());
+        assertEquals("the +0 side is not the limit from above", -v,
+                new ComplexF(0.5f, 1.0e-30f).acsc().im(), 0.0f);
+        // the branch points, and outside the segment there is no cut at all
+        same("acsc(1)", h, -0.0f, new ComplexF(1.0f, 0.0f).acsc());
+        same("acsc(-1)", -h, -0.0f, new ComplexF(-1.0f, 0.0f).acsc());
+        same("acsc(2+0i)", (float) 0.5235987755982989, -0.0f, new ComplexF(2.0f, 0.0f).acsc());
+        same("acsc(2-0i)", (float) 0.5235987755982989, 0.0f, new ComplexF(2.0f, -0.0f).acsc());
+        // a circle of radius 2 never meets the segment, so nothing jumps on it
+        float worst = 0.0f;
+        ComplexF prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexF w = new ComplexF((float) (2.0 * Math.cos(ang)),
+                    (float) (2.0 * Math.sin(ang))).acsc();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " outside the segment", worst < 0.01f);
+    }
+
+    @Test
+    public void testAcschPutsItsCutOnTheImaginarySegment() {
+        // the turn by i carries the cut onto i*(-1, 1)
+        float v = (float) 1.3169578969248166;
+        float h = (float) (Math.PI / 2.0);
+        same("acsch(+0+0.5i)", v, -h, new ComplexF(0.0f, 0.5f).acsch());
+        same("acsch(-0+0.5i)", -v, -h, new ComplexF(-0.0f, 0.5f).acsch());
+        same("acsch(+0-0.5i)", v, h, new ComplexF(0.0f, -0.5f).acsch());
+        same("acsch(-0-0.5i)", -v, h, new ComplexF(-0.0f, -0.5f).acsch());
+        // outside it there is none
+        same("acsch(+0+2i)", 0.0f, (float) -0.5235987755982989, new ComplexF(0.0f, 2.0f).acsch());
+        same("acsch(-0+2i)", -0.0f, (float) -0.5235987755982989, new ComplexF(-0.0f, 2.0f).acsch());
+        // the branch point, and the real axis where acsch is real
+        same("acsch(i)", 0.0f, -h, new ComplexF(0.0f, 1.0f).acsch());
+        same("acsch(1)", (float) 0.881373587019543, -0.0f, new ComplexF(1.0f, 0.0f).acsch());
+        same("acsch(2)", (float) 0.48121182505960347, -0.0f, new ComplexF(2.0f, 0.0f).acsch());
+    }
+
+    @Test
+    public void testAcscSurvivesWhereTheReciprocalOverflows() {
+        // inv works in float and overflows at the bottom of the range; acsc
+        // switches to asin's asymptotic before that
+        assertTrue("the reciprocal does not overflow here after all",
+                new ComplexF(Float.MIN_VALUE, Float.MIN_VALUE).inv().isInfinite());
+        same("acsc(MIN,MIN)", 0.7853982f, -103.6255f,
+                new ComplexF(Float.MIN_VALUE, Float.MIN_VALUE).acsc());
+        same("acsc(1e-38,2e-38)", 0.46364757f, -87.386665f,
+                new ComplexF(1.0e-38f, 2.0e-38f).acsc());
+        // and where the real part itself is tiny, which is where writing it
+        // as PI/2 - atan2 would have thrown it away
+        same("acsc(MIN,1e-38)", 1.4012986e-7f, -88.19138f,
+                new ComplexF(Float.MIN_VALUE, 1.0e-38f).acsc());
+        same("acsc(-MIN,1e-38)", -1.4012986e-7f, -88.19138f,
+                new ComplexF(-Float.MIN_VALUE, 1.0e-38f).acsc());
+    }
+
+    @Test
+    public void testAcscAtThePolesAndAtInfinity() {
+        // at the origin the modulus is unbounded and the real part is whatever
+        // direction one came from, so the one infinity stands there
+        for (int i = 0; i < 4; ++i) {
+            same("acsc at zero " + i, INF, INF, z(i).acsc());
+            same("acsch at zero " + i, INF, INF, z(i).acsch());
+        }
+        // an infinite modulus makes the reciprocal zero, whatever the direction
+        same("acsc(inf)", 0.0f, 0.0f, new ComplexF(INF, 0.0f).acsc());
+        same("acsc(-inf)", 0.0f, 0.0f, new ComplexF(-INF, 0.0f).acsc());
+        same("acsc(0,inf)", 0.0f, 0.0f, new ComplexF(0.0f, INF).acsc());
+        same("acsc(NaN,inf)", 0.0f, 0.0f, new ComplexF(NAN, INF).acsc());
+        same("acsch(inf)", -0.0f, 0.0f, new ComplexF(INF, 0.0f).acsch());
+        same("acsc(i)", 0.0f, (float) -0.881373587019543, new ComplexF(0.0f, 1.0f).acsc());
+        same("acsc(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).acsc());
+        same("acsc(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).acsc());
+        same("acsch(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).acsch());
+        same("acsch(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).acsch());
+    }
+
+    @Test
+    public void testSincSurvivesTheOverflowBand() {
+        // sin overflows a float at |Im z| = 88.72, sin(z)/z only ln|z| later,
+        // so there is a wedge where the plain quotient is already Infinity
+        assertTrue("sin does not overflow here after all",
+                new ComplexF(1.0e30f, 120.0f).sin().isInfinite());
+        same("sinc(1e30,120)", -5.159101E21f, -3.9882164E21f,
+                new ComplexF(1.0e30f, 120.0f).sinc());
+        same("sinc(1e20,100)", 8.824775E22f, 1.01376865E23f,
+                new ComplexF(1.0e20f, 100.0f).sinc());
+        // cos(2.5) is negative, which copying the sign of y onto it would lose
+        same("sinc(2.5,-94)", -2.7810672E38f, 2.195095E38f,
+                new ComplexF(2.5f, -94.0f).sinc());
+        same("sinc(0,94)", INF, 0.0f, new ComplexF(0.0f, 94.0f).sinc());
+        same("sinhc(120,1e30)", -5.159101E21f, 3.9882164E21f,
+                new ComplexF(120.0f, 1.0e30f).sinhc());
+        // past 700 no float can hold the value, but the direction still stands
+        same("sinc(2.5,800)", -INF, -INF, new ComplexF(2.5f, 800.0f).sinc());
+        same("sinc(2.5,-800)", -INF, INF, new ComplexF(2.5f, -800.0f).sinc());
+        same("sinhc(800,2.5)", -INF, INF, new ComplexF(800.0f, 2.5f).sinhc());
+    }
+
+    @Test
+    public void testSincLetsEachComponentOverflowOnItsOwn() {
+        // one component going infinite must not erase the other
+        same("sinc(1e-20,120)", INF, -5.3888027E29f, new ComplexF(1.0e-20f, 120.0f).sinc());
+        same("sinc(-3,120)", -INF, INF, new ComplexF(-3.0f, 120.0f).sinc());
+        // and a zero component has to stay a zero, not turn into a NaN
+        same("sinc(0,800)", INF, 0.0f, new ComplexF(0.0f, 800.0f).sinc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAtTheOriginAndNextToIt() {
+        // one one, and no direction: all four zeros give the same
+        for (int i = 0; i < 4; ++i) {
+            same("sinc at zero " + i, 1.0f, 0.0f, z(i).sinc());
+            same("sinhc at zero " + i, 1.0f, 0.0f, z(i).sinhc());
+        }
+        // the singularity is removable, so nothing is lost next to it either
+        same("sinc(1e-20,0)", 1.0f, 0.0f, new ComplexF(1.0e-20f, 0.0f).sinc());
+        same("sinc(0,1e-20)", 1.0f, 0.0f, new ComplexF(0.0f, 1.0e-20f).sinc());
+        same("sinc(0.5)", 0.9588511f, 0.0f, new ComplexF(0.5f, 0.0f).sinc());
+        same("sinhc(0.5)", 1.0421906f, 0.0f, new ComplexF(0.5f, 0.0f).sinhc());
+        same("sinc(1,1)", 0.96671075f, -0.33174685f, new ComplexF(1.0f, 1.0f).sinc());
+        same("sinc(2.5,-0.75)", 0.21181421f, 0.32706177f,
+                new ComplexF(2.5f, -0.75f).sinc());
+        same("sinc(20,3)", 0.4794348f, 0.13249053f, new ComplexF(20.0f, 3.0f).sinc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAtThePolesAndAtInfinity() {
+        // an unbounded imaginary part leaves the modulus unbounded and the
+        // direction unsettled, so the one infinity stands there
+        same("sinc(0,inf)", INF, INF, new ComplexF(0.0f, INF).sinc());
+        same("sinc(0,-inf)", INF, INF, new ComplexF(0.0f, -INF).sinc());
+        same("sinc(inf,inf)", INF, INF, new ComplexF(INF, INF).sinc());
+        same("sinc(NaN,inf)", INF, INF, new ComplexF(NAN, INF).sinc());
+        same("sinhc(inf,0)", INF, INF, new ComplexF(INF, 0.0f).sinhc());
+        // along the real axis the sine stays bounded, so the quotient dies away
+        same("sinc(inf)", 0.0f, 0.0f, new ComplexF(INF, 0.0f).sinc());
+        same("sinc(-inf)", 0.0f, 0.0f, new ComplexF(-INF, 0.0f).sinc());
+        same("sinc(inf,1)", 0.0f, 0.0f, new ComplexF(INF, 1.0f).sinc());
+        same("sinc(inf,NaN)", 0.0f, 0.0f, new ComplexF(INF, NAN).sinc());
+        same("sinhc(0,inf)", 0.0f, 0.0f, new ComplexF(0.0f, INF).sinhc());
+        same("sinc(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).sinc());
+        same("sinc(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).sinc());
+        same("sinhc(NaN,1)", NAN, NAN, new ComplexF(NAN, 1.0f).sinhc());
+        same("sinhc(1,NaN)", NAN, NAN, new ComplexF(1.0f, NAN).sinhc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAreTheQuotients() {
+        float[][] ps = { { 1.0f, 1.0f }, { 2.5f, -0.75f }, { -4.0f, 3.0f }, { 20.0f, 3.0f },
+                { 0.25f, 0.0f }, { 0.0f, 0.25f }, { 1.0e-8f, 1.0e-8f }, { 80.0f, 0.5f } };
+        for (float[] p : ps) {
+            ComplexF z = new ComplexF(p[0], p[1]);
+            ComplexF a = z.sinc().mul(z);
+            ComplexF b = z.sinhc().mul(z);
+            float ts = 8.0f * Math.ulp(z.sin().abs());
+            float th = 8.0f * Math.ulp(z.sinh().abs());
+            assertEquals("sinc times z re at " + z, z.sin().re(), a.re(), ts);
+            assertEquals("sinc times z im at " + z, z.sin().im(), a.im(), ts);
+            assertEquals("sinhc times z re at " + z, z.sinh().re(), b.re(), th);
+            assertEquals("sinhc times z im at " + z, z.sinh().im(), b.im(), th);
+        }
+    }
+
+    @Test
+    public void testSinhcIsSincTurnedByI() {
+        float[][] ps = { { 1.0f, 1.0f }, { 2.5f, -0.75f }, { -4.0f, 80.0f }, { 1.0e-30f, 3.0f },
+                { 0.0f, 0.5f }, { 1.0e30f, 120.0f }, { 2.5f, 800.0f } };
+        for (float[] p : ps) {
+            ComplexF z = new ComplexF(p[0], p[1]);
+            ComplexF t = new ComplexF(-p[1], p[0]).sinc();
+            same("sinhc is the turn at " + z, t.re(), t.im(), z.sinhc());
+            // and the cardinal sine is even, down to the sign of a zero
+            ComplexF e = z.sinc();
+            ComplexF o = z.neg().sinc();
+            assertEquals("sinc is even re at " + z, e.re(), o.re(), 0.0f);
+            assertEquals("sinc is even im at " + z, e.im(), o.im(), 0.0f);
+        }
+    }
     // ================= the digests =================
     // one per left operand, folded over all 26 right operands
 
@@ -2167,6 +2901,20 @@ public final class ComplexFTest {
     private static final long ASIN_DIGEST = 0xAB0ADA9B66942105L;
     private static final long ACOS_DIGEST = 0x5B0067B2833E075BL;
     private static final long ACOSH_DIGEST = 0xF1C12B9C7AA71583L;
+    private static final long COT_DIGEST = 0xFC14B7F3F1FFA30FL;
+    private static final long COTH_DIGEST = 0xD05EE99586A2F5B8L;
+    private static final long ACOT_DIGEST = 0x8F7D465C6EAE6A5EL;
+    private static final long ACOTH_DIGEST = 0xA8104C63905DF746L;
+    private static final long SEC_DIGEST   = 0x133821E603BDF070L;
+    private static final long CSC_DIGEST   = 0x3595471864174910L;
+    private static final long SECH_DIGEST  = 0x315E7CC44085A0CAL;
+    private static final long CSCH_DIGEST  = 0xCBE17C45117CDF51L;
+    private static final long ASEC_DIGEST  = 0x05C30102A02206DBL;
+    private static final long ASECH_DIGEST = 0xC94155D56C57DE50L;
+    private static final long ACSC_DIGEST  = 0x7829B6B340D8F7AAL;
+    private static final long ACSCH_DIGEST = 0x9B71DB0E5FC8AAC6L;
+    private static final long SINC_DIGEST = 0xBDF5F8533B117201L;
+    private static final long SINHC_DIGEST = 0x801989F8B1714C38L;
     private static final long NTHROOT_DIGEST = 0x6A6E5C0A4B750BE8L;
     private static final long NTHROOTS_DIGEST = 0x6113FB7F79BEF113L;
     private static final long CONJ_DIGEST = 0x7D33B1ACC637F174L;
@@ -2174,5 +2922,5 @@ public final class ComplexFTest {
     private static final long ABS_DIGEST = 0x33688208A5C817EFL;
     private static final long ARG_DIGEST = 0xE488086C72363CF4L;
     private static final long HASH_DIGEST = 0xD54F0484F04C49ECL;
-    private static final long STRING_DIGEST = 0xF2471CAD00267BD5L;
+    private static final long STRING_DIGEST = 0x4C3BABE2655B0E22L;
 }

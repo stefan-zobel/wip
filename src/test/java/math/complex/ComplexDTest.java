@@ -105,6 +105,11 @@ public final class ComplexDTest {
         same(what + " im", wantIm, got.im());
     }
 
+    private static void near(String what, double wantRe, double wantIm, ComplexD got) {
+        assertEquals(what + " re", wantRe, got.re(), 4.0 * Math.ulp(wantRe));
+        assertEquals(what + " im", wantIm, got.im(), 4.0 * Math.ulp(wantIm));
+    }
+
     // ---------- exact arithmetic as the oracle ----------
 
     private void component(String what, BigDecimal want, BigDecimal mod2, double got, double tol) {
@@ -1745,6 +1750,34 @@ public final class ComplexDTest {
                 h = fold(h, v.acos());
             } else if (op.equals("acosh")) {
                 h = fold(h, v.acosh());
+            } else if (op.equals("cot")) {
+                h = fold(h, v.cot());
+            } else if (op.equals("coth")) {
+                h = fold(h, v.coth());
+            } else if (op.equals("acot")) {
+                h = fold(h, v.acot());
+            } else if (op.equals("acoth")) {
+                h = fold(h, v.acoth());
+            } else if (op.equals("sec")) {
+                h = fold(h, v.sec());
+            } else if (op.equals("csc")) {
+                h = fold(h, v.csc());
+            } else if (op.equals("sech")) {
+                h = fold(h, v.sech());
+            } else if (op.equals("csch")) {
+                h = fold(h, v.csch());
+            } else if (op.equals("asec")) {
+                h = fold(h, v.asec());
+            } else if (op.equals("asech")) {
+                h = fold(h, v.asech());
+            } else if (op.equals("acsc")) {
+                h = fold(h, v.acsc());
+            } else if (op.equals("acsch")) {
+                h = fold(h, v.acsch());
+            } else if (op.equals("sinc")) {
+                h = fold(h, v.sinc());
+            } else if (op.equals("sinhc")) {
+                h = fold(h, v.sinhc());
             } else if (op.equals("neg")) {
                 h = fold(h, v.neg());
             } else if (op.equals("abs")) {
@@ -1817,6 +1850,20 @@ public final class ComplexDTest {
         assertEquals("asin changed", ASIN_DIGEST, unary("asin"));
         assertEquals("acos changed", ACOS_DIGEST, unary("acos"));
         assertEquals("acosh changed", ACOSH_DIGEST, unary("acosh"));
+        assertEquals("cot changed", COT_DIGEST, unary("cot"));
+        assertEquals("coth changed", COTH_DIGEST, unary("coth"));
+        assertEquals("acot changed", ACOT_DIGEST, unary("acot"));
+        assertEquals("acoth changed", ACOTH_DIGEST, unary("acoth"));
+        assertEquals("sec changed", SEC_DIGEST, unary("sec"));
+        assertEquals("csc changed", CSC_DIGEST, unary("csc"));
+        assertEquals("sech changed", SECH_DIGEST, unary("sech"));
+        assertEquals("csch changed", CSCH_DIGEST, unary("csch"));
+        assertEquals("asec changed", ASEC_DIGEST, unary("asec"));
+        assertEquals("asech changed", ASECH_DIGEST, unary("asech"));
+        assertEquals("acsc changed", ACSC_DIGEST, unary("acsc"));
+        assertEquals("acsch changed", ACSCH_DIGEST, unary("acsch"));
+        assertEquals("sinc changed", SINC_DIGEST, unary("sinc"));
+        assertEquals("sinhc changed", SINHC_DIGEST, unary("sinhc"));
         assertEquals("conj changed", CONJ_DIGEST, unary("conj"));
         assertEquals("neg changed", NEG_DIGEST, unary("neg"));
         assertEquals("abs changed", ABS_DIGEST, unary("abs"));
@@ -1930,7 +1977,7 @@ public final class ComplexDTest {
 
     @Test
     public void testEveryNanBitPatternIsOneValue() {
-        // doubleToLongBits canonicalises them, and that part of the old
+        // doubleToLongBits canonicalizes them, and that part of the old
         // convention stays; doubleToRawLongBits would break it quietly
         ComplexD odd = new ComplexD(Double.longBitsToDouble(0x7ff8000000000001L), 1.0);
         ComplexD plain = new ComplexD(NAN, 1.0);
@@ -1950,7 +1997,8 @@ public final class ComplexDTest {
                 { -5.0, NAN }, { INF, NAN }, { NAN, INF }, { 1.0, NAN }, { NAN, 1.0 }, { NAN, NAN },
                 { -INF, NAN }, { NAN, -INF }, { 0.0, 0.0 }, { -0.0, -0.0 }, { 0.0, -0.0 } };
         String[] ops = { "exp", "ln", "sqrt", "sinh", "cosh", "tanh", "asinh", "asin", "acos",
-                "acosh", "atanh", "atan", "inv", "conj", "neg" };
+                "acosh", "atanh", "atan", "cot", "coth", "acot", "acoth", "sec", "csc", "sech", "csch", "asec", "asech", "acsc", "acsch", "sinc", "sinhc", "inv", "conj",
+                "neg" };
         for (int o = 0; o < ops.length; ++o) {
             for (int i = 0; i < pts.length; ++i) {
                 for (int j = 0; j < pts.length; ++j) {
@@ -1989,6 +2037,34 @@ public final class ComplexDTest {
             return z.acosh();
         } else if (op.equals("atanh")) {
             return z.atanh();
+        } else if (op.equals("cot")) {
+            return z.cot();
+        } else if (op.equals("coth")) {
+            return z.coth();
+        } else if (op.equals("acot")) {
+            return z.acot();
+        } else if (op.equals("acoth")) {
+            return z.acoth();
+        } else if (op.equals("sec")) {
+            return z.sec();
+        } else if (op.equals("csc")) {
+            return z.csc();
+        } else if (op.equals("sech")) {
+            return z.sech();
+        } else if (op.equals("csch")) {
+            return z.csch();
+        } else if (op.equals("asec")) {
+            return z.asec();
+        } else if (op.equals("asech")) {
+            return z.asech();
+        } else if (op.equals("acsc")) {
+            return z.acsc();
+        } else if (op.equals("acsch")) {
+            return z.acsch();
+        } else if (op.equals("sinc")) {
+            return z.sinc();
+        } else if (op.equals("sinhc")) {
+            return z.sinhc();
         } else if (op.equals("atan")) {
             return z.atan();
         } else if (op.equals("inv")) {
@@ -2036,9 +2112,37 @@ public final class ComplexDTest {
     @Test
     public void testToString() {
         assertEquals("+1.5000000000E+00  -2.5000000000E+00i", new ComplexD(1.5, -2.5).toString());
-        // both zeros print as positive
-        assertEquals("+0.0000000000E+00  +0.0000000000E+00i", new ComplexD(-0.0, -0.0).toString());
+        // the branch cuts read the sign of a zero, so the printout keeps it
+        assertEquals("-0.0000000000E+00  -0.0000000000E+00i", new ComplexD(-0.0, -0.0).toString());
         assertEquals("+1.50  -2.50i", new ComplexD(1.5, -2.5).toString("%.2f"));
+        assertEquals("-0.00  +0.00i", new ComplexD(-0.0, 0.0).toString("%.2f"));
+    }
+
+    @Test
+    public void testToStringTellsTheFourZerosApart() {
+        // printing both zeros alike had hidden three wrong expectations
+        ComplexD[] zeros = { new ComplexD(0.0, 0.0), new ComplexD(-0.0, -0.0),
+                new ComplexD(0.0, -0.0), new ComplexD(-0.0, 0.0) };
+        java.util.HashSet<String> seen = new java.util.HashSet<String>();
+        for (int i = 0; i < zeros.length; ++i) {
+            seen.add(zeros[i].toString());
+        }
+        assertEquals("four zeros, four printouts", 4, seen.size());
+        assertEquals("+0.0000000000E+00  -0.0000000000E+00i", new ComplexD(0.0, -0.0).toString());
+        assertEquals("-0.0000000000E+00  +0.0000000000E+00i", new ComplexD(-0.0, 0.0).toString());
+        // and sqrt is one of the operations that tell them apart
+        assertEquals("+0.0000000000E+00  +2.0000000000E+00i", new ComplexD(-4.0, 0.0).sqrt().toString());
+        assertEquals("+0.0000000000E+00  -2.0000000000E+00i", new ComplexD(-4.0, -0.0).sqrt().toString());
+    }
+
+    @Test
+    public void testToStringLeavesNanAndInfinityAlone() {
+        // only the zeros moved; format writes no sign of its own for a NaN
+        assertEquals("NAN  NANi", new ComplexD(NAN, NAN).toString());
+        assertEquals("a NaN carrying the sign bit", "NAN  NANi",
+                new ComplexD(Double.longBitsToDouble(0xfff8000000000000L), NAN).toString());
+        assertEquals("+INFINITY  -INFINITYi", new ComplexD(INF, -INF).toString());
+        assertEquals("-INFINITY  +INFINITYi", new ComplexD(-INF, INF).toString());
     }
 
     @Test
@@ -2054,6 +2158,650 @@ public final class ComplexDTest {
         assertEquals("isReal", "11111100000001100000000000", real.toString());
         assertEquals("isNan", "00000000000000000000111111", nan.toString());
         assertEquals("isInfinite", "00000000000001111111000011", infinite.toString());
+    }
+
+
+    @Test
+    public void testCotIsTheReciprocalOfTan() {
+        // the only thing cot has to be, and inv is exact enough that it is
+        for (int i = 0; i < SPECIAL.length; ++i) {
+            ComplexD z = z(i);
+            if (z.isNan() || z.cot().isNan()) {
+                continue;
+            }
+            ComplexD one = z.cot().mul(z.tan());
+            if (one.isNan() || one.isInfinite()) {
+                continue;
+            }
+            assertTrue("cot * tan at " + z + " gives " + one,
+                    Math.abs(one.re() - 1.0) <= 2.0 * Math.ulp(1.0)
+                            && Math.abs(one.im()) <= 2.0 * Math.ulp(1.0));
+        }
+        same("cot(1)", 0.6420926159343306, -0.0, new ComplexD(1.0, 0.0).cot());
+        same("coth(1)", 1.3130352854993315, -0.0, new ComplexD(1.0, 0.0).coth());
+        same("coth(i)", 0.0, -0.6420926159343306, new ComplexD(0.0, 1.0).coth());
+    }
+
+    @Test
+    public void testCotInTheFarFieldAndAtThePole() {
+        // tanh runs into 1 long before the range ends, so cot runs into -i
+        same("cot(1+700i)", 0.0, -1.0, new ComplexD(1.0, 700.0).cot());
+        same("coth(700+i)", 1.0, -0.0, new ComplexD(700.0, 1.0).coth());
+        // the pole is inv(0), the one infinity without a direction
+        same("cot(0)", INF, INF, new ComplexD(0.0, 0.0).cot());
+        same("coth(0)", INF, INF, new ComplexD(0.0, 0.0).coth());
+        same("coth(inf)", 1.0, -0.0, new ComplexD(INF, 0.0).coth());
+    }
+
+    @Test
+    public void testAcotIsAnalyticAtTheOrigin() {
+        // the cut runs along the rays |Im z| >= 1, not through the origin, so
+        // all four zeros answer PI/2 and only the zero of the result turns
+        same("acot(+0,+0)", Math.PI / 2.0, -0.0, new ComplexD(0.0, 0.0).acot());
+        same("acot(-0,+0)", Math.PI / 2.0, -0.0, new ComplexD(-0.0, 0.0).acot());
+        same("acot(+0,-0)", Math.PI / 2.0, 0.0, new ComplexD(0.0, -0.0).acot());
+        same("acot(-0,-0)", Math.PI / 2.0, 0.0, new ComplexD(-0.0, -0.0).acot());
+        // and the neighborhood agrees from every direction
+        assertTrue("from +x", Math.abs(new ComplexD(1.0e-9, 0.0).acot().re() - Math.PI / 2.0) < 2.0e-9);
+        assertTrue("from -x", Math.abs(new ComplexD(-1.0e-9, 0.0).acot().re() - Math.PI / 2.0) < 2.0e-9);
+        assertTrue("from +y", Math.abs(new ComplexD(0.0, 1.0e-9).acot().re() - Math.PI / 2.0) < 2.0e-9);
+        assertTrue("from -y", Math.abs(new ComplexD(0.0, -1.0e-9).acot().re() - Math.PI / 2.0) < 2.0e-9);
+        // acoth is the same statement turned by i
+        same("acoth(+0,+0)", 0.0, -Math.PI / 2.0, new ComplexD(0.0, 0.0).acoth());
+        same("acoth(-0,+0)", -0.0, -Math.PI / 2.0, new ComplexD(-0.0, 0.0).acoth());
+    }
+
+    @Test
+    public void testAcotPutsItsCutOnTheRays() {
+        // on the cut the sign of the zero picks the side, a difference of PI
+        same("acot(+0+2i)", 0.0, -0.5493061443340549, new ComplexD(0.0, 2.0).acot());
+        same("acot(-0+2i)", Math.PI, -0.5493061443340549, new ComplexD(-0.0, 2.0).acot());
+        same("acot(+0-2i)", 0.0, 0.5493061443340549, new ComplexD(0.0, -2.0).acot());
+        same("acot(-0-2i)", Math.PI, 0.5493061443340549, new ComplexD(-0.0, -2.0).acot());
+        // the branch points themselves
+        same("acot(i)", Math.PI / 2.0, -INF, new ComplexD(0.0, 1.0).acot());
+        same("acot(-i)", Math.PI / 2.0, INF, new ComplexD(0.0, -1.0).acot());
+        // inside the unit disc there is no cut at all: walk a circle and the
+        // largest step is the sampling
+        double worst = 0.0;
+        ComplexD prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexD w = new ComplexD(0.9 * Math.cos(ang), 0.9 * Math.sin(ang)).acot();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " inside the unit disc", worst < 0.01);
+        // and outside it there is one, of exactly PI
+        double up = new ComplexD(1.0e-13, 2.0).acot().re();
+        double dn = new ComplexD(-1.0e-13, 2.0).acot().re();
+        assertTrue("the ray does not jump by PI: " + (dn - up), Math.abs(dn - up - Math.PI) < 1.0e-12);
+    }
+
+    @Test
+    public void testAcotIsNotAtanOfTheReciprocal() {
+        // the price of the continuous branch: they differ by exactly PI in the
+        // left half plane, and agree in the right one
+        for (double x : new double[] { -0.5, -1.0, -2.0, -100.0 }) {
+            ComplexD z = new ComplexD(x, 0.0);
+            double diff = z.acot().re() - z.inv().atan().re();
+            assertTrue("at " + x + " the difference is " + diff,
+                    Math.abs(diff - Math.PI) < 1.0e-14);
+        }
+        for (double x : new double[] { 0.5, 1.0, 2.0, 100.0 }) {
+            ComplexD z = new ComplexD(x, 0.0);
+            assertEquals("at " + x, z.inv().atan().re(), z.acot().re(), 1.0e-15);
+        }
+    }
+
+    @Test
+    public void testAcotFarOutWhereTheSubtractionWouldDie() {
+        // PI/2 - atan(z) loses every digit here, which is why the reciprocal
+        // form carries the far field; the truth is 1/x - 1/(3x^3)
+        for (double x : new double[] { 1.0e5, 1.0e8, 1.0e12, 1.0e15, 1.0e100 }) {
+            double want = 1.0 / x - 1.0 / (3.0 * x * x * x);
+            double got = new ComplexD(x, 0.0).acot().re();
+            assertTrue("acot(" + x + ") = " + got + ", want " + want,
+                    Math.abs(got - want) <= 4.0 * Math.ulp(want));
+        }
+        // and the far end stays finite and on the right branch
+        same("acot(inf)", 0.0, 0.0, new ComplexD(INF, 0.0).acot());
+        same("acot(-inf)", Math.PI, 0.0, new ComplexD(-INF, 0.0).acot());
+        // below 1/MAX_VALUE the reciprocal overflows, and PI/2 is still right
+        assertEquals("acot of a subnormal", Math.PI / 2.0, new ComplexD(1.0e-320, 0.0).acot().re(), 0.0);
+    }
+
+    @Test
+    public void testAcothIsAcotTurnedByI() {
+        // coth(w) = i * cot(i * w), so acoth(z) = -i * acot(-i * z)
+        same("acoth(2)", 0.5493061443340549, -0.0, new ComplexD(2.0, 0.0).acoth());
+        same("acoth(-2)", -0.5493061443340549, -0.0, new ComplexD(-2.0, 0.0).acoth());
+        same("acoth(2i)", 0.0, -0.4636476090008061, new ComplexD(0.0, 2.0).acoth());
+        // its cut is the mirror image, on the real rays |Re z| >= 1
+        same("acoth(2+0i)", 0.5493061443340549, -0.0, new ComplexD(2.0, 0.0).acoth());
+        double up = new ComplexD(2.0, 1.0e-13).acoth().im();
+        double dn = new ComplexD(2.0, -1.0e-13).acoth().im();
+        assertTrue("the real ray does not jump by PI: " + (up - dn),
+                Math.abs(Math.abs(up - dn) - Math.PI) < 1.0e-12);
+        // the branch points
+        same("acoth(1)", INF, -Math.PI / 2.0, new ComplexD(1.0, 0.0).acoth());
+        same("acoth(-1)", -INF, -Math.PI / 2.0, new ComplexD(-1.0, 0.0).acoth());
+    }
+
+    @Test
+    public void testAcotAndAcothSpreadNan() {
+        same("acot(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).acot());
+        same("acot(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).acot());
+        same("acoth(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).acoth());
+        same("acoth(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).acoth());
+        same("cot(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).cot());
+        same("coth(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).coth());
+    }
+
+    @Test
+    public void testAcotIsSharpNextToTheBranchPoints() {
+        // the ring just outside the unit circle, where the reciprocal form
+        // threw the distance to +-i away; the values are the 130 digit oracle
+        near("acot(0.0553,-1.03645)", 0.480439877367561, 1.7130832680220007,
+                new ComplexD(0.0553, -1.03645).acot());
+        near("acot(0.01,1)", 0.7828981842304692, -2.6491649331958946,
+                new ComplexD(0.01, 1.0).acot());
+        near("acot(-0.01,1)", 2.358694469359324, -2.6491649331958946,
+                new ComplexD(-0.01, 1.0).acot());
+        near("acot(0.001,-0.9995)", 1.0169719054030495, 3.744540388846149,
+                new ComplexD(0.001, -0.9995).acot());
+        near("acot(1e-6,1.01)", 4.975124361442784e-5, -2.6516524515295994,
+                new ComplexD(1.0e-6, 1.01).acot());
+        near("acot(-1e-4,-1.0001)", 2.748918570641083, 4.778481981128063,
+                new ComplexD(-1.0e-4, -1.0001).acot());
+        near("acot(0.25,1.05)", 0.626024383187126, -1.0459525475075355,
+                new ComplexD(0.25, 1.05).acot());
+        near("acot(3.9,0.5)", 0.24734169601672873, -0.03041412681304506,
+                new ComplexD(3.9, 0.5).acot());
+        // and acoth is the same statement turned by i
+        near("acoth(1.03645,0.0553)", 1.7130832680220007, -0.480439877367561,
+                new ComplexD(1.03645, 0.0553).acoth());
+    }
+
+    @Test
+    public void testAcotHasNoSeamWhereTheFormChanges() {
+        // the form changes at |z| = 1 and at |z| = 4, and crossing must not step
+        for (double seam : new double[] { 1.0, 4.0 }) {
+            for (int k = 0; k < 720; ++k) {
+                double ang = 2.0 * Math.PI * k / 720.0;
+                double c = Math.cos(ang);
+                double s = Math.sin(ang);
+                if (seam == 1.0 && Math.abs(c) < 1.0e-3) {
+                    continue; // the branch points, where acot is unbounded
+                }
+                double in = seam * (1.0 - 1.0e-15);
+                double out = seam * (1.0 + 1.0e-15);
+                ComplexD lo = new ComplexD(in * c, in * s).acot();
+                ComplexD hi = new ComplexD(out * c, out * s).acot();
+                double step = Math.max(Math.abs(hi.re() - lo.re()), Math.abs(hi.im() - lo.im()));
+                assertTrue("a step of " + step + " across |z| = " + seam, step < 1.0e-11);
+            }
+        }
+    }
+
+    @Test
+    public void testAcotStopsTheDirectFormBeforeTheSquareOverflows() {
+        // x*x overflows above 1.3e154, so the direct form must end well below it
+        same("acot(1e200)", 1.0e-200, -0.0, new ComplexD(1.0e200, 0.0).acot());
+        same("acot(-1e200)", Math.PI, -0.0, new ComplexD(-1.0e200, 0.0).acot());
+        same("acot(1e200+1e200i)", 5.0e-201, -5.0e-201, new ComplexD(1.0e200, 1.0e200).acot());
+        same("acot(-1e200+1e200i)", Math.PI, -5.0e-201, new ComplexD(-1.0e200, 1.0e200).acot());
+    }
+
+    /** how far f * parent is from one, in ulp, or zero where it says nothing */
+    private static double off(ComplexD f, ComplexD parent) {
+        if (f.isNan() || f.isInfinite() || parent.isNan() || parent.isInfinite()) {
+            return 0.0;
+        }
+        ComplexD p = f.mul(parent);
+        if (p.isNan() || p.isInfinite()) {
+            return 0.0;
+        }
+        return Math.max(Math.abs(p.re() - 1.0), Math.abs(p.im())) / Math.ulp(1.0);
+    }
+
+    @Test
+    public void testTheReciprocalsAreTheReciprocals() {
+        // the only thing the four have to be, and inv is exact enough that
+        // they are - so this identity is the whole accuracy test outside the
+        // overflow band
+        double worst = 0.0;
+        for (int e = -20; e <= 20; ++e) {
+            double m = Math.pow(10.0, e);
+            for (int k = 0; k < 16; ++k) {
+                double ang = 2.0 * Math.PI * k / 16.0;
+                ComplexD z = new ComplexD(m * Math.cos(ang), m * Math.sin(ang));
+                worst = Math.max(worst, off(z.sec(), z.cos()));
+                worst = Math.max(worst, off(z.csc(), z.sin()));
+                worst = Math.max(worst, off(z.sech(), z.cosh()));
+                worst = Math.max(worst, off(z.csch(), z.sinh()));
+            }
+        }
+        for (int i = 0; i < SPECIAL.length; ++i) {
+            ComplexD z = z(i);
+            worst = Math.max(worst, off(z.sec(), z.cos()));
+            worst = Math.max(worst, off(z.csc(), z.sin()));
+            worst = Math.max(worst, off(z.sech(), z.cosh()));
+            worst = Math.max(worst, off(z.csch(), z.sinh()));
+        }
+        assertTrue("the reciprocal identity is off by " + worst + " ulp", worst <= 2.0);
+        same("sec(1)", 1.8508157176809255, 0.0, new ComplexD(1.0, 0.0).sec());
+        same("csc(1)", 1.1883951057781212, -0.0, new ComplexD(1.0, 0.0).csc());
+        same("sech(1)", 0.6480542736638853, -0.0, new ComplexD(1.0, 0.0).sech());
+        same("csch(1)", 0.8509181282393216, -0.0, new ComplexD(1.0, 0.0).csch());
+    }
+
+    @Test
+    public void testSechAndCschSurviveTheOverflowBand() {
+        // cosh overflows at 710.48 and inv a little earlier, but 1/cosh is
+        // representable to 745.13 - that whole band came back as a flat zero
+        for (double x : new double[] { 710.5, 711.0, 715.0, 720.0, 730.0, 740.0, 744.0 }) {
+            ComplexD z = new ComplexD(x, 1.0);
+            ComplexD h = new ComplexD(x / 2.0, 0.5).exp();
+            for (ComplexD f : new ComplexD[] { z.sech(), z.csch() }) {
+                assertTrue("a flat zero at x = " + x, f.re() != 0.0 || f.im() != 0.0);
+                // exp is verified, and f * e^z is two out here; the tolerance is
+                // the subnormal's own resolution, nothing else
+                ComplexD two = f.mul(h).mul(h);
+                double tol = 8.0 * Math.ulp(f.re()) / Math.abs(f.re());
+                assertEquals("f * e^z at x = " + x, 2.0, two.re(), tol);
+                assertEquals("and its imaginary part at x = " + x, 0.0, two.im(), tol);
+            }
+        }
+        // past the band the value is gone for good, and only the sign is left
+        same("sech(746,1)", 0.0, -0.0, new ComplexD(746.0, 1.0).sech());
+        same("csch(746,1)", 0.0, -0.0, new ComplexD(746.0, 1.0).csch());
+    }
+
+    @Test
+    public void testSechIsEvenAndCschIsOddInTheBand() {
+        // the direction is the second thing the flat zero used to destroy
+        for (double y : new double[] { 1.0, -1.0, 2.5, -2.5 }) {
+            ComplexD p = new ComplexD(720.0, y);
+            ComplexD m = new ComplexD(-720.0, -y);
+            same("sech even at " + y, p.sech().re(), p.sech().im(), m.sech());
+            same("csch odd at " + y, -p.csch().re(), -p.csch().im(), m.csch());
+        }
+    }
+
+    @Test
+    public void testTheOverflowBandHasNoSeam() {
+        // walking into the band, every step must be the ordinary e^0.01
+        double prev = Double.NaN;
+        for (double x = 709.0; x < 712.0; x += 0.01) {
+            double v = new ComplexD(x, 1.0).sech().re();
+            assertTrue("a flat zero at x = " + x, v != 0.0);
+            if (!Double.isNaN(prev)) {
+                double q = prev / v;
+                assertTrue("a step of " + q + " at x = " + x, q > 1.0 && q < 1.02);
+            }
+            prev = v;
+        }
+    }
+
+    @Test
+    public void testTheReciprocalsAtThePolesAndAtInfinity() {
+        // csc and csch have their pole at the origin, and this library has one
+        // infinity without a direction; the turn in csc must not give it one
+        for (int i = 0; i < 4; ++i) {
+            same("csc at zero " + i, INF, INF, z(i).csc());
+            same("csch at zero " + i, INF, INF, z(i).csch());
+        }
+        same("sec(+0,+0)", 1.0, 0.0, new ComplexD(0.0, 0.0).sec());
+        same("sec(-0,+0)", 1.0, -0.0, new ComplexD(-0.0, 0.0).sec());
+        same("sech(+0,+0)", 1.0, -0.0, new ComplexD(0.0, 0.0).sech());
+        same("sech(-0,+0)", 1.0, 0.0, new ComplexD(-0.0, 0.0).sech());
+        // at infinity the reciprocal is a zero, and that has no direction either
+        same("sech(inf)", 0.0, 0.0, new ComplexD(INF, 0.0).sech());
+        same("csch(-inf)", 0.0, 0.0, new ComplexD(-INF, 0.0).csch());
+        same("sec(0,inf)", 0.0, 0.0, new ComplexD(0.0, INF).sec());
+        same("csc(0,inf)", 0.0, 0.0, new ComplexD(0.0, INF).csc());
+        same("csc(0,-inf)", 0.0, 0.0, new ComplexD(0.0, -INF).csc());
+        // cos of an infinite real is NaN, so its reciprocal is one too
+        same("sec(inf)", NAN, NAN, new ComplexD(INF, 0.0).sec());
+        same("csc(inf)", NAN, NAN, new ComplexD(INF, 0.0).csc());
+        same("sech(1,inf)", NAN, NAN, new ComplexD(1.0, INF).sech());
+        same("csc(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).csc());
+        same("sech(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).sech());
+        same("csch(NaN,NaN)", NAN, NAN, new ComplexD(NAN, NAN).csch());
+    }
+
+    @Test
+    public void testAsecIsSharpNextToTheBranchPoints() {
+        // taking the reciprocal first throws the distance to +-1 away, which
+        // costs up to 4.8e11 ulp; these are the 130 digit oracle values
+        near("asec(1.01,1e-4)", 0.1408376626744981, 6.983531194957062e-4,
+                new ComplexD(1.01, 1.0e-4).asec());
+        near("asec(0.999,-5e-4)", 0.010878474157442801, -0.04603902209003508,
+                new ComplexD(0.999, -5.0e-4).asec());
+        near("asec(-1.02,0.003)", 2.942666374836713, 0.014590751694938963,
+                new ComplexD(-1.02, 0.003).asec());
+        near("asec(-0.9995,-2e-4)", 3.13538250831896, -0.032232219854273825,
+                new ComplexD(-0.9995, -2.0e-4).asec());
+        near("asec(1,1e-8)", 1.0000000041666667e-4, 9.999999958333333e-5,
+                new ComplexD(1.0, 1.0e-8).asec());
+        near("asec(-1,1e-6)", 3.140592653173127, 9.999995833330645e-4,
+                new ComplexD(-1.0, 1.0e-6).asec());
+        near("asec(0.5,0.25)", 0.5352384153948206, 1.2321615351709958,
+                new ComplexD(0.5, 0.25).asec());
+        // and asech is the same statement turned by i
+        near("asech(1.01,1e-4)", 6.983531194957062e-4, -0.1408376626744981,
+                new ComplexD(1.01, 1.0e-4).asech());
+        near("asech(-0.9995,-2e-4)", 0.032232219854273825, 3.13538250831896,
+                new ComplexD(-0.9995, -2.0e-4).asech());
+    }
+
+    @Test
+    public void testAsecPutsItsCutOnTheSegment() {
+        // on (-1, 1) the sign of the zero picks the side, and +0 is the limit
+        // from above
+        double v = 1.3169578969248166;
+        same("asec(0.5+0i)", 0.0, v, new ComplexD(0.5, 0.0).asec());
+        same("asec(0.5-0i)", 0.0, -v, new ComplexD(0.5, -0.0).asec());
+        same("asec(-0.5+0i)", Math.PI, v, new ComplexD(-0.5, 0.0).asec());
+        same("asec(-0.5-0i)", Math.PI, -v, new ComplexD(-0.5, -0.0).asec());
+        assertEquals("the +0 side is not the limit from above", v,
+                new ComplexD(0.5, 1.0e-170).asec().im(), 0.0);
+        // the branch points, and outside the segment there is no cut at all
+        same("asec(1)", 0.0, 0.0, new ComplexD(1.0, 0.0).asec());
+        same("asec(-1)", Math.PI, 0.0, new ComplexD(-1.0, 0.0).asec());
+        same("asec(2+0i)", 1.0471975511965979, 0.0, new ComplexD(2.0, 0.0).asec());
+        same("asec(2-0i)", 1.0471975511965979, -0.0, new ComplexD(2.0, -0.0).asec());
+        // a circle of radius 2 never meets the segment, so nothing jumps on it
+        double worst = 0.0;
+        ComplexD prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexD w = new ComplexD(2.0 * Math.cos(ang), 2.0 * Math.sin(ang)).asec();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " outside the segment", worst < 0.01);
+    }
+
+    @Test
+    public void testAsechPutsItsCutsOnTheRealRays() {
+        // asech's cuts are the mirror image, (-inf, 0] and (1, inf)
+        same("asech(2+0i)", 0.0, -1.0471975511965979, new ComplexD(2.0, 0.0).asech());
+        same("asech(2-0i)", 0.0, 1.0471975511965979, new ComplexD(2.0, -0.0).asech());
+        same("asech(-2+0i)", 0.0, -2.0943951023931953, new ComplexD(-2.0, 0.0).asech());
+        same("asech(-0.5+0i)", 1.3169578969248166, -Math.PI, new ComplexD(-0.5, 0.0).asech());
+        // and between 0 and 1 there is no cut
+        same("asech(0.5+0i)", 1.3169578969248166, -0.0, new ComplexD(0.5, 0.0).asech());
+        same("asech(0.5-0i)", 1.3169578969248166, 0.0, new ComplexD(0.5, -0.0).asech());
+        same("asech(1)", 0.0, -0.0, new ComplexD(1.0, 0.0).asech());
+        same("asech(-1)", 0.0, -Math.PI, new ComplexD(-1.0, 0.0).asech());
+    }
+
+    @Test
+    public void testAsecSurvivesWhereTheReciprocalOverflows() {
+        // below 1/MAX_VALUE the reciprocal is Infinity and the whole value was
+        // lost; the asymptotic keeps it, subnormal components and all
+        assertTrue("the reciprocal does not overflow here after all",
+                new ComplexD(6.0e-321, 8.0e-321).inv().isInfinite());
+        near("asec(6e-311,8e-311)", 0.9272952180016023, 714.494526008714,
+                new ComplexD(6.0e-311, 8.0e-311).asec());
+        near("asec(6e-321,8e-321)", 0.9273940517629033, 737.5205857146394,
+                new ComplexD(6.0e-321, 8.0e-321).asec());
+        near("asec(MIN,MIN)", 0.7853981633974483, 744.7866455116613,
+                new ComplexD(Double.MIN_VALUE, Double.MIN_VALUE).asec());
+    }
+
+    @Test
+    public void testAsecAtThePolesAndAtInfinity() {
+        // at the origin the modulus is unbounded and the real part is whatever
+        // direction one came from, so the one infinity stands there
+        for (int i = 0; i < 4; ++i) {
+            same("asec at zero " + i, INF, INF, z(i).asec());
+            same("asech at zero " + i, INF, INF, z(i).asech());
+        }
+        // an infinite modulus makes the reciprocal zero, whatever the direction
+        same("asec(inf)", Math.PI / 2.0, -0.0, new ComplexD(INF, 0.0).asec());
+        same("asec(-inf)", Math.PI / 2.0, -0.0, new ComplexD(-INF, 0.0).asec());
+        same("asec(0,inf)", Math.PI / 2.0, -0.0, new ComplexD(0.0, INF).asec());
+        same("asec(NaN,inf)", Math.PI / 2.0, -0.0, new ComplexD(NAN, INF).asec());
+        same("asech(inf)", 0.0, Math.PI / 2.0, new ComplexD(INF, 0.0).asech());
+        same("asec(i)", Math.PI / 2.0, 0.881373587019543, new ComplexD(0.0, 1.0).asec());
+        same("asech(i)", 0.881373587019543, -Math.PI / 2.0, new ComplexD(0.0, 1.0).asech());
+        same("asec(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).asec());
+        same("asec(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).asec());
+        same("asech(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).asech());
+        same("asech(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).asech());
+    }
+
+    @Test
+    public void testAcscIsSharpNextToTheBranchPoints() {
+        // asin(inv(z)) throws the distance to +-1 away and costs up to 3.6e11
+        // ulp here; these are the 130 digit oracle values
+        near("acsc(1.01,1e-4)", 1.4299586641203985, -6.983531194957062e-4,
+                new ComplexD(1.01, 1.0e-4).acsc());
+        near("acsc(0.999,-5e-4)", 1.5599178526374538, 0.04603902209003508,
+                new ComplexD(0.999, -5.0e-4).acsc());
+        near("acsc(-1.02,0.003)", -1.371870048041816, -0.014590751694938963,
+                new ComplexD(-1.02, 0.003).acsc());
+        near("acsc(-0.9995,-2e-4)", -1.5645861815240636, 0.032232219854273825,
+                new ComplexD(-0.9995, -2.0e-4).acsc());
+        near("acsc(1,1e-8)", 1.57069632679448, -9.999999958333333e-5,
+                new ComplexD(1.0, 1.0e-8).acsc());
+        near("acsc(-1,1e-6)", -1.5697963263782302, -9.999995833330645e-4,
+                new ComplexD(-1.0, 1.0e-6).acsc());
+        // and just outside the switch, where the identity would cancel instead
+        near("acsc(1.2,0.1)", 0.9642047381542691, -0.12068401873708458,
+                new ComplexD(1.2, 0.1).acsc());
+        near("acsc(3,-4)", 0.11875073130741176, 0.16044553377450493,
+                new ComplexD(3.0, -4.0).acsc());
+        // acsch has its branch points at +-i, and gets there by the turn
+        near("acsch(1e-4,1.01)", 6.983531194957062e-4, -1.4299586641203985,
+                new ComplexD(1.0e-4, 1.01).acsch());
+        near("acsch(-2e-4,-0.9995)", -0.032232219854273825, 1.5645861815240636,
+                new ComplexD(-2.0e-4, -0.9995).acsch());
+    }
+
+    @Test
+    public void testAcscPutsItsCutOnTheSegment() {
+        // on (-1, 1) the sign of the zero picks the side, and +0 is the limit
+        // from above
+        double v = 1.3169578969248166;
+        double h = Math.PI / 2.0;
+        same("acsc(0.5+0i)", h, -v, new ComplexD(0.5, 0.0).acsc());
+        same("acsc(0.5-0i)", h, v, new ComplexD(0.5, -0.0).acsc());
+        same("acsc(-0.5+0i)", -h, -v, new ComplexD(-0.5, 0.0).acsc());
+        same("acsc(-0.5-0i)", -h, v, new ComplexD(-0.5, -0.0).acsc());
+        assertEquals("the +0 side is not the limit from above", -v,
+                new ComplexD(0.5, 1.0e-170).acsc().im(), 0.0);
+        // the branch points, and outside the segment there is no cut at all
+        same("acsc(1)", h, -0.0, new ComplexD(1.0, 0.0).acsc());
+        same("acsc(-1)", -h, -0.0, new ComplexD(-1.0, 0.0).acsc());
+        same("acsc(2+0i)", 0.5235987755982989, -0.0, new ComplexD(2.0, 0.0).acsc());
+        same("acsc(2-0i)", 0.5235987755982989, 0.0, new ComplexD(2.0, -0.0).acsc());
+        // a circle of radius 2 never meets the segment, so nothing jumps on it
+        double worst = 0.0;
+        ComplexD prev = null;
+        for (int k = 0; k <= 3600; ++k) {
+            double ang = 2.0 * Math.PI * k / 3600.0;
+            ComplexD w = new ComplexD(2.0 * Math.cos(ang), 2.0 * Math.sin(ang)).acsc();
+            if (prev != null) {
+                worst = Math.max(worst,
+                        Math.max(Math.abs(w.re() - prev.re()), Math.abs(w.im() - prev.im())));
+            }
+            prev = w;
+        }
+        assertTrue("a jump of " + worst + " outside the segment", worst < 0.01);
+    }
+
+    @Test
+    public void testAcschPutsItsCutOnTheImaginarySegment() {
+        // the turn by i carries the cut onto i*(-1, 1)
+        double v = 1.3169578969248166;
+        double h = Math.PI / 2.0;
+        same("acsch(+0+0.5i)", v, -h, new ComplexD(0.0, 0.5).acsch());
+        same("acsch(-0+0.5i)", -v, -h, new ComplexD(-0.0, 0.5).acsch());
+        same("acsch(+0-0.5i)", v, h, new ComplexD(0.0, -0.5).acsch());
+        same("acsch(-0-0.5i)", -v, h, new ComplexD(-0.0, -0.5).acsch());
+        // outside it there is none
+        same("acsch(+0+2i)", 0.0, -0.5235987755982989, new ComplexD(0.0, 2.0).acsch());
+        same("acsch(-0+2i)", -0.0, -0.5235987755982989, new ComplexD(-0.0, 2.0).acsch());
+        // the branch point, and the real axis where acsch is real
+        same("acsch(i)", 0.0, -h, new ComplexD(0.0, 1.0).acsch());
+        same("acsch(1)", 0.881373587019543, -0.0, new ComplexD(1.0, 0.0).acsch());
+        same("acsch(2)", 0.48121182505960347, -0.0, new ComplexD(2.0, 0.0).acsch());
+    }
+
+    @Test
+    public void testAcscSurvivesWhereTheReciprocalOverflows() {
+        // below 1/MAX_VALUE the reciprocal is Infinity and the value was lost;
+        // PI/2 - atan2(|y|, x) written as atan2(x, |y|) cancels nowhere
+        assertTrue("the reciprocal does not overflow here after all",
+                new ComplexD(6.0e-321, 8.0e-321).inv().isInfinite());
+        near("acsc(6e-311,8e-311)", 0.6435011087932943, -714.494526008714,
+                new ComplexD(6.0e-311, 8.0e-311).acsc());
+        near("acsc(6e-321,8e-321)", 0.6434022750319932, -737.5205857146394,
+                new ComplexD(6.0e-321, 8.0e-321).acsc());
+        near("acsc(MIN,MIN)", 0.7853981633974483, -744.7866455116613,
+                new ComplexD(Double.MIN_VALUE, Double.MIN_VALUE).acsc());
+        // and where the real part itself is tiny, which is where writing it
+        // as PI/2 - atan2 would have thrown it away
+        near("acsc(1e-320,1e-310)", 9.99988867182686e-11, -714.4945260087142,
+                new ComplexD(1.0e-320, 1.0e-310).acsc());
+        near("acsc(-1e-320,1e-310)", -9.99988867182686e-11, -714.4945260087142,
+                new ComplexD(-1.0e-320, 1.0e-310).acsc());
+    }
+
+    @Test
+    public void testAcscAtThePolesAndAtInfinity() {
+        // at the origin the modulus is unbounded and the real part is whatever
+        // direction one came from, so the one infinity stands there
+        for (int i = 0; i < 4; ++i) {
+            same("acsc at zero " + i, INF, INF, z(i).acsc());
+            same("acsch at zero " + i, INF, INF, z(i).acsch());
+        }
+        // an infinite modulus makes the reciprocal zero, whatever the direction
+        same("acsc(inf)", 0.0, 0.0, new ComplexD(INF, 0.0).acsc());
+        same("acsc(-inf)", 0.0, 0.0, new ComplexD(-INF, 0.0).acsc());
+        same("acsc(0,inf)", 0.0, 0.0, new ComplexD(0.0, INF).acsc());
+        same("acsc(NaN,inf)", 0.0, 0.0, new ComplexD(NAN, INF).acsc());
+        same("acsch(inf)", -0.0, 0.0, new ComplexD(INF, 0.0).acsch());
+        same("acsc(i)", 0.0, -0.881373587019543, new ComplexD(0.0, 1.0).acsc());
+        same("acsc(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).acsc());
+        same("acsc(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).acsc());
+        same("acsch(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).acsch());
+        same("acsch(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).acsch());
+    }
+
+    @Test
+    public void testSincSurvivesTheOverflowBand() {
+        // sin overflows at |Im z| = 710.4758, sin(z)/z only ln|z| later, so
+        // there is a wedge where the plain quotient is already Infinity
+        assertTrue("sin does not overflow here after all",
+                new ComplexD(1.0, 712.0).sin().isInfinite());
+        near("sinc(1,712)", 6.276911646249123E305, -9.745577609708701E305,
+                new ComplexD(1.0, 712.0).sinc());
+        // cos(2.5) is negative, which copying the sign of y onto it would lose
+        near("sinc(2.5,713)", -2.5142709150625284E306, -1.8919879218025157E306,
+                new ComplexD(2.5, 713.0).sinc());
+        near("sinc(0,716)", 6.293699812721396E307, 0.0, new ComplexD(0.0, 716.0).sinc());
+        near("sinc(-3,-714.5)", -1.3923208533539997E307, -2.044388782063196E306,
+                new ComplexD(-3.0, -714.5).sinc());
+        // the wedge is ln|z| wide, so a large real part carries it a long way
+        near("sinc(1e5,720)", 7.024772971865934E305, -2.4592836110691795E307,
+                new ComplexD(1.0e5, 720.0).sinc());
+        near("sinc(1e300,1400)", -4.2066392775375587E307, -2.959402552439904E307,
+                new ComplexD(1.0e300, 1400.0).sinc());
+        near("sinhc(713,2.5)", -2.5142709150625284E306, 1.8919879218025157E306,
+                new ComplexD(713.0, 2.5).sinhc());
+    }
+
+    @Test
+    public void testSincLetsEachComponentOverflowOnItsOwn() {
+        // scaling the pair at once would erase the second component the moment
+        // the first went infinite
+        same("sinc(1e-20,900)", INF, -INF, new ComplexD(1.0e-20, 900.0).sinc());
+        same("sinc(-1e-20,900)", INF, INF, new ComplexD(-1.0e-20, 900.0).sinc());
+        same("sinc(1e-30,1000)", INF, -INF, new ComplexD(1.0e-30, 1000.0).sinc());
+        // and a zero component has to stay a zero, not turn into a NaN
+        same("sinc(0,800)", INF, 0.0, new ComplexD(0.0, 800.0).sinc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAtTheOriginAndNextToIt() {
+        // one one, and no direction: all four zeros give the same
+        for (int i = 0; i < 4; ++i) {
+            same("sinc at zero " + i, 1.0, 0.0, z(i).sinc());
+            same("sinhc at zero " + i, 1.0, 0.0, z(i).sinhc());
+        }
+        // the singularity is removable, so nothing is lost next to it either
+        near("sinc(1e-160,0)", 1.0, 0.0, new ComplexD(1.0e-160, 0.0).sinc());
+        near("sinc(0,1e-160)", 1.0, 0.0, new ComplexD(0.0, 1.0e-160).sinc());
+        ComplexD t = new ComplexD(1.0e-8, 1.0e-8).sinc();
+        assertEquals("sinc(1e-8,1e-8) re", 1.0, t.re(), 4.0 * Math.ulp(1.0));
+        assertEquals("sinc(1e-8,1e-8) im", 0.0, t.im(), 4.0 * Math.ulp(1.0));
+        near("sinc(0.5)", 0.958851077208406, 0.0, new ComplexD(0.5, 0.0).sinc());
+        near("sinhc(0.5)", 1.0421906109874948, 0.0, new ComplexD(0.5, 0.0).sinhc());
+        near("sinc(2)", 0.45464871341284085, 0.0, new ComplexD(2.0, 0.0).sinc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAtThePolesAndAtInfinity() {
+        // an unbounded imaginary part leaves the modulus unbounded and the
+        // direction unsettled, so the one infinity stands there
+        same("sinc(0,inf)", INF, INF, new ComplexD(0.0, INF).sinc());
+        same("sinc(0,-inf)", INF, INF, new ComplexD(0.0, -INF).sinc());
+        same("sinc(inf,inf)", INF, INF, new ComplexD(INF, INF).sinc());
+        same("sinc(NaN,inf)", INF, INF, new ComplexD(NAN, INF).sinc());
+        same("sinhc(inf,0)", INF, INF, new ComplexD(INF, 0.0).sinhc());
+        // along the real axis the sine stays bounded, so the quotient dies away
+        same("sinc(inf)", 0.0, 0.0, new ComplexD(INF, 0.0).sinc());
+        same("sinc(-inf)", 0.0, 0.0, new ComplexD(-INF, 0.0).sinc());
+        same("sinc(inf,1)", 0.0, 0.0, new ComplexD(INF, 1.0).sinc());
+        same("sinc(inf,NaN)", 0.0, 0.0, new ComplexD(INF, NAN).sinc());
+        same("sinhc(0,inf)", 0.0, 0.0, new ComplexD(0.0, INF).sinhc());
+        same("sinc(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).sinc());
+        same("sinc(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).sinc());
+        same("sinhc(NaN,1)", NAN, NAN, new ComplexD(NAN, 1.0).sinhc());
+        same("sinhc(1,NaN)", NAN, NAN, new ComplexD(1.0, NAN).sinhc());
+    }
+
+    @Test
+    public void testTheCardinalSinesAreTheQuotients() {
+        double[][] ps = { { 1.0, 1.0 }, { 2.5, -0.75 }, { -4.0, 3.0 }, { 20.0, 3.0 },
+                { 0.25, 0.0 }, { 0.0, 0.25 }, { 1.0e-8, 1.0e-8 }, { 700.0, 0.5 } };
+        for (double[] p : ps) {
+            ComplexD z = new ComplexD(p[0], p[1]);
+            ComplexD a = z.sinc().mul(z);
+            ComplexD b = z.sinhc().mul(z);
+            assertEquals("sinc times z re at " + z, z.sin().re(), a.re(),
+                    8.0 * Math.ulp(z.sin().abs()));
+            assertEquals("sinc times z im at " + z, z.sin().im(), a.im(),
+                    8.0 * Math.ulp(z.sin().abs()));
+            assertEquals("sinhc times z re at " + z, z.sinh().re(), b.re(),
+                    8.0 * Math.ulp(z.sinh().abs()));
+            assertEquals("sinhc times z im at " + z, z.sinh().im(), b.im(),
+                    8.0 * Math.ulp(z.sinh().abs()));
+        }
+    }
+
+    @Test
+    public void testSinhcIsSincTurnedByI() {
+        double[][] ps = { { 1.0, 1.0 }, { 2.5, -0.75 }, { -4.0, 700.0 }, { 1.0e-300, 3.0 },
+                { 0.0, 0.5 }, { 713.0, 2.5 }, { 1.0e300, 1400.0 } };
+        for (double[] p : ps) {
+            ComplexD z = new ComplexD(p[0], p[1]);
+            ComplexD t = new ComplexD(-p[1], p[0]).sinc();
+            same("sinhc is the turn at " + z, t.re(), t.im(), z.sinhc());
+            // and the cardinal sine is even, down to the sign of a zero
+            near("sinc is even at " + z, z.sinc().re(), z.sinc().im(), z.neg().sinc());
+        }
     }
 
     // ================= the digests =================
@@ -2146,6 +2894,20 @@ public final class ComplexDTest {
     private static final long ASIN_DIGEST = 0xDEF56D62C58A1C55L;
     private static final long ACOS_DIGEST = 0x7A0B0634C62275C7L;
     private static final long ACOSH_DIGEST = 0xB4E0E132DDB074F9L;
+    private static final long COT_DIGEST = 0x8B01F173D12D36D4L;
+    private static final long COTH_DIGEST = 0xEBD81FF6C15594F1L;
+    private static final long ACOT_DIGEST = 0x45A866F18AA22CF0L;
+    private static final long ACOTH_DIGEST = 0x863DD2D67E15B7D6L;
+    private static final long SEC_DIGEST   = 0xB0EE8F70D1398B7FL;
+    private static final long CSC_DIGEST   = 0x6B22DD7DDF1375B0L;
+    private static final long SECH_DIGEST  = 0xBA128FFD3E364383L;
+    private static final long CSCH_DIGEST  = 0x8ECC24B861069AF7L;
+    private static final long ASEC_DIGEST  = 0x73F37ACE85F6057EL;
+    private static final long ASECH_DIGEST = 0xFD834A155CCAC102L;
+    private static final long ACSC_DIGEST  = 0xA9B268B8875902CEL;
+    private static final long ACSCH_DIGEST = 0x924A74011865124CL;
+    private static final long SINC_DIGEST = 0x07B0D7079F713734L;
+    private static final long SINHC_DIGEST = 0xA179567DB1BB4D6BL;
     private static final long NTHROOT_DIGEST = 0x13D7EFEE24C3D43FL;
     private static final long NTHROOTS_DIGEST = 0x34C1B57CE5FD60C1L;
     private static final long CONJ_DIGEST = 0x7177CD7F280B4735L;
@@ -2153,5 +2915,5 @@ public final class ComplexDTest {
     private static final long ABS_DIGEST = 0x1EB710824629C9F6L;
     private static final long ARG_DIGEST = 0x07645CBA6F24888EL;
     private static final long HASH_DIGEST = 0xEB1D52173FAB84AAL;
-    private static final long STRING_DIGEST = 0x5B9CF0D5CCD44834L;
+    private static final long STRING_DIGEST = 0xC06FFF11282FD340L;
 }
