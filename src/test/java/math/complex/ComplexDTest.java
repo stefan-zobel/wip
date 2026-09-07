@@ -1837,9 +1837,9 @@ public final class ComplexDTest {
         assertFalse("different imaginary part", a.equals(new ComplexD(1.0, 2.5)));
         assertFalse("null", a.equals(null));
         assertFalse("a foreign class", a.equals("1+2i"));
-        // one value in every NaN
-        assertTrue("NaN class", new ComplexD(NAN, 1.0).equals(ComplexD.NaN()));
-        assertTrue("NaN class", ComplexD.NaN().equals(new ComplexD(1.0, NAN)));
+        // a NaN component says nothing about the other one
+        assertFalse("NaN class", new ComplexD(NAN, 1.0).equals(ComplexD.NaN()));
+        assertFalse("NaN class", ComplexD.NaN().equals(new ComplexD(1.0, NAN)));
         assertFalse("NaN against a number", a.equals(ComplexD.NaN()));
         // the two zeros are told apart, because the branch cuts tell them apart
         assertFalse("signed zero", ComplexD.Zero().equals(new ComplexD(-0.0, -0.0)));
@@ -1849,8 +1849,8 @@ public final class ComplexDTest {
     public void testHashCodeFollowsEquals() {
         assertTrue("the two zeros", ComplexD.Zero().hashCode() != new ComplexD(-0.0, -0.0).hashCode());
         assertTrue("the two zeros", new ComplexD(0.0, -0.0).hashCode() != new ComplexD(-0.0, 0.0).hashCode());
-        assertEquals("every NaN", ComplexD.NaN().hashCode(), new ComplexD(NAN, 1.0).hashCode());
-        assertEquals("every NaN", new ComplexD(1.0, NAN).hashCode(), new ComplexD(NAN, 0.0).hashCode());
+        assertTrue("every NaN", ComplexD.NaN().hashCode() != new ComplexD(NAN, 1.0).hashCode());
+        assertTrue("every NaN", new ComplexD(1.0, NAN).hashCode() != new ComplexD(NAN, 0.0).hashCode());
         ComplexD a = new ComplexD(3.0, 4.0);
         assertEquals("stable", a.hashCode(), a.hashCode());
         assertEquals("equal values", a.hashCode(), new ComplexD(3.0, 4.0).hashCode());
@@ -1926,6 +1926,77 @@ public final class ComplexDTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testEveryNanBitPatternIsOneValue() {
+        // doubleToLongBits canonicalises them, and that part of the old
+        // convention stays; doubleToRawLongBits would break it quietly
+        ComplexD odd = new ComplexD(Double.longBitsToDouble(0x7ff8000000000001L), 1.0);
+        ComplexD plain = new ComplexD(NAN, 1.0);
+        assertTrue("two NaN bit patterns", odd.equals(plain));
+        assertEquals("two NaN bit patterns hashed apart", odd.hashCode(), plain.hashCode());
+        ComplexD odd2 = new ComplexD(2.0, Double.longBitsToDouble(0xfff8000000000003L));
+        ComplexD plain2 = new ComplexD(2.0, NAN);
+        assertTrue("a NaN with the sign bit set", odd2.equals(plain2));
+        assertEquals("hashed apart", odd2.hashCode(), plain2.hashCode());
+    }
+
+    @Test
+    public void testEqualsIsACongruence() {
+        // equal now means the same bits, so no operation can tell two equal
+        // values apart. The NaN class this replaced had 128 pairs that could.
+        double[][] pts = { { NAN, 0.0 }, { NAN, -0.0 }, { 0.0, NAN }, { -0.0, NAN }, { NAN, -5.0 },
+                { -5.0, NAN }, { INF, NAN }, { NAN, INF }, { 1.0, NAN }, { NAN, 1.0 }, { NAN, NAN },
+                { -INF, NAN }, { NAN, -INF }, { 0.0, 0.0 }, { -0.0, -0.0 }, { 0.0, -0.0 } };
+        String[] ops = { "exp", "ln", "sqrt", "sinh", "cosh", "tanh", "asinh", "asin", "acos",
+                "acosh", "atanh", "atan", "inv", "conj", "neg" };
+        for (int o = 0; o < ops.length; ++o) {
+            for (int i = 0; i < pts.length; ++i) {
+                for (int j = 0; j < pts.length; ++j) {
+                    ComplexD u = new ComplexD(pts[i][0], pts[i][1]);
+                    ComplexD v = new ComplexD(pts[j][0], pts[j][1]);
+                    if (!u.equals(v)) {
+                        continue;
+                    }
+                    assertTrue(ops[o] + " of two equal values differs: " + u + " / " + v,
+                            unary(u, ops[o]).equals(unary(v, ops[o])));
+                }
+            }
+        }
+    }
+
+    private static ComplexD unary(ComplexD z, String op) {
+        if (op.equals("exp")) {
+            return z.exp();
+        } else if (op.equals("ln")) {
+            return z.ln();
+        } else if (op.equals("sqrt")) {
+            return z.sqrt();
+        } else if (op.equals("sinh")) {
+            return z.sinh();
+        } else if (op.equals("cosh")) {
+            return z.cosh();
+        } else if (op.equals("tanh")) {
+            return z.tanh();
+        } else if (op.equals("asinh")) {
+            return z.asinh();
+        } else if (op.equals("asin")) {
+            return z.asin();
+        } else if (op.equals("acos")) {
+            return z.acos();
+        } else if (op.equals("acosh")) {
+            return z.acosh();
+        } else if (op.equals("atanh")) {
+            return z.atanh();
+        } else if (op.equals("atan")) {
+            return z.atan();
+        } else if (op.equals("inv")) {
+            return z.inv();
+        } else if (op.equals("conj")) {
+            return z.conj();
+        }
+        return z.neg();
     }
 
     @Test
@@ -2081,6 +2152,6 @@ public final class ComplexDTest {
     private static final long NEG_DIGEST = 0xCCDE060AE8009104L;
     private static final long ABS_DIGEST = 0x1EB710824629C9F6L;
     private static final long ARG_DIGEST = 0x07645CBA6F24888EL;
-    private static final long HASH_DIGEST = 0x250477F40D0C8712L;
+    private static final long HASH_DIGEST = 0xEB1D52173FAB84AAL;
     private static final long STRING_DIGEST = 0x5B9CF0D5CCD44834L;
 }

@@ -25,9 +25,9 @@ package math.complex;
  * componentwise, while {@link #exp()} keeps an exact zero, so a real argument
  * stays real even where the modulus is not a number. A NaN spreads
  * componentwise too; only against an infinite operand does a NaN component
- * count as zero, so that the direction survives. {@code equals} sees one value
- * in every NaN but tells {@code +0.0} from {@code -0.0}, because the branch
- * cuts do; {@code hashCode} follows.
+ * count as zero, so that the direction survives. {@code equals} compares the
+ * two components bit for bit, as {@code Arrays.equals} does for a
+ * {@code float[]}; {@code hashCode} follows.
  */
 public final class ComplexF {
 
@@ -788,11 +788,9 @@ public final class ComplexF {
         }
         if (that instanceof ComplexF) {
             ComplexF other = (ComplexF) that;
-            if (other.isNan()) {
-                return this.isNan();
-            }
-            // the two zeros stay apart: every function here reads the sign of a
-            // zero off the branch cut
+            // bit for bit, as Arrays.equals does for a double[]: the branch cuts
+            // read the sign of a zero, and a NaN component says nothing about
+            // the other one
             return Float.floatToIntBits(re) == Float.floatToIntBits(other.re)
                     && Float.floatToIntBits(im) == Float.floatToIntBits(other.im);
         }
@@ -801,14 +799,13 @@ public final class ComplexF {
 
     @Override
     public int hashCode() {
-        // equals() sees one value in every NaN but tells the two zeros
-        // apart, and the sign of a zero sits in the top bit alone, so the
-        // mixing has to spread it before the second component arrives
-        boolean nan = isNan();
+        // equals compares the components bit for bit, and the sign of a zero
+        // sits in the top bit alone, so the mixing has to spread it before the
+        // second component arrives
         long h = 0xCBF29CE484222325L;
-        h = (h ^ (Float.floatToIntBits(nan ? Float.NaN : re) & 0xFFFFFFFFL)) * 0x100000001B3L;
+        h = (h ^ (Float.floatToIntBits(re) & 0xFFFFFFFFL)) * 0x100000001B3L;
         h ^= h >>> 29;
-        h = (h ^ (Float.floatToIntBits(nan ? Float.NaN : im) & 0xFFFFFFFFL)) * 0x100000001B3L;
+        h = (h ^ (Float.floatToIntBits(im) & 0xFFFFFFFFL)) * 0x100000001B3L;
         h ^= h >>> 29;
         return (int) (h ^ (h >>> 32));
     }
