@@ -20,10 +20,12 @@ package math.complex;
  * <p>
  * Infinity keeps its direction (C99 Annex G): only a result that has none
  * collapses to {@link #Inf()} - the inverse of zero, a quotient by zero, a
- * divergent {@link #pow(float)}. {@code 0 * inf} and {@code 0 / 0} are
- * {@link #NaN()}. Sum, difference, negation, conjugation and {@link #ln()} are
- * componentwise, while {@link #exp()} keeps an exact zero, so a real argument
- * stays real even where the modulus is not a number. A NaN spreads
+ * divergent {@link #pow(float)}, and anything {@link #proj()} is given.
+ * {@code 0 * inf} and {@code 0 / 0} are {@link #NaN()}. Sum, difference,
+ * negation, conjugation and {@link #ln()} are componentwise, while
+ * {@link #exp()} keeps an exact zero, so a real argument stays real even where
+ * the modulus is not a number; {@link #log1p()} and {@link #expm1()} hold the
+ * digits that {@code ln(1+z)} and {@code exp(z)-1} lose near one. A NaN spreads
  * componentwise too; only against an infinite operand does a NaN component
  * count as zero, so that the direction survives. {@code equals} compares the
  * two components bit for bit, as {@code Arrays.equals} does for a
@@ -205,6 +207,33 @@ public final class ComplexF {
         return new ComplexF((float) Math.log(abs), phi);
     }
 
+    /**
+     * ln(1 + z), accurate where 1 + z is close to one.
+     *
+     * @return the natural logarithm of one plus this complex number
+     */
+    public ComplexF log1p() {
+        if (isInfinite()) {
+            // an infinite component fixes the modulus even against a NaN one,
+            // and the 1 changes nothing out there
+            return add(ONE).ln();
+        }
+        if (im == 0.0f && re >= -1.0f) {
+            // on the axis this is the real log1p, the sign of the zero included
+            return new ComplexF((float) Math.log1p(re), im);
+        }
+        double x = re;
+        double y = im;
+        // |1 + z|^2 - 1; widened it cannot overflow, so there is no guard here
+        double u = x * (2.0 + x) + y * y;
+        if (u > -0.5) {
+            return new ComplexF((float) (0.5 * Math.log1p(u)), (float) Math.atan2(y, 1.0 + x));
+        }
+        // near -1 that u cancels against the 1, and the square does not
+        double a = 1.0 + x;
+        return new ComplexF((float) (0.5 * Math.log(a * a + y * y)), (float) Math.atan2(y, a));
+    }
+
     public ComplexF exp() {
         double expRe = Math.exp(re);
         double c = Math.cos(im);
@@ -212,6 +241,23 @@ public final class ComplexF {
         // an exact zero stays zero even when expRe has overflown
         return new ComplexF((c == 0.0) ? (float) c : (float) (expRe * c),
                 (s == 0.0) ? (float) s : (float) (expRe * s));
+    }
+
+    /**
+     * exp(z) - 1, accurate where exp(z) is close to one.
+     *
+     * @return the exponential of this complex number, less one
+     */
+    public ComplexF expm1() {
+        // the components widen exactly, so the whole route runs in double; a
+        // float answer overflows long before the double product does, so there
+        // is nothing here to hand back to exp()
+        double e = Math.expm1(re);
+        double h = Math.sin(0.5 * im);
+        double s = Math.sin(im);
+        // cos(im) - 1 = -2 sin(im/2)^2, which does not cancel against the 1
+        return new ComplexF((float) (e * Math.cos(im) - 2.0 * h * h),
+                (s == 0.0) ? (float) s : (float) ((e + 1.0) * s));
     }
 
     /**
@@ -965,6 +1011,103 @@ public final class ComplexF {
         return ln().scale(exponent).exp();
     }
 
+    /** up to this many factors the straight product is worth its linear cost */
+    private static final int STRAIGHT = 256;
+
+    /**
+     * The integer power, as a product rather than through exp and ln.
+     *
+     * @param exponent the exponent
+     * @return this complex number raised to that power
+     */
+    public ComplexF pow(int exponent) {
+        if (isDegenerate()) {
+            return degeneratePow((float) exponent);
+        }
+        if (isNan()) {
+            return NAN;
+        }
+        // the components widen exactly, so the whole product runs in double and
+        // only the answer is rounded
+        double[] p = new double[2];
+        raise(re, im, Math.abs((long) exponent), p);
+        if (exponent >= 0) {
+            return new ComplexF((float) p[0], (float) p[1]);
+        }
+        // the two guards of inv(), one precision up
+        if (Double.isInfinite(p[0]) || Double.isInfinite(p[1])) {
+            return ZERO;
+        }
+        if (p[0] == 0.0 && p[1] == 0.0) {
+            return INF;
+        }
+        // inverting last costs one rounding, inverting first costs |n| of them
+        double[] r = new double[2];
+        divInto(1.0, 0.0, p[0], p[1], r, 0);
+        return new ComplexF((float) r[0], (float) r[1]);
+    }
+
+    // z to the m in double: straight below the threshold, which is more accurate
+    // at every degree, by squaring above it, where the linear cost is not earned
+    private static void raise(double x, double y, long m, double[] p) {
+        if (m == 0L) {
+            p[0] = 1.0;
+            p[1] = 0.0;
+            return;
+        }
+        if (m <= STRAIGHT) {
+            p[0] = x;
+            p[1] = y;
+            for (long k = 1L; k < m; ++k) {
+                mulInto(p, x, y);
+            }
+            return;
+        }
+        p[0] = 1.0;
+        p[1] = 0.0;
+        double[] b = { x, y };
+        while (m > 0L) {
+            if ((m & 1L) != 0L) {
+                mulInto(p, b[0], b[1]);
+            }
+            m >>= 1;
+            if (m > 0L) {
+                mulInto(b, b[0], b[1]);
+            }
+        }
+    }
+
+    // one complex multiplication in double, in mul()'s shape: an operand that
+    // has overflowed keeps its direction and loses its modulus
+    private static void mulInto(double[] p, double c, double d) {
+        double a = p[0];
+        double b = p[1];
+        if (Double.isInfinite(a) || Double.isInfinite(b) || Double.isInfinite(c)
+                || Double.isInfinite(d)) {
+            if (Double.isInfinite(a) || Double.isInfinite(b)) {
+                a = Math.copySign(Double.isInfinite(a) ? 1.0 : 0.0, a);
+                b = Math.copySign(Double.isInfinite(b) ? 1.0 : 0.0, b);
+            }
+            if (Double.isInfinite(c) || Double.isInfinite(d)) {
+                c = Math.copySign(Double.isInfinite(c) ? 1.0 : 0.0, c);
+                d = Math.copySign(Double.isInfinite(d) ? 1.0 : 0.0, d);
+            }
+            p[0] = wide(a * c - b * d);
+            p[1] = wide(a * d + b * c);
+            return;
+        }
+        p[0] = a * c - b * d;
+        p[1] = a * d + b * c;
+    }
+
+    // what unbounded() does, one precision up
+    private static double wide(double x) {
+        if (x == 0.0 || Double.isNaN(x)) {
+            return x;
+        }
+        return (x > 0.0) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
+    }
+
     public ComplexF pow(ComplexF exponent) {
         if (isDegenerate()) {
             return degeneratePow(exponent);
@@ -1059,6 +1202,15 @@ public final class ComplexF {
         return new ComplexF(-re, -im);
     }
 
+    /**
+     * The point at infinity, which this library keeps without a direction.
+     *
+     * @return {@link #Inf()} if this number is infinite, this number otherwise
+     */
+    public ComplexF proj() {
+        return isInfinite() ? INF : this;
+    }
+
     public boolean isReal() {
         return im == 0.0f && !Float.isNaN(re);
     }
@@ -1096,12 +1248,33 @@ public final class ComplexF {
         }
     }
 
+    /**
+     * The squared modulus, sharper and cheaper than {@link #abs()} squared. It
+     * is a double because {@code |z|^2} needs twice the exponent that z does.
+     *
+     * @return the squared absolute value of this complex number
+     */
+    public double abs2() {
+        if (isInfinite()) {
+            // an infinite component fixes the modulus, as it does in abs()
+            return Double.POSITIVE_INFINITY;
+        }
+        // the components widen exactly, so the whole square runs in double
+        double x = re;
+        double y = im;
+        return x * x + y * y;
+    }
+
     public boolean isNan() {
         return Float.isNaN(re) || Float.isNaN(im);
     }
 
     public boolean isInfinite() {
         return Float.isInfinite(re) || Float.isInfinite(im);
+    }
+
+    public boolean isFinite() {
+        return Float.isFinite(re) && Float.isFinite(im);
     }
 
     @Override

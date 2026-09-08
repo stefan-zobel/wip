@@ -49,6 +49,10 @@ public final class ComplexFTest {
     /** the real scalars used for scale and pow */
     private static final float[] SCALARS = { 0.0f, -0.0f, 1.0f, -1.0f, 2.0f, 0.5f, -2.5f, INF, -INF, NAN };
 
+    /** the integer exponents, on both sides of the threshold in pow(int) */
+    private static final int[] EXPONENTS = { 0, 1, -1, 2, -2, 3, -3, 8, 256, 257, -257, Integer.MAX_VALUE,
+            Integer.MIN_VALUE };
+
     /** the first exponent, the last one and the step of the test ensemble */
     private static final int MIN_EXP = -30;
     private static final int MAX_EXP = 30;
@@ -345,6 +349,196 @@ public final class ComplexFTest {
         assertTrue("the real part should overflow", Float.isInfinite(got.re()));
     }
 
+    /** the power series of ln(1+z) or of exp(z)-1 at 34 digits, |z| under one */
+    private static BigDecimal[] series(float x, float y, boolean log) {
+        BigDecimal a = big(x);
+        BigDecimal b = big(y);
+        BigDecimal pr = a;
+        BigDecimal pi = b;
+        BigDecimal sr = a;
+        BigDecimal si = b;
+        for (int n = 2; n <= 60; ++n) {
+            BigDecimal t = pr.multiply(a, MC).subtract(pi.multiply(b, MC), MC);
+            pi = pr.multiply(b, MC).add(pi.multiply(a, MC), MC);
+            pr = t;
+            BigDecimal d = new BigDecimal(n);
+            if (!log) {
+                // z^n / n!, the factorial carried in the power itself
+                pr = pr.divide(d, MC);
+                pi = pi.divide(d, MC);
+                sr = sr.add(pr, MC);
+                si = si.add(pi, MC);
+            } else if ((n & 1) == 0) {
+                sr = sr.subtract(pr.divide(d, MC), MC);
+                si = si.subtract(pi.divide(d, MC), MC);
+            } else {
+                sr = sr.add(pr.divide(d, MC), MC);
+                si = si.add(pi.divide(d, MC), MC);
+            }
+        }
+        return new BigDecimal[] { sr, si };
+    }
+
+    @Test
+    public void testLog1pAndExpm1AgainstTheirSeries() {
+        for (int e = -1; e >= -34; --e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                float x = (float) (r * Math.cos(angle(k)));
+                float y = (float) (r * Math.sin(angle(k)));
+                BigDecimal[] l = series(x, y, true);
+                // one float ulp is 1.2e-7, so this says correctly rounded
+                exact("log1p" + at(x, y), l[0], l[1], new ComplexF(x, y).log1p(), 1.0e-7);
+                BigDecimal[] p = series(x, y, false);
+                exact("expm1" + at(x, y), p[0], p[1], new ComplexF(x, y).expm1(), 1.0e-7);
+            }
+        }
+        assertTrue("too few points compared: " + compared, compared > 400);
+    }
+
+    @Test
+    public void testLog1pAndExpm1KeepWhatTheDifferenceLoses() {
+        ComplexF one = new ComplexF(1.0f, 0.0f);
+        // a hundredth of an ulp of one, so 1 + z rounds straight back to one
+        float x = 1.0e-9f;
+        float y = 2.0e-9f;
+        ComplexF z = new ComplexF(x, y);
+        BigDecimal[] l = series(x, y, true);
+        exact("log1p at 2e-9", l[0], l[1], z.log1p(), 1.0e-7);
+        BigDecimal[] p = series(x, y, false);
+        exact("expm1 at 2e-9", p[0], p[1], z.expm1(), 1.0e-7);
+        assertTrue("add(1).ln() has a real part left", z.add(one).ln().re() == 0.0f);
+        assertTrue("exp().sub(1) has a real part left", z.exp().sub(one).re() == 0.0f);
+        // exp is one on all of z = 2 k pi i, and the difference dies there too,
+        // six units away from the origin and further
+        for (int k = 1; k <= 4; ++k) {
+            float w = (float) (2.0 * Math.PI * k);
+            double s = Math.sin(w);
+            // cos(w) - 1 = -sin(w)^2 / (1 + cos(w)), which does not cancel
+            float want = (float) (-s * s / (1.0 + Math.cos(w)));
+            ComplexF got = new ComplexF(0.0f, w).expm1();
+            assertEquals("expm1 at 2*" + k + "*pi*i re", want, got.re(), 4.0f * Math.ulp(want));
+            same("expm1 at 2*" + k + "*pi*i im", (float) s, got.im());
+            assertTrue("exp().sub(1) has a real part left at 2*" + k + "*pi*i",
+                    new ComplexF(0.0f, w).exp().sub(one).re() == 0.0f);
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1OnTheRealAxis() {
+        for (int e = -34; e <= 34; ++e) {
+            float m = (float) Math.pow(10.0, e);
+            for (int s = 0; s < 2; ++s) {
+                float x = (s == 0) ? m : -m;
+                if (x > -1.0f) {
+                    same("log1p" + at(x, 0.0f), (float) Math.log1p(x), 0.0f,
+                            new ComplexF(x, 0.0f).log1p());
+                }
+                same("expm1" + at(x, 0.0f), (float) Math.expm1(x), 0.0f,
+                        new ComplexF(x, 0.0f).expm1());
+            }
+        }
+        // the sign of the zero rides through, as it does in Math
+        same("log1p(-0,+0)", -0.0f, 0.0f, new ComplexF(-0.0f, 0.0f).log1p());
+        same("log1p(+0,-0)", 0.0f, -0.0f, new ComplexF(0.0f, -0.0f).log1p());
+        same("expm1(-0,+0)", -0.0f, 0.0f, new ComplexF(-0.0f, 0.0f).expm1());
+        same("expm1(+0,-0)", 0.0f, -0.0f, new ComplexF(0.0f, -0.0f).expm1());
+        // below -1 the logarithm leaves the axis and the zero picks the side
+        same("log1p(-3,+0)", (float) Math.log(2.0), (float) Math.PI,
+                new ComplexF(-3.0f, 0.0f).log1p());
+        same("log1p(-3,-0)", (float) Math.log(2.0), (float) -Math.PI,
+                new ComplexF(-3.0f, -0.0f).log1p());
+        same("log1p(-1)", -INF, 0.0f, new ComplexF(-1.0f, 0.0f).log1p());
+        same("log1p(-1,-0)", -INF, -0.0f, new ComplexF(-1.0f, -0.0f).log1p());
+    }
+
+    @Test
+    public void testLog1pStaysSharpNextToMinusOne() {
+        // there |1+z|^2 - 1 runs into -1 and cancels against the 1, so the form
+        // that carries it answers -Infinity where the value is merely large
+        for (int e = -2; e >= -38; e -= 4) {
+            double d = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                float x = (float) (-1.0 + d * Math.cos(angle(k)));
+                float y = (float) (d * Math.sin(angle(k)));
+                ComplexF got = new ComplexF(x, y).log1p();
+                float want = (float) Math.log(Math.hypot(1.0 + (double) x, (double) y));
+                assertTrue("log1p next to -1" + at(x, y) + ": want " + want + ", got " + got.re(),
+                        Math.abs(got.re() - want) <= 4.0f * Math.ulp(want));
+                same("the angle next to -1" + at(x, y),
+                        (float) Math.atan2((double) y, 1.0 + (double) x), got.im());
+            }
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1AreInverse() {
+        for (int e = -1; e >= -34; --e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                ComplexF want = new ComplexF((float) (r * Math.cos(angle(k))),
+                        (float) (r * Math.sin(angle(k))));
+                // the same round trip through exp and ln keeps nothing at all
+                close("log1p(expm1 z)", want, want.expm1().log1p(), 1.0e-6);
+                close("expm1(log1p z)", want, want.log1p().expm1(), 1.0e-6);
+            }
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1FollowTheNaiveRouteWhereItIsDegenerate() {
+        ComplexF one = new ComplexF(1.0f, 0.0f);
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            if (!z.isInfinite() && !z.isNan()) {
+                // the finite rows are where the two are allowed to part company
+                continue;
+            }
+            ComplexF w = z.add(one).ln();
+            same("log1p" + at(v[0], v[1]), w.re(), w.im(), z.log1p());
+            ComplexF u = z.exp().sub(one);
+            same("expm1" + at(v[0], v[1]), u.re(), u.im(), z.expm1());
+        }
+        // and where they do part company the new route is the right one
+        same("log1p(-0,+0)", -0.0f, 0.0f, new ComplexF(-0.0f, 0.0f).log1p());
+        same("add(1).ln() there", 0.0f, 0.0f, new ComplexF(-0.0f, 0.0f).add(one).ln());
+        same("log1p(1e-38)", 1.0e-38f, 1.0e-38f, new ComplexF(1.0e-38f, 1.0e-38f).log1p());
+        same("add(1).ln() there", 0.0f, 1.0e-38f, new ComplexF(1.0e-38f, 1.0e-38f).add(one).ln());
+        same("expm1(1e-38)", 1.0e-38f, 1.0e-38f, new ComplexF(1.0e-38f, 1.0e-38f).expm1());
+        same("exp().sub(1) there", 0.0f, 1.0e-38f, new ComplexF(1.0e-38f, 1.0e-38f).exp().sub(one));
+    }
+
+    @Test
+    public void testLog1pAndExpm1AtTheEdges() {
+        // far out the 1 is beneath notice, and the widened square still fits
+        ComplexF far = new ComplexF(1.0e30f, 1.0e30f);
+        close("log1p far out", far.ln(), far.log1p(), 1.0e-7);
+        // the twin hands nothing back to exp(): the product runs in double, so
+        // a float answer overflows 200 orders before the product does
+        same("expm1(90,3) re", -INF, new ComplexF(90.0f, 3.0f).expm1().re());
+        assertTrue("expm1(90,3) im", isFinite(new ComplexF(90.0f, 3.0f).expm1().im()));
+        same("expm1(800,3)", -INF, INF, new ComplexF(800.0f, 3.0f).expm1());
+        // an exact zero is kept there too, not turned into inf - 1
+        same("expm1(800,0)", INF, 0.0f, new ComplexF(800.0f, 0.0f).expm1());
+        same("expm1(-inf,2)", -1.0f, 0.0f, new ComplexF(-INF, 2.0f).expm1());
+    }
+
+    @Test
+    public void testTheFormsChangeWithoutASeam() {
+        ComplexF one = new ComplexF(1.0f, 0.0f);
+        // log1p hands the work over where |1+z|^2 - 1 reaches -1/2
+        for (double t : new double[] { 0.70712, 0.7071068, 0.707106, 0.7071 }) {
+            float x = (float) (-1.0 + t * Math.cos(1.0));
+            float y = (float) (t * Math.sin(1.0));
+            ComplexF z = new ComplexF(x, y);
+            double u = (double) x * (2.0 + (double) x) + (double) y * (double) y;
+            float a = (float) (0.5 * Math.log1p(u));
+            float b = z.add(one).ln().re();
+            assertEquals("the two forms at the seam" + at(x, y), a, b, 4.0f * Math.ulp(a));
+            assertEquals("the log1p form" + at(x, y), a, z.log1p().re(), 4.0f * Math.ulp(a));
+        }
+    }
+
     @Test
     public void testArgIsConsistentWithTheComponents() {
         for (int e = -15; e <= 15; ++e) {
@@ -378,11 +572,225 @@ public final class ComplexFTest {
                     }
                     // the path through ln and exp costs most of the digits
                     exact("pow " + n, wantRe, wantIm, base.pow((float) n), 1.0e-4);
+                    // the product runs in double and rounds once, so it costs none
+                    exact("powi " + n, wantRe, wantIm, base.pow(n), 1.0e-7);
                 }
             }
         }
         assertTrue("too few points compared: " + compared, compared > 200);
     }
+
+    @Test
+    public void testIntegerPowStaysCloseAtTheHigherDegrees() {
+        for (int n : new int[] { 8, 20, 40, 100, 200, 256 }) {
+            for (int e = -8; e <= 8; ++e) {
+                double r = Math.pow(10.0, (double) e / n);
+                for (int k = 0; k < ANGLES; ++k) {
+                    ComplexF base = new ComplexF((float) (r * Math.cos(angle(k))), (float) (r * Math.sin(angle(k))));
+                    BigDecimal wantRe = big(base.re());
+                    BigDecimal wantIm = big(base.im());
+                    for (int i = 1; i < n; ++i) {
+                        BigDecimal nextRe = wantRe.multiply(big(base.re()), MC)
+                                .subtract(wantIm.multiply(big(base.im()), MC), MC);
+                        wantIm = wantRe.multiply(big(base.im()), MC).add(wantIm.multiply(big(base.re()), MC), MC);
+                        wantRe = nextRe;
+                    }
+                    // one float ulp is 1.2e-7, so this says correctly rounded; the
+                    // same product carried out in float costs ten times as much
+                    exact("powi " + n, wantRe, wantIm, base.pow(n), 1.0e-7);
+                }
+            }
+        }
+        assertTrue("too few points compared: " + compared, compared > 800);
+    }
+
+    @Test
+    public void testIntegerPowIsExactWhereTheAnswerIsWhole() {
+        same("(3,4)^2", -7.0f, 24.0f, new ComplexF(3.0f, 4.0f).pow(2));
+        same("(1,1)^8", 16.0f, 0.0f, new ComplexF(1.0f, 1.0f).pow(8));
+        // the product runs i, -1, -i, 1, and the vanishing part keeps its sign
+        same("i^4", 1.0f, -0.0f, ComplexF.I().pow(4));
+        same("(-2)^3", -8.0f, 0.0f, new ComplexF(-2.0f, 0.0f).pow(3));
+        same("(3i)^2", -9.0f, 0.0f, new ComplexF(0.0f, 3.0f).pow(2));
+        same("2^-2", 0.25f, 0.0f, new ComplexF(2.0f, 0.0f).pow(-2));
+        // the route through ln and exp can say none of this
+        assertTrue("(-2)^3 stays on the real axis", new ComplexF(-2.0f, 0.0f).pow(3).isReal());
+        assertFalse("(-2)^3.0 does not", new ComplexF(-2.0f, 0.0f).pow(3.0f).isReal());
+    }
+
+    @Test
+    public void testIntegerPowHasTheHeadroomOfADouble() {
+        // in float both terms overflow and cancel into a NaN; carried out in
+        // double the real part is exactly zero and the answer survives
+        ComplexF big = new ComplexF(1.0e30f, 1.0e30f);
+        same("(1e30,1e30)^2", 0.0f, INF, big.pow(2));
+        same("(1e30,1e30) squared by mul", NAN, INF, big.mul(big));
+        // and the whole float range of a negative exponent stays reachable
+        same("2^-149", Float.MIN_VALUE, 0.0f, new ComplexF(2.0f, 0.0f).pow(-149));
+        same("2^-150", 0.0f, 0.0f, new ComplexF(2.0f, 0.0f).pow(-150));
+        // past the double range as well the direction survives: (1+i)^16 is 256,
+        // so this is real and positive however large the modulus has grown
+        same("(1e38,1e38)^16", INF, 0.0f, new ComplexF(1.0e38f, 1.0e38f).pow(16));
+        // and the reciprocal of a product that overflowed is a zero, not a NaN
+        same("(1e38,1e38)^-257", 0.0f, 0.0f, new ComplexF(1.0e38f, 1.0e38f).pow(-257));
+    }
+
+    @Test
+    public void testIntegerPowKeepsTheAxisItStartedOn() {
+        for (int e = -8; e <= 8; e += 2) {
+            float x = (float) (1.7 * Math.pow(10.0, e));
+            for (int n = -6; n <= 12; ++n) {
+                ComplexF a = new ComplexF(x, 0.0f).pow(n);
+                assertTrue("real^" + n + " left the real axis: " + a, a.isReal());
+                ComplexF b = new ComplexF(0.0f, x).pow(n);
+                if (Math.abs(n) % 2 == 0) {
+                    assertTrue("imaginary^" + n + " is not real: " + b, b.isReal());
+                } else {
+                    // an odd power of an imaginary number is imaginary
+                    same("imaginary^" + n + " re", 0.0f, Math.abs(b.re()));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testIntegerPowObeysTheLawsOfAProduct() {
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            if ((v[0] == 0.0f && v[1] == 0.0f) || z.isInfinite() || z.isNan()) {
+                // those follow the real overload instead, see the next test
+                continue;
+            }
+            String w = at(v[0], v[1]);
+            same("z^0" + w, 1.0f, 0.0f, z.pow(0));
+            same("z^1" + w, v[0], v[1], z.pow(1));
+            // the reciprocal comes out of the double product, so it can differ
+            // from inv() in the sign of a vanishing part, never in value
+            close("z^-1" + w, z.inv(), z.pow(-1), 1.0e-7);
+        }
+    }
+
+    @Test
+    public void testIntegerPowFollowsTheRealOverloadWhereItIsDegenerate() {
+        int[] ns = { 0, 1, 2, 3, -1, -2, Integer.MAX_VALUE, Integer.MIN_VALUE };
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            if (!((v[0] == 0.0f && v[1] == 0.0f) || z.isInfinite() || z.isNan())) {
+                continue;
+            }
+            for (int n : ns) {
+                ComplexF want = z.pow((float) n);
+                same("z^" + n + at(v[0], v[1]), want.re(), want.im(), z.pow(n));
+            }
+        }
+    }
+
+    @Test
+    public void testIntegerPowAtTheEdgesOfTheRange() {
+        ComplexF two = new ComplexF(2.0f, 0.0f);
+        // the last power of two that fits, and the first that does not
+        same("2^127", (float) Math.pow(2.0, 127.0), 0.0f, two.pow(127));
+        same("2^128", INF, 0.0f, two.pow(128));
+        // negating the exponent is what overflows an int, so it happens in long
+        ComplexF i = ComplexF.I();
+        same("i^MIN_VALUE", 1.0f, 0.0f, i.pow(Integer.MIN_VALUE));
+        same("i^MAX_VALUE", -0.0f, -1.0f, i.pow(Integer.MAX_VALUE));
+        // on either side of the threshold between the two loops
+        same("i^256", 1.0f, -0.0f, i.pow(256));
+        same("i^257", 0.0f, 1.0f, i.pow(257));
+        same("i^-257", 0.0f, -1.0f, i.pow(-257));
+    }
+
+    /** the exact |z|^2; a float widens exactly, so this has no rounding at all */
+    private static BigDecimal square(float x, float y) {
+        BigDecimal a = new BigDecimal((double) x);
+        BigDecimal b = new BigDecimal((double) y);
+        return a.multiply(a).add(b.multiply(b));
+    }
+
+    /** how far a double is from an exactly known value, in ulps of that value */
+    private static double ulpsOf(double got, BigDecimal want) {
+        return new BigDecimal(got).subtract(want, MC).abs().doubleValue()
+                / Math.ulp(want.doubleValue());
+    }
+
+    /** a finer fan than the ensemble uses, the axes still avoided */
+    private static double spoke(int k) {
+        return k * Math.PI / 16.0 + 0.3;
+    }
+
+    @Test
+    public void testAbs2IsCorrectlyRounded() {
+        // the twin widens its components and rounds once, as sincOf does
+        double worst = 0.0;
+        for (int e = -38; e <= 38; ++e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < 32; ++k) {
+                float x = (float) (r * Math.cos(spoke(k)));
+                float y = (float) (r * Math.sin(spoke(k)));
+                worst = Math.max(worst, ulpsOf(new ComplexF(x, y).abs2(), square(x, y)));
+                ++compared;
+            }
+        }
+        assertTrue("abs2 is off by " + worst + " ulp", worst <= 1.0);
+        assertTrue("too few points compared: " + compared, compared > 2000);
+    }
+
+    @Test
+    public void testAbs2KeepsTheWholeFloatRange() {
+        // |z|^2 needs twice the exponent that z does, which is why the answer
+        // is a double: over the whole float range not one point is lost
+        int live = 0;
+        for (int e = -46; e <= 38; ++e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < 32; ++k) {
+                float x = (float) (r * Math.cos(spoke(k)));
+                float y = (float) (r * Math.sin(spoke(k)));
+                if (x == 0.0f && y == 0.0f) {
+                    continue;
+                }
+                double got = new ComplexF(x, y).abs2();
+                assertTrue("abs2 died" + at(x, y) + ", got " + got,
+                        got > 0.0 && !Double.isInfinite(got));
+                ++live;
+            }
+        }
+        assertTrue("too few live points: " + live, live > 2000);
+        // a float squares to at most 1.2e77, so the two ends of the grid, where
+        // a float answer would be Infinity and zero, both come back
+        assertEquals("abs2(1e38,1e38)", 1.999999872114279E76,
+                new ComplexF(1.0e38f, 1.0e38f).abs2(), 0.0);
+        assertEquals("abs2(1e-38,1e-38)", 1.99999974018257E-76,
+                new ComplexF(1.0e-38f, 1.0e-38f).abs2(), 0.0);
+        assertEquals("abs2 of the largest float", 2.3119999349163358E77,
+                new ComplexF(3.4e38f, 3.4e38f).abs2(), 0.0);
+        assertEquals("abs2 of the smallest subnormal", 1.9636373861190906E-90,
+                new ComplexF(1.4e-45f, 0.0f).abs2(), 0.0);
+    }
+
+    @Test
+    public void testAbs2FollowsAbsWhereTheModulusHasNoDigits() {
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            if (z.isInfinite()) {
+                assertTrue("abs2" + at(v[0], v[1]), z.abs2() == Double.POSITIVE_INFINITY);
+                same("abs" + at(v[0], v[1]), INF, z.abs());
+            } else if (z.isNan()) {
+                assertTrue("abs2" + at(v[0], v[1]) + " should be NaN", Double.isNaN(z.abs2()));
+            }
+        }
+        // an infinite component fixes the modulus even against a NaN one, so
+        // the square has to say so too - the plain product does not
+        assertTrue("the plain product at (inf,NaN)",
+                Double.isNaN((double) INF * INF + (double) NAN * NAN));
+        assertTrue("abs2(inf,NaN)", new ComplexF(INF, NAN).abs2() == Double.POSITIVE_INFINITY);
+        assertTrue("abs2(NaN,inf)", new ComplexF(NAN, INF).abs2() == Double.POSITIVE_INFINITY);
+        // and where the modulus has digits it is exactly the square of them
+        assertEquals("abs2(3,4)", 25.0, new ComplexF(3.0f, 4.0f).abs2(), 0.0);
+        assertEquals("abs2(-0,-0)", 0.0, new ComplexF(-0.0f, -0.0f).abs2(), 0.0);
+        assertEquals("abs2(1,0)", 1.0, new ComplexF(1.0f, 0.0f).abs2(), 0.0);
+    }
+
 
     // ================= 2. the infinity convention, as literals =================
 
@@ -1651,6 +2059,75 @@ public final class ComplexFTest {
         assertTrue("too few points compared: " + compared, compared > 800);
     }
 
+    @Test
+    public void testProjSendsEveryInfinityToTheOnePoint() {
+        java.util.HashSet<String> seen = new java.util.HashSet<String>();
+        int infinite = 0;
+        int left = 0;
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            ComplexF p = z.proj();
+            if (z.isInfinite()) {
+                ++infinite;
+                seen.add(Float.floatToIntBits(p.re()) + "/" + Float.floatToIntBits(p.im()));
+                same("proj" + at(v[0], v[1]), INF, INF, p);
+            } else {
+                // everything else comes back bit for bit, both zeros included
+                same("proj" + at(v[0], v[1]), v[0], v[1], p);
+                ++left;
+            }
+            same("proj is idempotent" + at(v[0], v[1]), p.re(), p.im(), p.proj());
+        }
+        assertEquals("infinite rows in the grid", 9, infinite);
+        assertEquals("finite rows left alone", 17, left);
+        assertEquals("the infinities are one point", 1, seen.size());
+        // and it is the point the library already had
+        assertTrue("proj(inf,1)", new ComplexF(INF, 1.0f).proj().equals(ComplexF.Inf()));
+        assertTrue("the inverse of zero", ComplexF.Zero().inv().equals(ComplexF.Inf()));
+        assertTrue("the pole of csc", ComplexF.Zero().csc().equals(ComplexF.Inf()));
+        // the C99 form would leave two of them, because equals reads the sign
+        // of a zero and (inf,+0) is not (inf,-0)
+        assertFalse("(inf,+0) against (inf,-0)",
+                new ComplexF(INF, 0.0f).equals(new ComplexF(INF, -0.0f)));
+        // neg and conj do not normalize an infinity, and proj is the one that
+        // does - that is the whole of its job
+        same("neg keeps the direction", -INF, -1.0e10f, new ComplexF(INF, 1.0e10f).neg());
+        assertTrue("proj does not", new ComplexF(INF, 1.0e10f).proj().equals(ComplexF.Inf()));
+    }
+
+    @Test
+    public void testIsFiniteAnswersWhatTheOtherTwoDoNot() {
+        int both = 0;
+        for (float[] v : SPECIAL) {
+            ComplexF z = new ComplexF(v[0], v[1]);
+            assertEquals("isFinite" + at(v[0], v[1]), !z.isNan() && !z.isInfinite(), z.isFinite());
+            if (z.isNan() && z.isInfinite()) {
+                ++both;
+            }
+        }
+        // the predicates overlap, which is why the question needed a name of
+        // its own: two rows are a NaN and an infinity at once
+        assertEquals("rows that are NaN and infinite together", 2, both);
+        assertTrue("(inf,NaN) is a NaN", new ComplexF(INF, NAN).isNan());
+        assertTrue("(inf,NaN) is infinite", new ComplexF(INF, NAN).isInfinite());
+        assertFalse("(inf,NaN) is not finite", new ComplexF(INF, NAN).isFinite());
+        assertFalse("(NaN,inf) is not finite", new ComplexF(NAN, INF).isFinite());
+        // one bad component is enough, either way round
+        assertTrue("an ordinary value", new ComplexF(3.0f, 4.0f).isFinite());
+        assertTrue("the largest one", new ComplexF(Float.MAX_VALUE, -Float.MAX_VALUE).isFinite());
+        assertFalse("a NaN imaginary part", new ComplexF(1.0f, NAN).isFinite());
+        assertFalse("a NaN real part", new ComplexF(NAN, 1.0f).isFinite());
+        assertFalse("an infinite imaginary part", new ComplexF(1.0f, INF).isFinite());
+        assertFalse("an infinite real part", new ComplexF(-INF, 1.0f).isFinite());
+        for (int e = MIN_EXP; e <= MAX_EXP; e += 2) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                assertTrue("the ensemble is finite", new ComplexF((float) (r * Math.cos(angle(k))),
+                        (float) (r * Math.sin(angle(k)))).isFinite());
+            }
+        }
+    }
+
     // ================= 3. the full matrix, as digests =================
 
     private static long fold(long h, long bits) {
@@ -1685,14 +2162,31 @@ public final class ComplexFTest {
     private void report(String op, int i, boolean binary) {
         StringBuilder b = new StringBuilder();
         b.append(op).append(" changed for").append(at(SPECIAL[i][0], SPECIAL[i][1])).append(":");
-        int n = binary ? SPECIAL.length : SCALARS.length;
+        int n = binary ? SPECIAL.length : grid(op);
         for (int j = 0; j < n; ++j) {
-            ComplexF r = binary ? apply(op, z(i), z(j))
-                    : (op.equals("scale") ? z(i).scale(SCALARS[j]) : z(i).pow(SCALARS[j]));
-            b.append("\n  with ").append(binary ? at(SPECIAL[j][0], SPECIAL[j][1]) : " " + SCALARS[j])
+            ComplexF r = binary ? apply(op, z(i), z(j)) : applyScalar(op, z(i), j);
+            b.append("\n  with ").append(binary ? at(SPECIAL[j][0], SPECIAL[j][1]) : label(op, j))
                     .append(" -> (").append(r.re()).append(", ").append(r.im()).append(")");
         }
         fail(b.toString());
+    }
+
+    /** how many right operands a scalar op has */
+    private static int grid(String op) {
+        return op.equals("powi") ? EXPONENTS.length : SCALARS.length;
+    }
+
+    private static ComplexF applyScalar(String op, ComplexF z, int j) {
+        if (op.equals("scale")) {
+            return z.scale(SCALARS[j]);
+        } else if (op.equals("powi")) {
+            return z.pow(EXPONENTS[j]);
+        }
+        return z.pow(SCALARS[j]);
+    }
+
+    private static String label(String op, int j) {
+        return op.equals("powi") ? " " + EXPONENTS[j] : " " + SCALARS[j];
     }
 
     private void digest(String op, long[] want, long[] got, boolean binary) {
@@ -1717,10 +2211,11 @@ public final class ComplexFTest {
 
     private long[] scalar(String op) {
         long[] out = new long[SPECIAL.length];
+        int n = grid(op);
         for (int i = 0; i < SPECIAL.length; ++i) {
             long h = SEED;
-            for (float x : SCALARS) {
-                h = fold(h, op.equals("scale") ? z(i).scale(x) : z(i).pow(x));
+            for (int j = 0; j < n; ++j) {
+                h = fold(h, applyScalar(op, z(i), j));
             }
             out[i] = h;
         }
@@ -1737,6 +2232,10 @@ public final class ComplexFTest {
                 h = fold(h, v.ln());
             } else if (op.equals("exp")) {
                 h = fold(h, v.exp());
+            } else if (op.equals("log1p")) {
+                h = fold(h, v.log1p());
+            } else if (op.equals("expm1")) {
+                h = fold(h, v.expm1());
             } else if (op.equals("sqrt")) {
                 h = fold(h, v.sqrt());
             } else if (op.equals("conj")) {
@@ -1799,6 +2298,12 @@ public final class ComplexFTest {
                 h = fold(h, (double) v.abs());
             } else if (op.equals("arg")) {
                 h = fold(h, (double) v.arg());
+            } else if (op.equals("abs2")) {
+                h = fold(h, v.abs2());
+            } else if (op.equals("proj")) {
+                h = fold(h, v.proj());
+            } else if (op.equals("finite")) {
+                h = fold(h, v.isFinite() ? 1L : 0L);
             } else if (op.equals("hash")) {
                 h = fold(h, (long) v.hashCode());
             } else {
@@ -1845,6 +2350,7 @@ public final class ComplexFTest {
     public void testTheFullMatrixOfScalarResults() {
         digest("scale", SCALE_DIGEST, scalar("scale"), false);
         digest("powr", POWR_DIGEST, scalar("pow"), false);
+        digest("powi", POWI_DIGEST, scalar("powi"), false);
     }
 
     @Test
@@ -1852,6 +2358,8 @@ public final class ComplexFTest {
         assertEquals("inv changed", INV_DIGEST, unary("inv"));
         assertEquals("ln changed", LN_DIGEST, unary("ln"));
         assertEquals("exp changed", EXP_DIGEST, unary("exp"));
+        assertEquals("log1p changed", LOG1P_DIGEST, unary("log1p"));
+        assertEquals("expm1 changed", EXPM1_DIGEST, unary("expm1"));
         assertEquals("sqrt changed", SQRT_DIGEST, unary("sqrt"));
         assertEquals("sinh changed", SINH_DIGEST, unary("sinh"));
         assertEquals("cosh changed", COSH_DIGEST, unary("cosh"));
@@ -1883,6 +2391,9 @@ public final class ComplexFTest {
         assertEquals("neg changed", NEG_DIGEST, unary("neg"));
         assertEquals("abs changed", ABS_DIGEST, unary("abs"));
         assertEquals("arg changed", ARG_DIGEST, unary("arg"));
+        assertEquals("abs2 changed", ABS2_DIGEST, unary("abs2"));
+        assertEquals("proj changed", PROJ_DIGEST, unary("proj"));
+        assertEquals("isFinite changed", FINITE_DIGEST, unary("finite"));
         assertEquals("hashCode changed", HASH_DIGEST, unary("hash"));
         assertEquals("toString changed", STRING_DIGEST, unary("string"));
     }
@@ -2115,12 +2626,18 @@ public final class ComplexFTest {
         v.inv();
         v.ln();
         v.exp();
+        v.log1p();
+        v.expm1();
         v.sqrt();
         v.pow(2.0f);
+        v.pow(2);
         v.pow(ComplexF.I());
         v.scale(7.0f);
         v.conj();
         v.neg();
+        v.abs2();
+        v.proj();
+        v.isFinite();
         same("untouched", 3.0f, 4.0f, v);
     }
 
@@ -2885,6 +3402,17 @@ public final class ComplexFTest {
             0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL,
             0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL };
 
+    private static final long[] POWI_DIGEST = {
+            0x2D3BB2871A4117E7L, 0x2D3BB2871A4117E7L, 0x2D3BB2871A4117E7L,
+            0x2D3BB2871A4117E7L, 0xB9FDD54791D53489L, 0xD3D7C21F0E7CC682L,
+            0xD51898B9FCD19572L, 0x1E35D2F4C13370D5L, 0x9F939320B9F7B27CL,
+            0xCFABF18E6236B7C7L, 0x38611A57A4821877L, 0x8DC705BC55C320B6L,
+            0x86A15D6D3C0C47FAL, 0xA86E89714D962B4CL, 0xA86E89714D962B4CL,
+            0xA86E89714D962B4CL, 0xA86E89714D962B4CL, 0xA86E89714D962B4CL,
+            0xA86E89714D962B4CL, 0xA86E89714D962B4CL, 0x5A31FDAA4059AD15L,
+            0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L,
+            0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L };
+
     private static final long INV_DIGEST = 0x3D22CC683F8BAF7CL;
     private static final long LN_DIGEST = 0xC38BE3DB20B18ACBL;
     private static final long EXP_DIGEST = 0xA0D29E88E82B03CCL;
@@ -2915,12 +3443,17 @@ public final class ComplexFTest {
     private static final long ACSCH_DIGEST = 0x9B71DB0E5FC8AAC6L;
     private static final long SINC_DIGEST = 0xBDF5F8533B117201L;
     private static final long SINHC_DIGEST = 0x801989F8B1714C38L;
+    private static final long LOG1P_DIGEST = 0x3AC8F186565A4301L;
+    private static final long EXPM1_DIGEST = 0xCFDCC7B4D0B720C4L;
     private static final long NTHROOT_DIGEST = 0x6A6E5C0A4B750BE8L;
     private static final long NTHROOTS_DIGEST = 0x6113FB7F79BEF113L;
     private static final long CONJ_DIGEST = 0x7D33B1ACC637F174L;
     private static final long NEG_DIGEST = 0x241D88E6D9266867L;
     private static final long ABS_DIGEST = 0x33688208A5C817EFL;
     private static final long ARG_DIGEST = 0xE488086C72363CF4L;
+    private static final long ABS2_DIGEST = 0xD1317C100558D83CL;
+    private static final long PROJ_DIGEST = 0xECF9BAD15C2473ACL;
+    private static final long FINITE_DIGEST = 0x2E351FC69C8B1BACL;
     private static final long HASH_DIGEST = 0xD54F0484F04C49ECL;
     private static final long STRING_DIGEST = 0x4C3BABE2655B0E22L;
 }

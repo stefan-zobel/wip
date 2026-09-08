@@ -20,10 +20,12 @@ package math.complex;
  * <p>
  * Infinity keeps its direction (C99 Annex G): only a result that has none
  * collapses to {@link #Inf()} - the inverse of zero, a quotient by zero, a
- * divergent {@link #pow(double)}. {@code 0 * inf} and {@code 0 / 0} are
- * {@link #NaN()}. Sum, difference, negation, conjugation and {@link #ln()} are
- * componentwise, while {@link #exp()} keeps an exact zero, so a real argument
- * stays real even where the modulus is not a number. A NaN spreads
+ * divergent {@link #pow(double)}, and anything {@link #proj()} is given.
+ * {@code 0 * inf} and {@code 0 / 0} are {@link #NaN()}. Sum, difference,
+ * negation, conjugation and {@link #ln()} are componentwise, while
+ * {@link #exp()} keeps an exact zero, so a real argument stays real even where
+ * the modulus is not a number; {@link #log1p()} and {@link #expm1()} hold the
+ * digits that {@code ln(1+z)} and {@code exp(z)-1} lose near one. A NaN spreads
  * componentwise too; only against an infinite operand does a NaN component
  * count as zero, so that the direction survives. {@code equals} compares the
  * two components bit for bit, as {@code Arrays.equals} does for a
@@ -196,6 +198,25 @@ public final class ComplexD {
         return new ComplexD(Math.log(abs), phi);
     }
 
+    /**
+     * ln(1 + z), accurate where 1 + z is close to one.
+     *
+     * @return the natural logarithm of one plus this complex number
+     */
+    public ComplexD log1p() {
+        if (im == 0.0 && re >= -1.0) {
+            // on the axis this is the real log1p, the sign of the zero included
+            return new ComplexD(Math.log1p(re), im);
+        }
+        // |1 + z|^2 - 1, carried without the 1 it would cancel against
+        double u = re * (2.0 + re) + im * im;
+        if (u > -0.5 && u < Double.POSITIVE_INFINITY) {
+            return new ComplexD(0.5 * Math.log1p(u), Math.atan2(im, 1.0 + re));
+        }
+        // near -1 that u cancels in turn, and far out it overflows
+        return add(ONE).ln();
+    }
+
     public ComplexD exp() {
         double c = Math.cos(im);
         double s = Math.sin(im);
@@ -206,6 +227,30 @@ public final class ComplexD {
             return new ComplexD((c == 0.0) ? c : h * c * h, (s == 0.0) ? s : h * s * h);
         }
         return new ComplexD((c == 0.0) ? c : h * c, (s == 0.0) ? s : h * s);
+    }
+
+    /** above this exp(re) passes 2^53 and the 1 falls below half an ulp */
+    private static final double SWAMPED = 37.0;
+
+    /**
+     * exp(z) - 1, accurate where exp(z) is close to one.
+     *
+     * @return the exponential of this complex number, less one
+     */
+    public ComplexD expm1() {
+        if (im == 0.0) {
+            // on the axis this is the real expm1, the sign of the zero included
+            return new ComplexD(Math.expm1(re), im);
+        }
+        if (re < -LN2 || re > SWAMPED) {
+            // outside that band exp(z) is under a half or over 2^53, so the
+            // difference cannot cancel, and exp() carries the overflow
+            return exp().sub(ONE);
+        }
+        double e = Math.expm1(re);
+        double h = Math.sin(0.5 * im);
+        // cos(im) - 1 = -2 sin(im/2)^2, which does not cancel against the 1
+        return new ComplexD(e * Math.cos(im) - 2.0 * h * h, (e + 1.0) * Math.sin(im));
     }
 
     /**
@@ -924,6 +969,63 @@ public final class ComplexD {
         return ln().scale(exponent).exp();
     }
 
+    /** up to this many factors the straight product is worth its linear cost */
+    private static final int STRAIGHT = 256;
+
+    /**
+     * The integer power, as a product rather than through exp and ln.
+     *
+     * @param exponent the exponent
+     * @return this complex number raised to that power
+     */
+    public ComplexD pow(int exponent) {
+        if (isDegenerate()) {
+            return degeneratePow((double) exponent);
+        }
+        if (isNan()) {
+            return NAN;
+        }
+        long m = Math.abs((long) exponent);
+        ComplexD p = raise(this, m);
+        if (exponent >= 0) {
+            return p;
+        }
+        if (p.isInfinite()) {
+            // the product left the range where the answer had not, and the
+            // reciprocal of the base cannot overflow when the power of it did
+            return raise(inv(), m);
+        }
+        // inverting last costs one rounding, inverting first costs |n| of them
+        return p.inv();
+    }
+
+    // z to the m: straight below the threshold, which is more accurate at every
+    // degree, by squaring above it, where the linear cost is no longer earned
+    private static ComplexD raise(ComplexD z, long m) {
+        if (m == 0L) {
+            return ONE;
+        }
+        if (m <= STRAIGHT) {
+            ComplexD r = z;
+            for (long k = 1L; k < m; ++k) {
+                r = r.mul(z);
+            }
+            return r;
+        }
+        ComplexD r = ONE;
+        ComplexD b = z;
+        while (m > 0L) {
+            if ((m & 1L) != 0L) {
+                r = r.mul(b);
+            }
+            m >>= 1;
+            if (m > 0L) {
+                b = b.mul(b);
+            }
+        }
+        return r;
+    }
+
     public ComplexD pow(ComplexD exponent) {
         if (isDegenerate()) {
             return degeneratePow(exponent);
@@ -1018,6 +1120,15 @@ public final class ComplexD {
         return new ComplexD(-re, -im);
     }
 
+    /**
+     * The point at infinity, which this library keeps without a direction.
+     *
+     * @return {@link #Inf()} if this number is infinite, this number otherwise
+     */
+    public ComplexD proj() {
+        return isInfinite() ? INF : this;
+    }
+
     public boolean isReal() {
         return im == 0.0 && !Double.isNaN(re);
     }
@@ -1039,6 +1150,20 @@ public final class ComplexD {
      */
     public double abs() {
         return modulus(re, im);
+    }
+
+    /**
+     * The squared modulus, sharper and cheaper than {@link #abs()} squared, but
+     * a double only for {@code 1.6e-162 < |z| < 1.3e154}.
+     *
+     * @return the squared absolute value of this complex number
+     */
+    public double abs2() {
+        if (isInfinite()) {
+            // an infinite component fixes the modulus, as it does in abs()
+            return Double.POSITIVE_INFINITY;
+        }
+        return re * re + im * im;
     }
 
     // sqrt(a^2 + b^2) without under/overflow, for a pair that need not be this one
@@ -1063,6 +1188,10 @@ public final class ComplexD {
 
     public boolean isInfinite() {
         return Double.isInfinite(re) || Double.isInfinite(im);
+    }
+
+    public boolean isFinite() {
+        return Double.isFinite(re) && Double.isFinite(im);
     }
 
     @Override

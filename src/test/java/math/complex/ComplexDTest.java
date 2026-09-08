@@ -49,6 +49,10 @@ public final class ComplexDTest {
     /** the real scalars used for scale and pow */
     private static final double[] SCALARS = { 0.0, -0.0, 1.0, -1.0, 2.0, 0.5, -2.5, INF, -INF, NAN };
 
+    /** the integer exponents, on both sides of the threshold in pow(int) */
+    private static final int[] EXPONENTS = { 0, 1, -1, 2, -2, 3, -3, 8, 256, 257, -257, Integer.MAX_VALUE,
+            Integer.MIN_VALUE };
+
     /** the first exponent, the last one and the step of the test ensemble */
     private static final int MIN_EXP = -300;
     private static final int MAX_EXP = 300;
@@ -349,6 +353,213 @@ public final class ComplexDTest {
         assertTrue("the real part should overflow", Double.isInfinite(got.re()));
     }
 
+    /** the power series of ln(1+z) or of exp(z)-1 at 34 digits, |z| under one */
+    private static BigDecimal[] series(double x, double y, boolean log) {
+        BigDecimal a = big(x);
+        BigDecimal b = big(y);
+        BigDecimal pr = a;
+        BigDecimal pi = b;
+        BigDecimal sr = a;
+        BigDecimal si = b;
+        for (int n = 2; n <= 120; ++n) {
+            BigDecimal t = pr.multiply(a, MC).subtract(pi.multiply(b, MC), MC);
+            pi = pr.multiply(b, MC).add(pi.multiply(a, MC), MC);
+            pr = t;
+            BigDecimal d = big((double) n);
+            if (!log) {
+                // z^n / n!, the factorial carried in the power itself
+                pr = pr.divide(d, MC);
+                pi = pi.divide(d, MC);
+                sr = sr.add(pr, MC);
+                si = si.add(pi, MC);
+            } else if ((n & 1) == 0) {
+                sr = sr.subtract(pr.divide(d, MC), MC);
+                si = si.subtract(pi.divide(d, MC), MC);
+            } else {
+                sr = sr.add(pr.divide(d, MC), MC);
+                si = si.add(pi.divide(d, MC), MC);
+            }
+        }
+        return new BigDecimal[] { sr, si };
+    }
+
+    @Test
+    public void testLog1pAndExpm1AgainstTheirSeries() {
+        for (int e = -1; e >= -280; e -= 3) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                double x = r * Math.cos(angle(k));
+                double y = r * Math.sin(angle(k));
+                BigDecimal[] l = series(x, y, true);
+                exact("log1p" + at(x, y), l[0], l[1], new ComplexD(x, y).log1p(), 5.0e-16);
+                BigDecimal[] p = series(x, y, false);
+                exact("expm1" + at(x, y), p[0], p[1], new ComplexD(x, y).expm1(), 5.0e-16);
+            }
+        }
+        assertTrue("too few points compared: " + compared, compared > 1000);
+    }
+
+    @Test
+    public void testLog1pAndExpm1KeepWhatTheDifferenceLoses() {
+        ComplexD one = new ComplexD(1.0, 0.0);
+        // a third of an ulp of one, so 1 + z rounds straight back to one
+        double x = 3.0e-17;
+        double y = 4.0e-17;
+        ComplexD z = new ComplexD(x, y);
+        BigDecimal[] l = series(x, y, true);
+        exact("log1p at 5e-17", l[0], l[1], z.log1p(), 5.0e-16);
+        BigDecimal[] p = series(x, y, false);
+        exact("expm1 at 5e-17", p[0], p[1], z.expm1(), 5.0e-16);
+        assertTrue("add(1).ln() has a real part left", z.add(one).ln().re() == 0.0);
+        assertTrue("exp().sub(1) has a real part left", z.exp().sub(one).re() == 0.0);
+        // exp is one on all of z = 2 k pi i, and the difference dies there too,
+        // six units away from the origin and further
+        for (int k = 1; k <= 4; ++k) {
+            double w = 2.0 * Math.PI * k;
+            double s = Math.sin(w);
+            // cos(w) - 1 = -sin(w)^2 / (1 + cos(w)), which does not cancel
+            double want = -s * s / (1.0 + Math.cos(w));
+            ComplexD got = new ComplexD(0.0, w).expm1();
+            assertEquals("expm1 at 2*" + k + "*pi*i re", want, got.re(), 4.0 * Math.ulp(want));
+            same("expm1 at 2*" + k + "*pi*i im", s, got.im());
+            assertTrue("exp().sub(1) has a real part left at 2*" + k + "*pi*i",
+                    new ComplexD(0.0, w).exp().sub(one).re() == 0.0);
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1OnTheRealAxis() {
+        for (int e = -300; e <= 300; e += 3) {
+            double m = Math.pow(10.0, e);
+            for (int s = 0; s < 2; ++s) {
+                double x = (s == 0) ? m : -m;
+                if (x > -1.0) {
+                    same("log1p" + at(x, 0.0), Math.log1p(x), 0.0, new ComplexD(x, 0.0).log1p());
+                }
+                same("expm1" + at(x, 0.0), Math.expm1(x), 0.0, new ComplexD(x, 0.0).expm1());
+            }
+        }
+        // the sign of the zero rides through, as it does in Math
+        same("log1p(-0,+0)", -0.0, 0.0, new ComplexD(-0.0, 0.0).log1p());
+        same("log1p(+0,-0)", 0.0, -0.0, new ComplexD(0.0, -0.0).log1p());
+        same("expm1(-0,+0)", -0.0, 0.0, new ComplexD(-0.0, 0.0).expm1());
+        same("expm1(+0,-0)", 0.0, -0.0, new ComplexD(0.0, -0.0).expm1());
+        // below -1 the logarithm leaves the axis and the zero picks the side
+        same("log1p(-3,+0)", Math.log(2.0), Math.PI, new ComplexD(-3.0, 0.0).log1p());
+        same("log1p(-3,-0)", Math.log(2.0), -Math.PI, new ComplexD(-3.0, -0.0).log1p());
+        same("log1p(-1)", -INF, 0.0, new ComplexD(-1.0, 0.0).log1p());
+        same("log1p(-1,-0)", -INF, -0.0, new ComplexD(-1.0, -0.0).log1p());
+    }
+
+    @Test
+    public void testLog1pStaysSharpNextToMinusOne() {
+        // there |1+z|^2 - 1 runs into -1 and cancels against the 1, so the form
+        // that carries it answers -Infinity where the value is merely large
+        for (int e = -2; e >= -300; e -= 7) {
+            double d = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                double x = -1.0 + d * Math.cos(angle(k));
+                double y = d * Math.sin(angle(k));
+                ComplexD got = new ComplexD(x, y).log1p();
+                double want = Math.log(Math.hypot(1.0 + x, y));
+                assertTrue("log1p next to -1" + at(x, y) + ": want " + want + ", got " + got.re(),
+                        Math.abs(got.re() - want) <= 4.0 * Math.ulp(want));
+                same("the angle next to -1" + at(x, y), Math.atan2(y, 1.0 + x), got.im());
+            }
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1AreInverse() {
+        for (int e = -1; e >= -300; e -= 7) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                ComplexD want = new ComplexD(r * Math.cos(angle(k)), r * Math.sin(angle(k)));
+                // the same round trip through exp and ln keeps nothing at all
+                close("log1p(expm1 z)", want, want.expm1().log1p(), 1.0e-15);
+                close("expm1(log1p z)", want, want.log1p().expm1(), 1.0e-15);
+            }
+        }
+    }
+
+    @Test
+    public void testLog1pAndExpm1FollowTheNaiveRouteWhereItIsDegenerate() {
+        ComplexD one = new ComplexD(1.0, 0.0);
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            if (!z.isInfinite() && !z.isNan()) {
+                // the finite rows are where the two are allowed to part company
+                continue;
+            }
+            ComplexD w = z.add(one).ln();
+            same("log1p" + at(v[0], v[1]), w.re(), w.im(), z.log1p());
+            ComplexD u = z.exp().sub(one);
+            same("expm1" + at(v[0], v[1]), u.re(), u.im(), z.expm1());
+        }
+        // and where they do part company the new route is the right one
+        same("log1p(-0,+0)", -0.0, 0.0, new ComplexD(-0.0, 0.0).log1p());
+        same("add(1).ln() there", 0.0, 0.0, new ComplexD(-0.0, 0.0).add(one).ln());
+        same("log1p(1e-300)", 1.0e-300, 1.0e-300, new ComplexD(1.0e-300, 1.0e-300).log1p());
+        same("add(1).ln() there", 0.0, 1.0e-300, new ComplexD(1.0e-300, 1.0e-300).add(one).ln());
+        same("expm1(1e-300)", 1.0e-300, 1.0e-300, new ComplexD(1.0e-300, 1.0e-300).expm1());
+        same("exp().sub(1) there", 0.0, 1.0e-300, new ComplexD(1.0e-300, 1.0e-300).exp().sub(one));
+    }
+
+    @Test
+    public void testLog1pAndExpm1AtTheEdges() {
+        // where |1+z|^2 - 1 overflows, the plain logarithm takes over and the 1
+        // is beneath notice anyway
+        ComplexD far = new ComplexD(1.0e155, 1.0e155);
+        same("log1p far out re", far.ln().re(), far.log1p().re());
+        same("log1p far out im", far.ln().im(), far.log1p().im());
+        same("log1p at 1e300", 691.1221014884936, 0.7853981633974483,
+                new ComplexD(1.0e300, 1.0e300).log1p());
+        // and where exp overflows, expm1 inherits the halving from exp
+        ComplexD hot = new ComplexD(710.0, Math.PI / 2.0).expm1();
+        assertTrue("the real part collapsed to " + hot.re(), isFinite(hot.re()) && hot.re() > 0.0);
+        assertTrue("the imaginary part should overflow", Double.isInfinite(hot.im()));
+        same("expm1(800,3)", -INF, INF, new ComplexD(800.0, 3.0).expm1());
+        ComplexD edge = new ComplexD(709.9, 3.0).expm1();
+        assertTrue("expm1 at 709.9 re", Double.isInfinite(edge.re()) && edge.re() < 0.0);
+        assertTrue("expm1 at 709.9 im " + edge.im(), isFinite(edge.im()) && edge.im() > 1.0e307);
+        // an exact zero is kept there too, not turned into inf - 1
+        same("expm1(800,0)", INF, 0.0, new ComplexD(800.0, 0.0).expm1());
+        same("expm1(-inf,2)", -1.0, 0.0, new ComplexD(-INF, 2.0).expm1());
+    }
+
+    @Test
+    public void testTheFormsChangeWithoutASeam() {
+        ComplexD one = new ComplexD(1.0, 0.0);
+        // expm1 hands the work to exp() - 1 at both ends of its band, so at the
+        // ends the two routes have to say the same thing
+        for (double x : new double[] { -0.6931471805599453, 37.0 }) {
+            for (int k = 0; k < ANGLES; ++k) {
+                ComplexD z = new ComplexD(x, angle(k));
+                close("expm1 at the seam" + at(x, angle(k)), z.exp().sub(one), z.expm1(), 1.0e-15);
+            }
+        }
+        // outside the band it IS the plain difference, bit for bit: exp(z) is
+        // under a half or over 2^53 there, so nothing can cancel and the half
+        // angle form would only cost two ulp
+        for (double x : new double[] { -0.7, -1.0, -10.0, -100.0, -800.0, 37.5, 100.0, 700.0 }) {
+            for (int k = 0; k < ANGLES; ++k) {
+                ComplexD z = new ComplexD(x, angle(k));
+                ComplexD w = z.exp().sub(one);
+                same("expm1 outside the band" + at(x, angle(k)), w.re(), w.im(), z.expm1());
+            }
+        }
+        // log1p hands it over where |1+z|^2 - 1 reaches -1/2
+        for (double t : new double[] { 0.70712, 0.7071068, 0.707106, 0.7071 }) {
+            double x = -1.0 + t * Math.cos(1.0);
+            double y = t * Math.sin(1.0);
+            ComplexD z = new ComplexD(x, y);
+            double a = 0.5 * Math.log1p(x * (2.0 + x) + y * y);
+            double b = z.add(one).ln().re();
+            assertEquals("the two forms at the seam" + at(x, y), a, b, 4.0 * Math.ulp(a));
+            assertEquals("the log1p form" + at(x, y), a, z.log1p().re(), 4.0 * Math.ulp(a));
+        }
+    }
+
     @Test
     public void testArgIsConsistentWithTheComponents() {
         for (int e = -150; e <= 150; e += 10) {
@@ -382,11 +593,224 @@ public final class ComplexDTest {
                     }
                     // the path through ln and exp costs a few digits
                     exact("pow " + n, wantRe, wantIm, base.pow((double) n), 1.0e-13);
+                    // the product costs none of them
+                    exact("powi " + n, wantRe, wantIm, base.pow(n), 5.0e-16);
                 }
             }
         }
         assertTrue("too few points compared: " + compared, compared > 300);
     }
+
+    @Test
+    public void testIntegerPowStaysCloseAtTheHigherDegrees() {
+        for (int n : new int[] { 8, 20, 40, 100, 200, 256 }) {
+            for (int e = -8; e <= 8; ++e) {
+                double r = Math.pow(10.0, (double) e / n);
+                for (int k = 0; k < ANGLES; ++k) {
+                    ComplexD base = new ComplexD(r * Math.cos(angle(k)), r * Math.sin(angle(k)));
+                    BigDecimal wantRe = big(base.re());
+                    BigDecimal wantIm = big(base.im());
+                    for (int i = 1; i < n; ++i) {
+                        BigDecimal nextRe = wantRe.multiply(big(base.re()), MC)
+                                .subtract(wantIm.multiply(big(base.im()), MC), MC);
+                        wantIm = wantRe.multiply(big(base.im()), MC).add(wantIm.multiply(big(base.re()), MC), MC);
+                        wantRe = nextRe;
+                    }
+                    // squaring instead of multiplying through costs seven times this
+                    exact("powi " + n, wantRe, wantIm, base.pow(n), 4.0e-15);
+                }
+            }
+        }
+        assertTrue("too few points compared: " + compared, compared > 800);
+    }
+
+    @Test
+    public void testIntegerPowIsExactWhereTheAnswerIsWhole() {
+        same("(3,4)^2", -7.0, 24.0, new ComplexD(3.0, 4.0).pow(2));
+        same("(1,1)^8", 16.0, 0.0, new ComplexD(1.0, 1.0).pow(8));
+        // the product runs i, -1, -i, 1, and the vanishing part keeps its sign
+        same("i^4", 1.0, -0.0, ComplexD.I().pow(4));
+        same("(-2)^3", -8.0, 0.0, new ComplexD(-2.0, 0.0).pow(3));
+        same("(3i)^2", -9.0, 0.0, new ComplexD(0.0, 3.0).pow(2));
+        same("2^-2", 0.25, -0.0, new ComplexD(2.0, 0.0).pow(-2));
+        // the route through ln and exp can say none of this
+        assertTrue("(-2)^3 stays on the real axis", new ComplexD(-2.0, 0.0).pow(3).isReal());
+        assertFalse("(-2)^3.0 does not", new ComplexD(-2.0, 0.0).pow(3.0).isReal());
+    }
+
+    @Test
+    public void testIntegerPowKeepsTheAxisItStartedOn() {
+        for (int e = -20; e <= 20; e += 4) {
+            double x = 1.7 * Math.pow(10.0, e);
+            for (int n = -6; n <= 12; ++n) {
+                ComplexD a = new ComplexD(x, 0.0).pow(n);
+                assertTrue("real^" + n + " left the real axis: " + a, a.isReal());
+                ComplexD b = new ComplexD(0.0, x).pow(n);
+                if (Math.abs(n) % 2 == 0) {
+                    assertTrue("imaginary^" + n + " is not real: " + b, b.isReal());
+                } else {
+                    // an odd power of an imaginary number is imaginary
+                    same("imaginary^" + n + " re", 0.0, Math.abs(b.re()));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testIntegerPowObeysTheLawsOfAProduct() {
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            if ((v[0] == 0.0 && v[1] == 0.0) || z.isInfinite() || z.isNan()) {
+                // those follow the real overload instead, see the next test
+                continue;
+            }
+            String w = at(v[0], v[1]);
+            same("z^0" + w, 1.0, 0.0, z.pow(0));
+            same("z^1" + w, v[0], v[1], z.pow(1));
+            same("z^-1 re" + w, z.inv().re(), z.pow(-1).re());
+            same("z^-1 im" + w, z.inv().im(), z.pow(-1).im());
+            same("z^2 re" + w, z.mul(z).re(), z.pow(2).re());
+            same("z^2 im" + w, z.mul(z).im(), z.pow(2).im());
+            ComplexD q = z.mul(z).mul(z).mul(z);
+            same("z^4 re" + w, q.re(), z.pow(4).re());
+            same("z^4 im" + w, q.im(), z.pow(4).im());
+        }
+    }
+
+    @Test
+    public void testIntegerPowFollowsTheRealOverloadWhereItIsDegenerate() {
+        int[] ns = { 0, 1, 2, 3, -1, -2, Integer.MAX_VALUE, Integer.MIN_VALUE };
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            if (!((v[0] == 0.0 && v[1] == 0.0) || z.isInfinite() || z.isNan())) {
+                continue;
+            }
+            for (int n : ns) {
+                ComplexD want = z.pow((double) n);
+                same("z^" + n + at(v[0], v[1]), want.re(), want.im(), z.pow(n));
+            }
+        }
+    }
+
+    @Test
+    public void testIntegerPowAtTheEdgesOfTheRange() {
+        ComplexD two = new ComplexD(2.0, 0.0);
+        // the last power of two that fits, and the first that does not
+        same("2^1023", Math.pow(2.0, 1023.0), 0.0, two.pow(1023));
+        same("2^1024", INF, 0.0, two.pow(1024));
+        // the answer is still subnormal long after the product has overflowed,
+        // so below that the reciprocal has to be taken first
+        same("2^-1020", Math.pow(2.0, -1020.0), -0.0, two.pow(-1020));
+        same("2^-1030", Math.pow(2.0, -1030.0), 0.0, two.pow(-1030));
+        same("2^-1074", Double.MIN_VALUE, 0.0, two.pow(-1074));
+        same("2^-1075", 0.0, 0.0, two.pow(-1075));
+        // negating the exponent is what overflows an int, so it happens in long
+        ComplexD i = ComplexD.I();
+        same("i^MIN_VALUE", 1.0, -0.0, i.pow(Integer.MIN_VALUE));
+        same("i^MAX_VALUE", -0.0, -1.0, i.pow(Integer.MAX_VALUE));
+        // on either side of the threshold between the two loops
+        same("i^256", 1.0, -0.0, i.pow(256));
+        same("i^257", 0.0, 1.0, i.pow(257));
+        same("i^-257", 0.0, -1.0, i.pow(-257));
+    }
+
+    /** the exact |z|^2, both components being binary rationals */
+    private static BigDecimal square(double x, double y) {
+        return big(x).multiply(big(x)).add(big(y).multiply(big(y)));
+    }
+
+    /** how far a double is from an exactly known value, in ulps of that value */
+    private static double ulpsOf(double got, BigDecimal want) {
+        return big(got).subtract(want, MC).abs().doubleValue() / Math.ulp(want.doubleValue());
+    }
+
+    /** a finer fan than the ensemble uses, the axes still avoided */
+    private static double spoke(int k) {
+        return k * Math.PI / 16.0 + 0.3;
+    }
+
+    @Test
+    public void testAbs2IsSharperThanTheModulusSquared() {
+        double sharp = 0.0;
+        double blunt = 0.0;
+        for (int e = -150; e <= 150; ++e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < 32; ++k) {
+                double x = r * Math.cos(spoke(k));
+                double y = r * Math.sin(spoke(k));
+                BigDecimal want = square(x, y);
+                ComplexD z = new ComplexD(x, y);
+                double m = z.abs();
+                sharp = Math.max(sharp, ulpsOf(z.abs2(), want));
+                blunt = Math.max(blunt, ulpsOf(m * m, want));
+                ++compared;
+            }
+        }
+        assertTrue("abs2 is off by " + sharp + " ulp", sharp <= 2.0);
+        // and the modulus squared, which is what a caller writes today, is not
+        assertTrue("abs()*abs() is off by only " + blunt + " ulp", blunt > 2.0);
+        assertTrue("too few points compared: " + compared, compared > 8000);
+    }
+
+    @Test
+    public void testAbs2LeavesTheRangeExactlyWhereTheSquareDoes() {
+        // |z|^2 needs twice the exponent that z does, so it leaves the double
+        // range where z itself is still comfortable - and there is nothing to
+        // rescue there, the value simply is not a double any more
+        int live = 0;
+        for (int e = -320; e <= 300; ++e) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < 32; ++k) {
+                double x = r * Math.cos(spoke(k));
+                double y = r * Math.sin(spoke(k));
+                double want = square(x, y).doubleValue();
+                double got = new ComplexD(x, y).abs2();
+                assertEquals("abs2 overflows where the square does" + at(x, y),
+                        Double.isInfinite(want), Double.isInfinite(got));
+                assertEquals("abs2 vanishes where the square does" + at(x, y), want == 0.0,
+                        got == 0.0);
+                if (isFinite(want) && want != 0.0) {
+                    ++live;
+                }
+            }
+        }
+        assertTrue("too few live points: " + live, live > 8000);
+        // the two ends are derived, not fitted: the square of sqrt(MAX_VALUE)
+        // is the last one that fits, and one ulp further it does not
+        double hi = Math.sqrt(Double.MAX_VALUE);
+        assertTrue("the square at sqrt(MAX_VALUE)", isFinite(new ComplexD(hi, 0.0).abs2()));
+        same("one ulp above it", INF, new ComplexD(Math.nextUp(hi), 0.0).abs2());
+        double lo = Math.sqrt(Double.MIN_VALUE);
+        assertTrue("the square at sqrt(MIN_VALUE)", new ComplexD(lo, 0.0).abs2() > 0.0);
+        same("below half of the smallest subnormal", 0.0, new ComplexD(1.5e-162, 0.0).abs2());
+        // abs() lives on both sides of both, which is the price of the sharper
+        // value and belongs in the javadoc
+        assertTrue("abs() at 1e300", isFinite(new ComplexD(1.0e300, 1.0e300).abs()));
+        assertTrue("abs() at 1e-300", new ComplexD(1.0e-300, 1.0e-300).abs() > 0.0);
+    }
+
+    @Test
+    public void testAbs2FollowsAbsWhereTheModulusHasNoDigits() {
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            if (z.isInfinite()) {
+                same("abs2" + at(v[0], v[1]), INF, z.abs2());
+                same("abs" + at(v[0], v[1]), INF, z.abs());
+            } else if (z.isNan()) {
+                assertTrue("abs2" + at(v[0], v[1]) + " should be NaN", Double.isNaN(z.abs2()));
+            }
+        }
+        // an infinite component fixes the modulus even against a NaN one, so
+        // the square has to say so too - the plain product does not
+        assertTrue("the plain product at (inf,NaN)", Double.isNaN(INF * INF + NAN * NAN));
+        same("abs2(inf,NaN)", INF, new ComplexD(INF, NAN).abs2());
+        same("abs2(NaN,inf)", INF, new ComplexD(NAN, INF).abs2());
+        // and where the modulus has digits it is exactly the square of them
+        same("abs2(3,4)", 25.0, new ComplexD(3.0, 4.0).abs2());
+        same("abs2(-0,-0)", 0.0, new ComplexD(-0.0, -0.0).abs2());
+        same("abs2(1,0)", 1.0, new ComplexD(1.0, 0.0).abs2());
+    }
+
 
     // ================= 2. the infinity convention, as literals =================
 
@@ -1636,6 +2060,75 @@ public final class ComplexDTest {
         assertTrue("too few points compared: " + compared, compared > 8000);
     }
 
+    @Test
+    public void testProjSendsEveryInfinityToTheOnePoint() {
+        java.util.HashSet<String> seen = new java.util.HashSet<String>();
+        int infinite = 0;
+        int left = 0;
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            ComplexD p = z.proj();
+            if (z.isInfinite()) {
+                ++infinite;
+                seen.add(Double.doubleToLongBits(p.re()) + "/" + Double.doubleToLongBits(p.im()));
+                same("proj" + at(v[0], v[1]), INF, INF, p);
+            } else {
+                // everything else comes back bit for bit, both zeros included
+                same("proj" + at(v[0], v[1]), v[0], v[1], p);
+                ++left;
+            }
+            same("proj is idempotent" + at(v[0], v[1]), p.re(), p.im(), p.proj());
+        }
+        assertEquals("infinite rows in the grid", 9, infinite);
+        assertEquals("finite rows left alone", 17, left);
+        assertEquals("the infinities are one point", 1, seen.size());
+        // and it is the point the library already had
+        assertTrue("proj(inf,1)", new ComplexD(INF, 1.0).proj().equals(ComplexD.Inf()));
+        assertTrue("the inverse of zero", ComplexD.Zero().inv().equals(ComplexD.Inf()));
+        assertTrue("the pole of csc", ComplexD.Zero().csc().equals(ComplexD.Inf()));
+        // the C99 form would leave two of them, because equals reads the sign
+        // of a zero and (inf,+0) is not (inf,-0)
+        assertFalse("(inf,+0) against (inf,-0)",
+                new ComplexD(INF, 0.0).equals(new ComplexD(INF, -0.0)));
+        // neg and conj do not normalize an infinity, and proj is the one that
+        // does - that is the whole of its job
+        same("neg keeps the direction", -INF, -1.0e110, new ComplexD(INF, 1.0e110).neg());
+        assertTrue("proj does not", new ComplexD(INF, 1.0e110).proj().equals(ComplexD.Inf()));
+    }
+
+    @Test
+    public void testIsFiniteAnswersWhatTheOtherTwoDoNot() {
+        int both = 0;
+        for (double[] v : SPECIAL) {
+            ComplexD z = new ComplexD(v[0], v[1]);
+            assertEquals("isFinite" + at(v[0], v[1]), !z.isNan() && !z.isInfinite(), z.isFinite());
+            if (z.isNan() && z.isInfinite()) {
+                ++both;
+            }
+        }
+        // the predicates overlap, which is why the question needed a name of
+        // its own: two rows are a NaN and an infinity at once
+        assertEquals("rows that are NaN and infinite together", 2, both);
+        assertTrue("(inf,NaN) is a NaN", new ComplexD(INF, NAN).isNan());
+        assertTrue("(inf,NaN) is infinite", new ComplexD(INF, NAN).isInfinite());
+        assertFalse("(inf,NaN) is not finite", new ComplexD(INF, NAN).isFinite());
+        assertFalse("(NaN,inf) is not finite", new ComplexD(NAN, INF).isFinite());
+        // one bad component is enough, either way round
+        assertTrue("an ordinary value", new ComplexD(3.0, 4.0).isFinite());
+        assertTrue("the largest one", new ComplexD(Double.MAX_VALUE, -Double.MAX_VALUE).isFinite());
+        assertFalse("a NaN imaginary part", new ComplexD(1.0, NAN).isFinite());
+        assertFalse("a NaN real part", new ComplexD(NAN, 1.0).isFinite());
+        assertFalse("an infinite imaginary part", new ComplexD(1.0, INF).isFinite());
+        assertFalse("an infinite real part", new ComplexD(-INF, 1.0).isFinite());
+        for (int e = MIN_EXP; e <= MAX_EXP; e += 10) {
+            double r = Math.pow(10.0, e);
+            for (int k = 0; k < ANGLES; ++k) {
+                assertTrue("the ensemble is finite",
+                        new ComplexD(r * Math.cos(angle(k)), r * Math.sin(angle(k))).isFinite());
+            }
+        }
+    }
+
     // ================= 3. the full matrix, as digests =================
 
     private static long fold(long h, long bits) {
@@ -1670,14 +2163,31 @@ public final class ComplexDTest {
     private void report(String op, int i, boolean binary) {
         StringBuilder b = new StringBuilder();
         b.append(op).append(" changed for").append(at(SPECIAL[i][0], SPECIAL[i][1])).append(":");
-        int n = binary ? SPECIAL.length : SCALARS.length;
+        int n = binary ? SPECIAL.length : grid(op);
         for (int j = 0; j < n; ++j) {
-            ComplexD r = binary ? apply(op, z(i), z(j))
-                    : (op.equals("scale") ? z(i).scale(SCALARS[j]) : z(i).pow(SCALARS[j]));
-            b.append("\n  with ").append(binary ? at(SPECIAL[j][0], SPECIAL[j][1]) : " " + SCALARS[j])
+            ComplexD r = binary ? apply(op, z(i), z(j)) : applyScalar(op, z(i), j);
+            b.append("\n  with ").append(binary ? at(SPECIAL[j][0], SPECIAL[j][1]) : label(op, j))
                     .append(" -> (").append(r.re()).append(", ").append(r.im()).append(")");
         }
         fail(b.toString());
+    }
+
+    /** how many right operands a scalar op has */
+    private static int grid(String op) {
+        return op.equals("powi") ? EXPONENTS.length : SCALARS.length;
+    }
+
+    private static ComplexD applyScalar(String op, ComplexD z, int j) {
+        if (op.equals("scale")) {
+            return z.scale(SCALARS[j]);
+        } else if (op.equals("powi")) {
+            return z.pow(EXPONENTS[j]);
+        }
+        return z.pow(SCALARS[j]);
+    }
+
+    private static String label(String op, int j) {
+        return op.equals("powi") ? " " + EXPONENTS[j] : " " + SCALARS[j];
     }
 
     private void digest(String op, long[] want, long[] got, boolean binary) {
@@ -1702,10 +2212,11 @@ public final class ComplexDTest {
 
     private long[] scalar(String op) {
         long[] out = new long[SPECIAL.length];
+        int n = grid(op);
         for (int i = 0; i < SPECIAL.length; ++i) {
             long h = SEED;
-            for (double x : SCALARS) {
-                h = fold(h, op.equals("scale") ? z(i).scale(x) : z(i).pow(x));
+            for (int j = 0; j < n; ++j) {
+                h = fold(h, applyScalar(op, z(i), j));
             }
             out[i] = h;
         }
@@ -1722,6 +2233,10 @@ public final class ComplexDTest {
                 h = fold(h, v.ln());
             } else if (op.equals("exp")) {
                 h = fold(h, v.exp());
+            } else if (op.equals("log1p")) {
+                h = fold(h, v.log1p());
+            } else if (op.equals("expm1")) {
+                h = fold(h, v.expm1());
             } else if (op.equals("sqrt")) {
                 h = fold(h, v.sqrt());
             } else if (op.equals("conj")) {
@@ -1784,6 +2299,12 @@ public final class ComplexDTest {
                 h = fold(h, v.abs());
             } else if (op.equals("arg")) {
                 h = fold(h, v.arg());
+            } else if (op.equals("abs2")) {
+                h = fold(h, v.abs2());
+            } else if (op.equals("proj")) {
+                h = fold(h, v.proj());
+            } else if (op.equals("finite")) {
+                h = fold(h, v.isFinite() ? 1L : 0L);
             } else if (op.equals("hash")) {
                 h = fold(h, (long) v.hashCode());
             } else {
@@ -1830,6 +2351,7 @@ public final class ComplexDTest {
     public void testTheFullMatrixOfScalarResults() {
         digest("scale", SCALE_DIGEST, scalar("scale"), false);
         digest("powr", POWR_DIGEST, scalar("pow"), false);
+        digest("powi", POWI_DIGEST, scalar("powi"), false);
     }
 
     @Test
@@ -1837,6 +2359,8 @@ public final class ComplexDTest {
         assertEquals("inv changed", INV_DIGEST, unary("inv"));
         assertEquals("ln changed", LN_DIGEST, unary("ln"));
         assertEquals("exp changed", EXP_DIGEST, unary("exp"));
+        assertEquals("log1p changed", LOG1P_DIGEST, unary("log1p"));
+        assertEquals("expm1 changed", EXPM1_DIGEST, unary("expm1"));
         assertEquals("sqrt changed", SQRT_DIGEST, unary("sqrt"));
         assertEquals("sinh changed", SINH_DIGEST, unary("sinh"));
         assertEquals("cosh changed", COSH_DIGEST, unary("cosh"));
@@ -1868,6 +2392,9 @@ public final class ComplexDTest {
         assertEquals("neg changed", NEG_DIGEST, unary("neg"));
         assertEquals("abs changed", ABS_DIGEST, unary("abs"));
         assertEquals("arg changed", ARG_DIGEST, unary("arg"));
+        assertEquals("abs2 changed", ABS2_DIGEST, unary("abs2"));
+        assertEquals("proj changed", PROJ_DIGEST, unary("proj"));
+        assertEquals("isFinite changed", FINITE_DIGEST, unary("finite"));
         assertEquals("hashCode changed", HASH_DIGEST, unary("hash"));
         assertEquals("toString changed", STRING_DIGEST, unary("string"));
     }
@@ -2100,12 +2627,18 @@ public final class ComplexDTest {
         v.inv();
         v.ln();
         v.exp();
+        v.log1p();
+        v.expm1();
         v.sqrt();
         v.pow(2.0);
+        v.pow(2);
         v.pow(ComplexD.I());
         v.scale(7.0);
         v.conj();
         v.neg();
+        v.abs2();
+        v.proj();
+        v.isFinite();
         same("untouched", 3.0, 4.0, v);
     }
 
@@ -2878,6 +3411,17 @@ public final class ComplexDTest {
             0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL,
             0x6FE25EB7DBF1810FL, 0x6FE25EB7DBF1810FL };
 
+    private static final long[] POWI_DIGEST = {
+            0x2D3BB2871A4117E7L, 0x2D3BB2871A4117E7L, 0x2D3BB2871A4117E7L,
+            0x2D3BB2871A4117E7L, 0x50B985902B3A9806L, 0x53D7C21B0E7CC682L,
+            0x551898BDFCD19572L, 0x2A4A06FE5CC0846EL, 0x077F85C47BF46922L,
+            0x21F75F8C83326619L, 0x7731482B764115FAL, 0xE6EC4DB16DECA1D2L,
+            0x7988657D5FB87085L, 0xA86E89714D962B4CL, 0xA86E89714D962B4CL,
+            0xA86E89714D962B4CL, 0xA86E89714D962B4CL, 0xA86E89714D962B4CL,
+            0xA86E89714D962B4CL, 0xA86E89714D962B4CL, 0x5A31FDAA4059AD15L,
+            0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L,
+            0x5A31FDAA4059AD15L, 0x5A31FDAA4059AD15L };
+
     private static final long INV_DIGEST = 0xAE700A5169C3FE03L;
     private static final long LN_DIGEST = 0xD96027ED7896B147L;
     private static final long EXP_DIGEST = 0xB5FA337F1D07EA36L;
@@ -2908,12 +3452,17 @@ public final class ComplexDTest {
     private static final long ACSCH_DIGEST = 0x924A74011865124CL;
     private static final long SINC_DIGEST = 0x07B0D7079F713734L;
     private static final long SINHC_DIGEST = 0xA179567DB1BB4D6BL;
+    private static final long LOG1P_DIGEST = 0x0F523630C761ECA8L;
+    private static final long EXPM1_DIGEST = 0x54626F513F7CE5B6L;
     private static final long NTHROOT_DIGEST = 0x13D7EFEE24C3D43FL;
     private static final long NTHROOTS_DIGEST = 0x34C1B57CE5FD60C1L;
     private static final long CONJ_DIGEST = 0x7177CD7F280B4735L;
     private static final long NEG_DIGEST = 0xCCDE060AE8009104L;
     private static final long ABS_DIGEST = 0x1EB710824629C9F6L;
     private static final long ARG_DIGEST = 0x07645CBA6F24888EL;
+    private static final long ABS2_DIGEST = 0xDAF181AC07BACD81L;
+    private static final long PROJ_DIGEST = 0xCEF61EC72CF917C3L;
+    private static final long FINITE_DIGEST = 0x2E351FC69C8B1BACL;
     private static final long HASH_DIGEST = 0xEB1D52173FAB84AAL;
     private static final long STRING_DIGEST = 0xC06FFF11282FD340L;
 }
