@@ -43,14 +43,14 @@ namespace reverse_mode_detail {
 
     template <typename T>
     [[nodiscard]] constexpr const auto& primal_value(const T& x) {
-        if constexpr (requires { x.val; }) return primal_value(x.val);
+        if constexpr (requires { x.val; }) return reverse_mode_detail::primal_value(x.val); // qualified: no ADL
         else return x;
     }
 
     template <typename T>
     [[nodiscard]] constexpr T sign_of(const T& x) {
-        using Primal = std::remove_cvref_t<decltype(primal_value(x))>;
-        const auto& p = primal_value(x);
+        using Primal = std::remove_cvref_t<decltype(reverse_mode_detail::primal_value(x))>;
+        const auto& p = reverse_mode_detail::primal_value(x); // qualified: ADL would pick ::primal_value for Dual
         return (p > zero<Primal>()) ? one<T>() : (p < zero<Primal>()) ? minus_one<T>() : zero<T>();
     }
 }
@@ -322,8 +322,17 @@ public:
             case OpType::Pow: {
                 const T& lv = nodes[nd.left_idx].val;
                 const T& rv = nodes[nd.right_idx].val;
-                nodes[nd.left_idx].adj  += a * nd.val * rv / lv;
-                nodes[nd.right_idx].adj += a * nd.val * call_log(lv);
+                const bool zero_base = reverse_mode_detail::primal_value(lv) == 0;
+                const bool zero_exponent = reverse_mode_detail::primal_value(rv) == 0;
+                // d/dl l^r = r * l^(r-1), computed directly instead of val * r / l (0/0 at l == 0).
+                // For 0^0 the formula is 0 * inf; the derivative of l^0 is 0.
+                if (!(zero_base && zero_exponent)) {
+                    nodes[nd.left_idx].adj += a * rv * call_pow(lv, rv - reverse_mode_detail::one<T>());
+                }
+                // d/dr l^r = l^r * ln(l); its limit at l == 0 is 0 (for r > 0).
+                if (!zero_base) {
+                    nodes[nd.right_idx].adj += a * nd.val * call_log(lv);
+                }
                 break;
             }
             case OpType::Atan2: {
@@ -483,7 +492,7 @@ template <typename T>
 
 template <typename L, typename R>
 [[nodiscard]] inline bool primal_equal(const L& lhs, const R& rhs) {
-    return primal_value(lhs) == primal_value(rhs);
+    return reverse_mode_detail::primal_value(primal_value(lhs)) == reverse_mode_detail::primal_value(primal_value(rhs));
 }
 
 template <typename L, typename R>
@@ -493,22 +502,22 @@ template <typename L, typename R>
 
 template <typename L, typename R>
 [[nodiscard]] inline bool primal_less(const L& lhs, const R& rhs) {
-    return primal_value(lhs) < primal_value(rhs);
+    return reverse_mode_detail::primal_value(primal_value(lhs)) < reverse_mode_detail::primal_value(primal_value(rhs));
 }
 
 template <typename L, typename R>
 [[nodiscard]] inline bool primal_less_equal(const L& lhs, const R& rhs) {
-    return primal_value(lhs) <= primal_value(rhs);
+    return reverse_mode_detail::primal_value(primal_value(lhs)) <= reverse_mode_detail::primal_value(primal_value(rhs));
 }
 
 template <typename L, typename R>
 [[nodiscard]] inline bool primal_greater(const L& lhs, const R& rhs) {
-    return primal_value(lhs) > primal_value(rhs);
+    return reverse_mode_detail::primal_value(primal_value(lhs)) > reverse_mode_detail::primal_value(primal_value(rhs));
 }
 
 template <typename L, typename R>
 [[nodiscard]] inline bool primal_greater_equal(const L& lhs, const R& rhs) {
-    return primal_value(lhs) >= primal_value(rhs);
+    return reverse_mode_detail::primal_value(primal_value(lhs)) >= reverse_mode_detail::primal_value(primal_value(rhs));
 }
 
 template <typename T>
@@ -672,6 +681,53 @@ template <typename T> inline Var<T> operator/(T c, Var<T> a) { return a.tape->co
 template <typename T> inline Var<T> autodiff_pow(Var<T> a, T c) { return autodiff_pow(a, a.tape->constant(c)); }
 template <typename T> inline Var<T> autodiff_pow(T c, Var<T> a) { return autodiff_pow(a.tape->constant(c), a); }
 
+// Mixed scalar overloads: an arithmetic scalar of another type (a double literal on
+// Tape<float>, an int literal, or a double inside a reverse_hessian function where T is
+// Dual<double>) is converted to T and forwarded to the overloads above.
+namespace reverse_mode_detail {
+    template <typename T, typename S>
+    [[nodiscard]] constexpr T lift(S c) {
+        if constexpr (std::is_arithmetic_v<T>) return static_cast<T>(c);
+        else return T{ lift<std::remove_cvref_t<decltype(std::declval<T>().val)>>(c) };
+    }
+
+    template <typename S, typename T>
+    concept foreign_scalar = std::is_arithmetic_v<S> && !std::is_same_v<S, T>;
+}
+
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator+(Var<T> a, S c) { return a + reverse_mode_detail::lift<T>(c); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator+(S c, Var<T> a) { return reverse_mode_detail::lift<T>(c) + a; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator-(Var<T> a, S c) { return a - reverse_mode_detail::lift<T>(c); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator-(S c, Var<T> a) { return reverse_mode_detail::lift<T>(c) - a; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator*(Var<T> a, S c) { return a * reverse_mode_detail::lift<T>(c); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator*(S c, Var<T> a) { return reverse_mode_detail::lift<T>(c) * a; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator/(Var<T> a, S c) { return a / reverse_mode_detail::lift<T>(c); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator/(S c, Var<T> a) { return reverse_mode_detail::lift<T>(c) / a; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> autodiff_pow(Var<T> a, S c) { return autodiff_pow(a, reverse_mode_detail::lift<T>(c)); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> autodiff_pow(S c, Var<T> a) { return autodiff_pow(reverse_mode_detail::lift<T>(c), a); }
+
+// Scalar overloads for parameter<T>: same as for Var<T>
+template <typename T> inline Var<T> operator+(parameter<T> a, T c) { return static_cast<Var<T>>(a) + c; }
+template <typename T> inline Var<T> operator+(T c, parameter<T> a) { return c + static_cast<Var<T>>(a); }
+template <typename T> inline Var<T> operator-(parameter<T> a, T c) { return static_cast<Var<T>>(a) - c; }
+template <typename T> inline Var<T> operator-(T c, parameter<T> a) { return c - static_cast<Var<T>>(a); }
+template <typename T> inline Var<T> operator*(parameter<T> a, T c) { return static_cast<Var<T>>(a) * c; }
+template <typename T> inline Var<T> operator*(T c, parameter<T> a) { return c * static_cast<Var<T>>(a); }
+template <typename T> inline Var<T> operator/(parameter<T> a, T c) { return static_cast<Var<T>>(a) / c; }
+template <typename T> inline Var<T> operator/(T c, parameter<T> a) { return c / static_cast<Var<T>>(a); }
+template <typename T> inline Var<T> autodiff_pow(parameter<T> a, T c) { return autodiff_pow(static_cast<Var<T>>(a), c); }
+template <typename T> inline Var<T> autodiff_pow(T c, parameter<T> a) { return autodiff_pow(c, static_cast<Var<T>>(a)); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator+(parameter<T> a, S c) { return static_cast<Var<T>>(a) + c; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator+(S c, parameter<T> a) { return c + static_cast<Var<T>>(a); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator-(parameter<T> a, S c) { return static_cast<Var<T>>(a) - c; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator-(S c, parameter<T> a) { return c - static_cast<Var<T>>(a); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator*(parameter<T> a, S c) { return static_cast<Var<T>>(a) * c; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator*(S c, parameter<T> a) { return c * static_cast<Var<T>>(a); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator/(parameter<T> a, S c) { return static_cast<Var<T>>(a) / c; }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> operator/(S c, parameter<T> a) { return c / static_cast<Var<T>>(a); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> autodiff_pow(parameter<T> a, S c) { return autodiff_pow(static_cast<Var<T>>(a), c); }
+template <typename T, reverse_mode_detail::foreign_scalar<T> S> inline Var<T> autodiff_pow(S c, parameter<T> a) { return autodiff_pow(c, static_cast<Var<T>>(a)); }
+
 // ---------------------------------------------------------------------------
 // Math functions — same autodiff_ prefix as Dual.h; overloads resolve by type
 // ---------------------------------------------------------------------------
@@ -706,8 +762,9 @@ inline Var<T> autodiff_exp(Var<T> u) {
 
 template <typename T>
 inline Var<T> autodiff_sigmoid(Var<T> x) {
-    // 1.0 / (1.0 + exp(-x))
-    return 1.0 / (1.0 + autodiff_exp(-x));
+    // 1 / (1 + exp(-x)), with the constants in the tape's scalar type (float, Dual, ...)
+    const T one = reverse_mode_detail::one<T>();
+    return one / (one + autodiff_exp(-x));
 }
 
 template <typename T>

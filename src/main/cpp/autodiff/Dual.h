@@ -156,18 +156,24 @@ Dual<T> autodiff_sqrt(const Dual<T>& u) {
 }
 
 // d/dx u^n = n * u^(n-1) * u'    (real exponent n, u > 0 for non-integer n)
+// The derivative is 0 for n == 0 or a constant base (avoids 0 * inf = NaN at u == 0).
 template<DifferentiableType T>
 Dual<T> autodiff_pow(const Dual<T>& u, T n) {
     return Dual<T>{.val = std::pow(u.val, n),
-                   .der = n * std::pow(u.val, n - T{1}) * u.der};
+                   .der = (n == T{0} || u.der == T{0}) ? T{0} : n * std::pow(u.val, n - T{1}) * u.der};
 }
 
-// d/dx u^v where both u and v are Dual:  (u^v)' = u^(v-1) * (v*u' + u*ln(u)*v')
+// d/dx u^v where both u and v are Dual:  (u^v)' = v * u^(v-1) * u' + u^v * ln(u) * v'
+// - The base term is 0 for v == 0 or a constant base (u' == 0); avoids 0 * inf at u == 0.
+// - The exponent term is 0 for a constant exponent (v' == 0), which keeps negative bases
+//   with a constant exponent finite, and at u == 0 (limit of u^v * ln(u) for v > 0).
+// A negative base with a varying exponent stays NaN (not real-differentiable).
 template<DifferentiableType T>
 Dual<T> autodiff_pow(const Dual<T>& u, const Dual<T>& v) {
     const T p = std::pow(u.val, v.val);
-    return Dual<T>{.val = p,
-                   .der = p * (v.val * u.der / u.val + std::log(u.val) * v.der)};
+    const T base_term = (v.val == T{0} || u.der == T{0}) ? T{0} : v.val * std::pow(u.val, v.val - T{1}) * u.der;
+    const T exponent_term = (v.der == T{0} || u.val == T{0}) ? T{0} : p * std::log(u.val) * v.der;
+    return Dual<T>{.val = p, .der = base_term + exponent_term};
 }
 
 // ---------------------------------------------------------------------------
