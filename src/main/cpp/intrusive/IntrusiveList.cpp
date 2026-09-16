@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <cassert>
 #include <string_view>
+#include <memory>
+#include <stdexcept>
 #include "IntrusiveList.h"
 
 

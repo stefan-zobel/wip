@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "bitfields.h"
 
 // Example:

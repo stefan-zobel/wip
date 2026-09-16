@@ -213,6 +213,7 @@ public:
     template<bool IsConst>
     struct IteratorImpl {
         using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
         using value_type = std::conditional_t<IsConst, const T, T>;
         using reference = value_type&;
         using pointer = value_type*;

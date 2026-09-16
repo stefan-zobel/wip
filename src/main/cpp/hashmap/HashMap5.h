@@ -23,6 +23,7 @@
 #include <memory>
 #include <memory_resource> // for pmr::
 #include <concepts>
+#include <functional> // for std::invoke
 
 #include "ConcurrentMap.h"
 

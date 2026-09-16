@@ -6,6 +6,7 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <ostream>
 #include <span>
@@ -129,7 +130,7 @@ struct ReverseVectorArrayResult {
 
 // Owns the entire computation graph as a flat, contiguous array of Nodes.
 // One Tape per independent computation - naturally thread-safe.
-template <typename T = double>
+template <typename T>
 struct Tape {
     std::vector<Node<T>> nodes;
 

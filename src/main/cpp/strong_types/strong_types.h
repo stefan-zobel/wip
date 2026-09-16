@@ -157,73 +157,73 @@ namespace fk {
         // ====================================================================
 
         friend constexpr StrongType operator|(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) | static_cast<T>(rhs.value));
         }
 
         friend constexpr StrongType operator&(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) & static_cast<T>(rhs.value));
         }
 
         friend constexpr StrongType operator^(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) ^ static_cast<T>(rhs.value));
         }
 
         friend constexpr StrongType operator~(const StrongType& v) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(~static_cast<T>(v.value));
         }
 
         // Bitwise Shift operators (left/right)
         friend constexpr StrongType operator<<(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) << static_cast<T>(rhs.value));
         }
 
         friend constexpr StrongType operator>>(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             return StrongType(static_cast<T>(lhs.value) >> static_cast<T>(rhs.value));
         }
 
         // Bitwise Assignment Operators
         constexpr StrongType& operator|=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             static_cast<T&>(value) |= static_cast<const T&>(rhs.value);
             return *this;
         }
 
         constexpr StrongType& operator&=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             static_cast<T&>(value) &= static_cast<const T&>(rhs.value);
             return *this;
         }
 
         constexpr StrongType& operator^=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             static_cast<T&>(value) ^= static_cast<const T&>(rhs.value);
             return *this;
         }
 
         constexpr StrongType& operator<<=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             static_cast<T&>(value) <<= static_cast<const T&>(rhs.value);
             return *this;
         }
 
         constexpr StrongType& operator>>=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>
+            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
             static_cast<T&>(value) >>= static_cast<const T&>(rhs.value);
             return *this;

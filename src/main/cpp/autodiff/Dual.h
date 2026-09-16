@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <ostream>
