@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <utility>
 #include <type_traits>
@@ -324,9 +325,20 @@ namespace fk {
 
 // ====================================================================
 // Standard Library Hash Injection
-// Enables 'StrongType' to be seamlessly used as a key in 
+// Enables 'StrongType' and all types derived from it (fk::i32, fk::u64,
+// user-defined strong types, ...) to be seamlessly used as a key in
 // std::unordered_map and std::unordered_set.
 // ====================================================================
+namespace fk::detail {
+    // Finds the StrongType<T, Tag> base of a derived strong type (deduction via base conversion).
+    template <typename T, typename Tag>
+    StrongType<T, Tag> strong_base_of(const StrongType<T, Tag>&);
+
+    template <typename S>
+    concept derived_strong_type = requires(const S& s) { strong_base_of(s); }
+        && !std::same_as<S, decltype(strong_base_of(std::declval<const S&>()))>;
+}
+
 namespace std {
     template <typename T, typename Tag>
     struct hash<fk::StrongType<T, Tag>> {
@@ -336,3 +348,10 @@ namespace std {
         }
     };
 }
+
+// Derived strong types (fk::i32, fk::u64, user types deriving from StrongType, ...) hash like
+// their StrongType<T, Tag> base, i.e. like the underlying T. A specialization for StrongType<T, Tag>
+// alone does not apply to derived types, because template specialization ignores inheritance.
+template <typename S>
+    requires fk::detail::derived_strong_type<S>
+struct std::hash<S> : std::hash<decltype(fk::detail::strong_base_of(std::declval<const S&>()))> {};
