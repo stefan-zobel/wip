@@ -75,6 +75,9 @@ public:
     using NodeType = Mixin<T, Cap>;
     using IndexType = typename Link<Cap>::Idx;
     static constexpr IndexType Nil = Link<Cap>::NilIdx;
+    // link.prev value of a node that is on the freelist (never a valid index;
+    // SmallestIndexType guarantees that Cap + 1 fits into IndexType)
+    static constexpr IndexType FreeMark = static_cast<IndexType>(Cap + 1);
 
 private:
     // must value-init for constexpr!
@@ -135,6 +138,9 @@ public:
 
     constexpr void remove(IndexType idx) {
         if (idx == Nil || idx > Cap) return;
+        // Removing a node that is already free (e.g. the same index twice) would
+        // corrupt the list and the freelist, so it is ignored.
+        if (storage[idx].link.prev == FreeMark) return;
 
         // Unlink it from the logical list
         IndexType prev = storage[idx].link.prev;
@@ -194,6 +200,7 @@ public:
         // pushed on the stack and the first one to be popped off
         for (std::size_t i = Cap; i > 0; --i) {
             storage[i].link.next = free_head;
+            storage[i].link.prev = FreeMark;
             free_head = static_cast<IndexType>(i);
         }
     }
@@ -376,9 +383,9 @@ public:
 private:
 
     constexpr bool is_valid_internal(IndexType idx) const {
-        // Nil is a special case in insert() (it means 'end' there), 
-        // so we check only for the upper bound.
-        return idx <= Cap;
+        // Nil is a special case in insert() (it means 'end' there),
+        // so we check only for the upper bound and that the node is in use.
+        return idx == Nil || (idx <= Cap && storage[idx].link.prev != FreeMark);
     }
 
     constexpr IndexType allocate_from_free_list() {
@@ -391,7 +398,7 @@ private:
     constexpr void release_to_free_list(IndexType idx) {
         // we "abuse" the next-pointer for the freelist chain
         storage[idx].link.next = free_head;
-        storage[idx].link.prev = Nil;
+        storage[idx].link.prev = FreeMark; // marks the node as free
         free_head = idx;
     }
 

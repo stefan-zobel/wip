@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <vector>
 #include <cstdint>
 #include <stdexcept>
@@ -45,11 +46,13 @@ namespace fk {
     // assigns indices purely upon instantiation across the application.
     // ========================================================================
     class TypeRegistry {
-        static inline uint16_t m_next_id = 1; // 0 is reserved for 'invalid'
+        // Atomic: the first id<T>() calls for different types may run on different threads
+        // (the initialization of each static local itself is thread-safe).
+        static inline std::atomic<uint16_t> m_next_id{ 1 }; // 0 is reserved for 'invalid'
     public:
         template <typename T>
         static uint16_t id() noexcept {
-            static const uint16_t type_id = m_next_id++;
+            static const uint16_t type_id = m_next_id.fetch_add(1, std::memory_order_relaxed);
             return type_id;
         }
     };
@@ -109,17 +112,25 @@ namespace fk {
                 return m_logic_to_phys[logical_slot];
             }
 
-            // Emplaces structural data purely at the back
+            // Emplaces structural data purely at the back.
+            // Strong exception guarantee: on any exception the backend is unchanged
+            // (an enlarged m_logic_to_phys only holds additional UINT32_MAX entries).
             uint32_t emplace_data(T&& data, uint32_t assigned_logical_slot) {
                 uint32_t active_phys_idx = static_cast<uint32_t>(m_dense_data.size());
-                m_dense_data.push_back(std::forward<T>(data));
 
                 // Track the bidirectional mapping for immediate resolves
                 if (assigned_logical_slot >= m_logic_to_phys.size()) {
-                    m_logic_to_phys.resize(assigned_logical_slot + 1, UINT32_MAX);
+                    m_logic_to_phys.resize(static_cast<size_t>(assigned_logical_slot) + 1, UINT32_MAX);
+                }
+
+                m_dense_data.push_back(std::move(data));
+                try {
+                    m_phys_to_logic.push_back(assigned_logical_slot);
+                } catch (...) {
+                    m_dense_data.pop_back();
+                    throw;
                 }
                 m_logic_to_phys[assigned_logical_slot] = active_phys_idx;
-                m_phys_to_logic.push_back(assigned_logical_slot);
 
                 return active_phys_idx;
             }
@@ -190,25 +201,41 @@ namespace fk {
         // ====================================================================
         // Spawn Object (Returns unshakeable Handle)
         // ====================================================================
+        // Accepts lvalues (copied) and rvalues (moved). Strong exception guarantee:
+        // if copying/moving the object or an allocation throws, no slot is consumed.
         template <typename T>
         GlobalHandle spawn(T&& obj) {
-            uint32_t slot = 0;
+            using Value = std::remove_cvref_t<T>;
 
-            if (!m_free_slots.empty()) {
+            // Make the object and the backend first: nothing is committed yet
+            Value value(std::forward<T>(obj));
+            DenseBackend<Value>& backend = get_backend<Value>();
+            const uint16_t tid = TypeRegistry::id<Value>();
+
+            const bool reuse_slot = !m_free_slots.empty();
+            uint32_t slot = 0;
+            if (reuse_slot) {
                 slot = m_free_slots.back();
-                m_free_slots.pop_back();
             } else {
                 slot = static_cast<uint32_t>(m_slots.size());
                 m_slots.push_back(SlotMeta{0});
             }
 
-            uint16_t gen = m_slots[slot].generation;
-            uint16_t tid = TypeRegistry::id<T>();
+            try {
+                // Let the isolated backend place the raw memory
+                backend.emplace_data(std::move(value), slot);
+            } catch (...) {
+                if (!reuse_slot) {
+                    m_slots.pop_back();
+                }
+                throw;
+            }
 
-            // Let the isolated backend place the raw memory
-            get_backend<T>().emplace_data(std::forward<T>(obj), slot);
+            if (reuse_slot) {
+                m_free_slots.pop_back();
+            }
 
-            return GlobalHandle::create(tid, slot, gen);
+            return GlobalHandle::create(tid, slot, m_slots[slot].generation);
         }
 
         // ====================================================================
@@ -252,8 +279,15 @@ namespace fk {
             if (tid < m_backends.size() && m_backends[tid]) {
 
                 if (m_backends[tid]->destroy_and_swap_pop(slot)) {
+                    if (m_slots[slot].generation == UINT16_MAX) {
+                        // The 16-bit generation is exhausted: retire the slot instead of letting
+                        // the generation wrap to 0, which would make ancient handles valid again.
+                        // A stale handle with this generation still resolves to nullptr, because
+                        // the backend no longer maps the slot.
+                        return;
+                    }
                     // Update validation token to permanently render the users external handle unusable
-                    m_slots[slot].generation++; 
+                    m_slots[slot].generation++;
                     m_free_slots.push_back(slot);
                 }
             }

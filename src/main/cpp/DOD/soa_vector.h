@@ -136,10 +136,20 @@ namespace fk {
 
         template <size_t... Is>
         void push_back_impl(std::index_sequence<Is...>, Types... args) {
-            // Black magic: Uses fold expression to push the correct argument 
+            // Black magic: Uses fold expression to push the correct argument
             // into its corresponding inner array.
+            // The arguments are the caller's copies (by value), so they can be moved.
             auto args_tuple = std::forward_as_tuple(args...);
-            (std::get<Is>(m_arrays).push_back(std::get<Is>(args_tuple)), ...);
+            size_t pushed = 0;
+            try {
+                // The comma fold evaluates strictly left to right.
+                ((std::get<Is>(m_arrays).push_back(std::move(std::get<Is>(args_tuple))), ++pushed), ...);
+            } catch (...) {
+                // Strong guarantee: undo the columns that already grew, so that all
+                // arrays keep the same size.
+                ((Is < pushed ? std::get<Is>(m_arrays).pop_back() : void()), ...);
+                throw;
+            }
         }
 
         template <size_t... Is>

@@ -15,8 +15,9 @@ namespace fk {
     // a rewritten memory slot from a previous lifecycle.
     //
     // Layout: 28 Bits Generation | 36 Bits Index/Slot
-    // (Allows for 68 billion items simultaneously, and 268 million 
-    // lifecycle rollovers per specific slot).
+    // (Allows for 68 billion items simultaneously, and 268 million
+    // lifecycles per specific slot; after that the slot is retired and
+    // never reused, so a stale handle can never match again).
     // ========================================================================
     struct GenHandle : public fk::StrongType<uint64_t, struct GenHandleTag> {
         using StrongType::StrongType; 
@@ -40,6 +41,9 @@ namespace fk {
         constexpr uint32_t generation() const noexcept {
             return static_cast<uint32_t>((this->get() & GEN_TOP_MASK) >> 36);
         }
+
+        // Highest generation that fits into the 28 generation bits
+        static constexpr uint32_t MAX_GENERATION = static_cast<uint32_t>(GEN_TOP_MASK >> 36);
     };
 
 
@@ -81,16 +85,53 @@ namespace fk {
         using BaseClass = std::vector<ArenaSlot<T>>;
 
         // "UINT64_MAX" acts as our explicit null-pointer for the free-list
-        uint64_t m_first_free = UINT64_MAX; 
+        uint64_t m_first_free = UINT64_MAX;
+
+        // next_free_pos marker of a slot that reached MAX_GENERATION and is never reused
+        static constexpr uint64_t RETIRED = UINT64_MAX - 1;
 
         // Tracks how many items are currently actively stored vs total capacity
-        uint64_t m_num_taken = 0;           
+        uint64_t m_num_taken = 0;
+
+        // Called after the data of a slot was destroyed: advances the generation so that
+        // old handles become invalid, or retires the slot if the generation is exhausted.
+        // Returns true if the slot may be reused.
+        static bool advance_generation(ArenaSlot<T>& slot) noexcept {
+            if (slot.generation == GenHandle::MAX_GENERATION) {
+                slot.next_free_pos = RETIRED;
+                return false;
+            }
+            slot.generation++;
+            return true;
+        }
 
     public:
         // Expose absolutely essential std::vector geometric methods safely
         using BaseClass::capacity;
         using BaseClass::reserve;
-        using BaseClass::clear;
+
+        // Destroys all elements. The slots are kept (no reallocation on refill) and their
+        // generations advance, so handles issued before clear() never resolve again.
+        void clear() noexcept {
+            const uint64_t slot_count = BaseClass::size();
+            for (uint64_t idx = 0; idx < slot_count; ++idx) {
+                ArenaSlot<T>& slot = BaseClass::operator[](idx);
+                if (slot.data.has_value()) {
+                    slot.data.reset();
+                    advance_generation(slot);
+                }
+            }
+            // Rebuild the free list over all reusable slots, lowest index first
+            m_first_free = UINT64_MAX;
+            for (uint64_t idx = slot_count; idx-- > 0;) {
+                ArenaSlot<T>& slot = BaseClass::operator[](idx);
+                if (slot.next_free_pos != RETIRED) {
+                    slot.next_free_pos = m_first_free;
+                    m_first_free = idx;
+                }
+            }
+            m_num_taken = 0;
+        }
 
         // Default Constructor
         GenerationalArena() = default;
@@ -126,11 +167,12 @@ namespace fk {
                 target_idx = m_first_free;
                 ArenaSlot<T>& slot = BaseClass::operator[](target_idx);
 
+                // Construct the actual user data perfectly in-place.
+                // Done before unlinking: if the constructor throws, the free list stays intact.
+                slot.data.emplace(std::forward<Args>(args)...);
+
                 // Disconnect this slot from the free list (pop front)
                 m_first_free = slot.next_free_pos;
-
-                // Construct the actual user data perfectly in-place
-                slot.data.emplace(std::forward<Args>(args)...);
 
                 m_num_taken++;
                 return GenHandle::create(target_idx, slot.generation);
@@ -210,23 +252,17 @@ namespace fk {
             if (slot.data.has_value() && slot.generation == expected_gen) {
                 // Destroy data via std::optional reset (calls T::~T)
                 slot.data.reset();
-
-                // Sever ties to the past: Increment generation so any old handle 
-                // in the user's application pointing to this index becomes invalid.
-                slot.generation++;
-
-                // Prevent 28-Bit Generation Overflow.
-                // Resetting to 0 is generally fine, but requires ~268 million 
-                // insertions over the exact same spot to ever cause a collision.
-                if (slot.generation > (GenHandle::GEN_TOP_MASK >> 36)) {
-                    slot.generation = 0; 
-                }
-
-                // Push this now-empty slot onto the front of the free-list
-                slot.next_free_pos = m_first_free;
-                m_first_free = idx;
-
                 m_num_taken--;
+
+                // Sever ties to the past: Increment generation so any old handle
+                // in the user's application pointing to this index becomes invalid.
+                // Once the 28-bit generation is exhausted, the slot is retired instead
+                // of wrapping to 0 (a wrap would make ancient handles valid again).
+                if (advance_generation(slot)) {
+                    // Push this now-empty slot onto the front of the free-list
+                    slot.next_free_pos = m_first_free;
+                    m_first_free = idx;
+                }
                 return true;
             }
 

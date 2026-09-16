@@ -63,7 +63,8 @@ namespace fk {
             m_dense.clear();
             m_dense_to_sparse.clear();
             m_sparse.clear();
-            m_next_entity_id = 0;
+            // m_next_entity_id is intentionally NOT reset: IDs stay unique across clear(),
+            // so a handle from before clear() can never resolve to a newly created object.
         }
 
         // --- Contiguous Exposing API ---
@@ -83,21 +84,35 @@ namespace fk {
         // Emplace (O(1))
         // Pushes the object purely to the back of the dense array.
         // Unconditionally returns a new unique Entity Handle.
+        // Strong exception guarantee: if the constructor of T (or an allocation)
+        // throws, the set is left unchanged and no entity ID is consumed.
         // ====================================================================
         template <typename... Args>
         DenseEntity emplace(Args&&... args) {
-            const uint32_t entity_id = m_next_entity_id++;
+            if (m_next_entity_id == DenseEntity::INVALID) {
+                throw std::overflow_error("SparseSet: entity IDs exhausted (32-bit ID limit).");
+            }
+            const uint32_t entity_id = m_next_entity_id;
             const uint32_t dense_index = static_cast<uint32_t>(m_dense.size());
 
             // Expand the sparse translation table if this is a newly seen ID peak
+            // (additional INVALID entries are harmless if a later step throws)
             if (entity_id >= m_sparse.size()) {
-                m_sparse.resize(entity_id + 1, DenseEntity::INVALID);
+                m_sparse.resize(static_cast<size_t>(entity_id) + 1, DenseEntity::INVALID);
             }
 
-            // Record translations
-            m_sparse[entity_id] = dense_index;
-            m_dense_to_sparse.push_back(DenseEntity{entity_id});
+            // Construct the object first: if T's constructor throws, nothing refers to it yet
             m_dense.emplace_back(std::forward<Args>(args)...);
+            try {
+                m_dense_to_sparse.push_back(DenseEntity{entity_id});
+            } catch (...) {
+                m_dense.pop_back();
+                throw;
+            }
+
+            // Record the translation only after everything succeeded (cannot throw)
+            m_sparse[entity_id] = dense_index;
+            ++m_next_entity_id;
 
             return DenseEntity{entity_id};
         }
