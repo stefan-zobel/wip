@@ -13,6 +13,8 @@
 
 #include "instrset.h"
 
+#include <atomic>
+
 #ifdef VCL_NAMESPACE
 namespace VCL_NAMESPACE {
 #endif
@@ -79,16 +81,13 @@ extern "C" {
     9  or above = AVX512F
    10  or above = AVX512VL, AVX512BW, AVX512DQ
 */
-int instrset_detect(void) {
+static int detect_instruction_set(void) {
 
-    static int iset = -1;                                  // remember value for next call
-    if (iset >= 0) {
-        return iset;                                       // called before
-    }
-    iset = 0;                                              // default value
+    int iset = 0;                                          // default value
     int abcd[4] = {0,0,0,0};                               // cpuid results
     cpuid(abcd, 0);                                        // call cpuid function 0
     if (abcd[0] == 0) return iset;                         // no further cpuid function supported
+    const int max_leaf = abcd[0];                          // highest supported standard cpuid leaf
     cpuid(abcd, 1);                                        // call cpuid function 1 for feature flags
     if ((abcd[3] & (1 <<  0)) == 0) return iset;           // no floating point
     if ((abcd[3] & (1 << 23)) == 0) return iset;           // no MMX
@@ -111,17 +110,31 @@ int instrset_detect(void) {
     if ((xgetbv(0) & 6) != 6)       return iset;           // AVX not enabled in O.S.
     if ((abcd[2] & (1 << 28)) == 0) return iset;           // no AVX
     iset = 7;                                              // 7: AVX supported
+    if (max_leaf < 7) return iset;                         // cpuid leaf 7 not supported
     cpuid(abcd, 7);                                        // call cpuid leaf 7 for feature flags
     if ((abcd[1] & (1 <<  5)) == 0) return iset;           // no AVX2
     iset = 8;
     if ((abcd[1] & (1 << 16)) == 0) return iset;           // no AVX512
-    cpuid(abcd, 0xD);                                      // call cpuid leaf 0xD for feature flags
-    if ((abcd[0] & 0x60) != 0x60)   return iset;           // no AVX512
+    // XCR0 bits 5-7 (opmask, ZMM_Hi256, Hi16_ZMM): AVX512 state enabled by the O.S.
+    // (cpuid leaf 0xD only tells what the CPU supports, not what the O.S. enabled)
+    if ((xgetbv(0) & 0xE0) != 0xE0) return iset;           // AVX512 not enabled in O.S.
     iset = 9;
-    cpuid(abcd, 7);                                        // call cpuid leaf 7 for feature flags
     if ((abcd[1] & (1 << 31)) == 0) return iset;           // no AVX512VL
     if ((abcd[1] & 0x40020000) != 0x40020000) return iset; // no AVX512BW, AVX512DQ
     iset = 10;
+    return iset;
+}
+
+int instrset_detect(void) {
+    // The result is computed completely before it is published, so concurrent
+    // first calls never observe a partially detected value.
+    static std::atomic<int> cached_iset{ -1 };             // remember value for next call
+    int iset = cached_iset.load(std::memory_order_relaxed);
+    if (iset >= 0) {
+        return iset;                                       // called before
+    }
+    iset = detect_instruction_set();
+    cached_iset.store(iset, std::memory_order_relaxed);
     return iset;
 }
 
