@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace fk {
 
@@ -32,8 +33,17 @@ namespace fk {
         static_assert(std::is_nothrow_destructible_v<T>, "T must be strictly nothrow destructible!");
 
     private:
-        // Hardware cache line size (Universally 64 bytes on x86_64 / ARM64).
-        static constexpr size_t CACHE_LINE = 64;
+        // Hardware cache line size. std::hardware_destructive_interference_size is avoided on
+        // purpose: g++ warns about it (-Winterference-size) because its value is not ABI-stable.
+#if defined(__APPLE__) && defined(__aarch64__)
+        static constexpr size_t CACHE_LINE = 128; // Apple Silicon uses 128-byte cache lines
+#else
+        static constexpr size_t CACHE_LINE = 64;  // x86_64 and most ARM64 cores
+#endif
+
+        // An alignas() weaker than the natural alignment of Cell would be ill-formed,
+        // so over-aligned element types keep their own (stricter) alignment.
+        static constexpr size_t CELL_ALIGN = alignof(T) > CACHE_LINE ? alignof(T) : CACHE_LINE;
 
         // Represents the exact mathematical distance between sequence numbers
         using diff_t = std::make_signed_t<size_t>;
@@ -44,16 +54,16 @@ namespace fk {
         // By aligning EACH INDIVIDUAL CELL to the exact CPU cache line boundary,
         // we guarantee that adjacent Cells sit on completely different hardware 
         // cache lines. C++ standard [expr.sizeof] guarantees that the array element 
-        // size will rigidly be padded to a perfect multiple of CACHE_LINE.
-        // This physically eradicates "False Sharing" when Producer A writes to 
+        // size will rigidly be padded to a perfect multiple of CELL_ALIGN.
+        // This physically eradicates "False Sharing" when Producer A writes to
         // Cell 0, while Producer B simultaneously writes to Cell 1.
-        struct alignas(CACHE_LINE) Cell {
+        struct alignas(CELL_ALIGN) Cell {
             std::atomic<size_t> sequence;
             std::optional<T> data;
         };
 
         // Mathematical validation of the C++ compiler's layout algorithm
-        static_assert(sizeof(Cell) % CACHE_LINE == 0, "Compiler failed to pad Cell to cache boundary!");
+        static_assert(sizeof(Cell) % CELL_ALIGN == 0, "Compiler failed to pad Cell to cache boundary!");
 
         // --- GROUP 1: Read-Only Data (Shared safely among all cores) ---
         // unique_ptr automatically sizes and aligns the raw contiguous C-array 
@@ -90,7 +100,8 @@ namespace fk {
             m_tail.store(0, std::memory_order_relaxed);
         }
 
-        // Clean-Up is fully automated and fundamentally thread-safe when the owner destroys the queue.
+        // Clean-Up is fully automated: remaining items are destroyed together with the cells.
+        // Like any destructor, it must not run while other threads still push or pop.
         ~LockFreeRingBuffer() = default; 
 
         // Strictly disallow copying and moving to uphold structural threading guarantees
@@ -113,7 +124,8 @@ namespace fk {
             while (true) {
                 cell = &m_buffer[pos & m_buffer_mask];
 
-                // Acquire syncs with Release in pop() to ensure we read the utmost latest sequence.
+                // Every std::atomic operation is sequentially consistent, whatever memory_order is
+                // passed; acquire/release are mere optimization hints without semantics.
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
 
                 // FIX: Evaluate subtraction first as unsigned (natural modulo wrap-around), 
@@ -141,8 +153,9 @@ namespace fk {
             // EXCLUSIVELY OWNING CELL: We now operate fundamentally thread-safe without locks.
             cell->data.emplace(std::forward<U>(item));
 
-            // Publish to consumers. Release order mathematically guarantees our heavy data write 
-            // inside 'm_data' completes BEFORE the sequence flag opens for opposing consumer threads.
+            // Publish to consumers. Consumers only claim a cell whose sequence is pos + 1, and the
+            // sequence is stored AFTER 'data' has been written, so no consumer can see a half-written
+            // cell. (memory_order_release is only a hint and plays no part in this.)
             cell->sequence.store(pos + 1, std::memory_order_release);
             return true;
         }
@@ -152,13 +165,16 @@ namespace fk {
         // Returns an empty std::optional if the queue is fully empty.
         // ====================================================================
         std::optional<T> pop() noexcept {
+            // Every path returns this one variable, so compilers apply NRVO (a second
+            // return expression such as std::nullopt would disable it and cost a move).
+            std::optional<T> extracted;
             Cell* cell = nullptr;
             size_t pos = m_tail.load(std::memory_order_relaxed);
 
             while (true) {
                 cell = &m_buffer[pos & m_buffer_mask];
 
-                // Acquire syncs strictly with Release in push()
+                // Sequentially consistent load (memory_order_acquire is only a hint, see push())
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
 
                 // Consumers rigidly expect the sequence to be exactly (pos + 1)
@@ -172,7 +188,7 @@ namespace fk {
                 } 
                 else if (diff < 0) {
                     // Sequence lags behind Tail = The queue is dry/empty.
-                    return std::nullopt; 
+                    return extracted; // empty
                 } 
                 else {
                     // Another consumer stripped the targeted slot. Catch-up time!
@@ -181,15 +197,16 @@ namespace fk {
             }
 
             // EXCLUSIVELY OWNING CELL
-            // Thanks to static_assert, this std::move is strictly guaranteed to never throw.
-            T extracted = std::move(*(cell->data));
-            cell->data.reset(); // Properly routes destructor implicitly, eliminating memory leaks
+            // Thanks to static_assert, this move is strictly guaranteed to never throw.
+            // The value is moved exactly once; 'extracted' is returned via NRVO.
+            extracted.emplace(std::move(*cell->data));
+            cell->data.reset(); // Destroys the moved-from value
 
             // Publish to producers that this cell is wiped and ready for the next rotation.
             // Pos + Mask + 1 equates precisely to the ticket sequence a producer 
             // naturally aims for when it eventually loops around the ring to this exact slot again.
             cell->sequence.store(pos + m_buffer_mask + 1, std::memory_order_release);
-            return std::optional<T>(std::move(extracted));
+            return extracted;
         }
 
         // Extremely rough approximation (as active thread-swarms constantly modify head/tail async)
