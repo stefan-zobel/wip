@@ -76,17 +76,24 @@ inline void gemm_micro_kernel_dispatch(const double* packed_a,
     dgemm_micro_kernel_4x6_avx2(packed_a, packed_b, c, c_stride, kc);
 }
 
-template <Avx2GemmScalar T, bool TransA, bool TransB>
-static void gemm_accumulate_blocked_avx2_impl(SimpleArena& scratch_arena,
-                                              const MatrixView<const T>& a,
-                                              const MatrixView<const T>& b,
-                                              const MatrixView<T>& c,
-                                              BlockedGemmConfig config) {
-    using Traits = Avx2GemmTraits<T>;
+// Result of a GEMM call. On any status other than Ok, C has not been modified.
+enum class GemmStatus : uint8_t {
+    Ok = 0,
+    NullPointer,         // a, b or c has no data (and is not empty)
+    DimensionMismatch,   // inner dimensions of op(A), op(B) differ or C has the wrong shape
+    OutOfScratchMemory   // the scratch arena cannot hold the packing buffers
+};
 
-    if (!a.data || !b.data || !c.data) {
-        return;
-    }
+// C = op(A) * op(B) (overwrite == true) or C += op(A) * op(B) (overwrite == false).
+// All checks and the scratch allocation happen before C is written.
+template <Avx2GemmScalar T, bool TransA, bool TransB>
+[[nodiscard]] static GemmStatus gemm_blocked_avx2_impl(SimpleArena& scratch_arena,
+                                                       const MatrixView<const T>& a,
+                                                       const MatrixView<const T>& b,
+                                                       const MatrixView<T>& c,
+                                                       BlockedGemmConfig config,
+                                                       bool overwrite) {
+    using Traits = Avx2GemmTraits<T>;
 
     const size_t m = TransA ? a.cols : a.rows;
     const size_t k_a = TransA ? a.rows : a.cols;
@@ -94,35 +101,57 @@ static void gemm_accumulate_blocked_avx2_impl(SimpleArena& scratch_arena,
     const size_t n = TransB ? b.rows : b.cols;
 
     if (k_a != k_b || m != c.rows || n != c.cols) {
-        return;
+        return GemmStatus::DimensionMismatch;
     }
 
-    if (m == 0 || n == 0 || k_a == 0) {
-        return;
+    if (m == 0 || n == 0) {
+        return GemmStatus::Ok; // C is empty
+    }
+
+    if (!c.data || (k_a != 0 && (!a.data || !b.data))) {
+        return GemmStatus::NullPointer;
+    }
+
+    if (k_a == 0) {
+        // op(A) * op(B) is the m x n zero matrix
+        if (overwrite) {
+            zero_matrix(c);
+        }
+        return GemmStatus::Ok;
     }
 
     const size_t mc_block = std::max(config.mc, Traits::mr);
     const size_t nc_block = std::max(config.nc, Traits::nr);
     const size_t kc_block = std::max<size_t>(config.kc, 1);
 
+    // Allocate the largest packing buffers once, up front, so that running out of
+    // scratch memory is detected before C is touched. The buffers are reused for
+    // every block.
     StackAllocator gemm_scratch(scratch_arena);
+
+    T* const packed_b = allocate_scratch_elements<T>(
+        gemm_scratch,
+        packed_b_panel_elements<T>(std::min(kc_block, k_a), std::min(nc_block, n)),
+        Traits::alignment);
+
+    T* const packed_a = allocate_scratch_elements<T>(
+        gemm_scratch,
+        packed_a_panel_elements<T>(std::min(mc_block, m), std::min(kc_block, k_a)),
+        Traits::alignment);
+
+    if (!packed_b || !packed_a) {
+        return GemmStatus::OutOfScratchMemory;
+    }
+
+    if (overwrite) {
+        zero_matrix(c);
+    }
 
     for (size_t n0 = 0; n0 < n; n0 += nc_block) {
         const size_t nc = std::min(nc_block, n - n0);
 
         for (size_t k0 = 0; k0 < k_a; k0 += kc_block) {
             const size_t kc = std::min(kc_block, k_a - k0);
-
-            StackAllocator b_panel_scratch(scratch_arena);
-
-            T* packed_b = allocate_scratch_elements<T>(
-                b_panel_scratch,
-                packed_b_panel_elements<T>(kc, nc),
-                Traits::alignment);
-
-            if (!packed_b) {
-                return;
-            }
 
             if constexpr (TransB) {
                 pack_b_panel_transposed(b, k0, n0, kc, nc, packed_b);
@@ -132,17 +161,6 @@ static void gemm_accumulate_blocked_avx2_impl(SimpleArena& scratch_arena,
 
             for (size_t m0 = 0; m0 < m; m0 += mc_block) {
                 const size_t mc = std::min(mc_block, m - m0);
-
-                StackAllocator a_block_scratch(scratch_arena);
-
-                T* packed_a = allocate_scratch_elements<T>(
-                    a_block_scratch,
-                    packed_a_panel_elements<T>(mc, kc),
-                    Traits::alignment);
-
-                if (!packed_a) {
-                    return;
-                }
 
                 if constexpr (TransA) {
                     pack_a_panel_transposed(a, m0, k0, mc, kc, packed_a);
@@ -200,54 +218,66 @@ static void gemm_accumulate_blocked_avx2_impl(SimpleArena& scratch_arena,
             }
         }
     }
+
+    return GemmStatus::Ok;
 }
 
 template <Avx2GemmScalar T>
-void gemm_nn_accumulate_blocked_avx2(SimpleArena& scratch_arena,
-                                     const MatrixView<const T>& a,
-                                     const MatrixView<const T>& b,
-                                     const MatrixView<T>& c,
-                                     BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
-    gemm_accumulate_blocked_avx2_impl<T, false, false>(scratch_arena, a, b, c, config);
+[[nodiscard]] GemmStatus gemm_nn_accumulate_blocked_avx2(SimpleArena& scratch_arena,
+                                                         const MatrixView<const T>& a,
+                                                         const MatrixView<const T>& b,
+                                                         const MatrixView<T>& c,
+                                                         BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
+    return gemm_blocked_avx2_impl<T, false, false>(scratch_arena, a, b, c, config, false);
 }
 
 template <Avx2GemmScalar T>
-void gemm_nn_blocked_avx2(SimpleArena& scratch_arena,
-                          const MatrixView<const T>& a,
-                          const MatrixView<const T>& b,
-                          const MatrixView<T>& c,
-                          BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
-    zero_matrix(c);
-    gemm_nn_accumulate_blocked_avx2(scratch_arena, a, b, c, config);
+[[nodiscard]] GemmStatus gemm_nn_blocked_avx2(SimpleArena& scratch_arena,
+                                              const MatrixView<const T>& a,
+                                              const MatrixView<const T>& b,
+                                              const MatrixView<T>& c,
+                                              BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
+    return gemm_blocked_avx2_impl<T, false, false>(scratch_arena, a, b, c, config, true);
 }
 
 template <Avx2GemmScalar T>
-void gemm_accumulate_blocked_avx2(SimpleArena& scratch_arena,
-                                  GemmTranspose op_a,
-                                  GemmTranspose op_b,
-                                  const MatrixView<const T>& a,
-                                  const MatrixView<const T>& b,
-                                  const MatrixView<T>& c,
-                                  BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
+[[nodiscard]] static GemmStatus gemm_blocked_avx2_dispatch(SimpleArena& scratch_arena,
+                                                           GemmTranspose op_a,
+                                                           GemmTranspose op_b,
+                                                           const MatrixView<const T>& a,
+                                                           const MatrixView<const T>& b,
+                                                           const MatrixView<T>& c,
+                                                           BlockedGemmConfig config,
+                                                           bool overwrite) {
     if (op_a == GemmTranspose::NoTrans && op_b == GemmTranspose::NoTrans) {
-        gemm_accumulate_blocked_avx2_impl<T, false, false>(scratch_arena, a, b, c, config);
+        return gemm_blocked_avx2_impl<T, false, false>(scratch_arena, a, b, c, config, overwrite);
     } else if (op_a == GemmTranspose::NoTrans && op_b == GemmTranspose::Trans) {
-        gemm_accumulate_blocked_avx2_impl<T, false, true>(scratch_arena, a, b, c, config);
+        return gemm_blocked_avx2_impl<T, false, true>(scratch_arena, a, b, c, config, overwrite);
     } else if (op_a == GemmTranspose::Trans && op_b == GemmTranspose::NoTrans) {
-        gemm_accumulate_blocked_avx2_impl<T, true, false>(scratch_arena, a, b, c, config);
+        return gemm_blocked_avx2_impl<T, true, false>(scratch_arena, a, b, c, config, overwrite);
     } else {
-        gemm_accumulate_blocked_avx2_impl<T, true, true>(scratch_arena, a, b, c, config);
+        return gemm_blocked_avx2_impl<T, true, true>(scratch_arena, a, b, c, config, overwrite);
     }
 }
 
 template <Avx2GemmScalar T>
-void gemm_blocked_avx2(SimpleArena& scratch_arena,
-                       GemmTranspose op_a,
-                       GemmTranspose op_b,
-                       const MatrixView<const T>& a,
-                       const MatrixView<const T>& b,
-                       const MatrixView<T>& c,
-                       BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
-    zero_matrix(c);
-    gemm_accumulate_blocked_avx2(scratch_arena, op_a, op_b, a, b, c, config);
+[[nodiscard]] GemmStatus gemm_accumulate_blocked_avx2(SimpleArena& scratch_arena,
+                                                      GemmTranspose op_a,
+                                                      GemmTranspose op_b,
+                                                      const MatrixView<const T>& a,
+                                                      const MatrixView<const T>& b,
+                                                      const MatrixView<T>& c,
+                                                      BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
+    return gemm_blocked_avx2_dispatch(scratch_arena, op_a, op_b, a, b, c, config, false);
+}
+
+template <Avx2GemmScalar T>
+[[nodiscard]] GemmStatus gemm_blocked_avx2(SimpleArena& scratch_arena,
+                                           GemmTranspose op_a,
+                                           GemmTranspose op_b,
+                                           const MatrixView<const T>& a,
+                                           const MatrixView<const T>& b,
+                                           const MatrixView<T>& c,
+                                           BlockedGemmConfig config = default_blocked_gemm_config<T>()) {
+    return gemm_blocked_avx2_dispatch(scratch_arena, op_a, op_b, a, b, c, config, true);
 }
