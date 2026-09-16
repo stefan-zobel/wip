@@ -13,24 +13,28 @@ namespace fk {
 
     // ========================================================================
     // LockFreeRingBuffer (MPMC Bounded Queue)
-    // A 100% lock-free, thread-safe Circular Buffer based on Dmitry Vyukov's
-    // famous MPMC algorithm. Multiple threads can safely push and pop 
-    // simultaneously without ANY mutexes or OS kernel locks.
-    // 
-    // IMPORTANT: The capacity MUST be a strictly fixed power of 2!
+    // A bounded multi-producer/multi-consumer queue based on Dmitry Vyukov's
+    // MPMC algorithm. push() and pop() use only atomic operations, no mutexes
+    // or system calls.
+    //
+    // Not strictly lock-free: a producer or consumer that is suspended between
+    // its CAS and publishing the cell makes other consumers report "empty"
+    // (or producers report "full") until it resumes, although other items may
+    // be waiting behind that cell.
+    //
+    // The capacity must be a power of 2 (at least 2).
     // ========================================================================
     template <typename T>
     class LockFreeRingBuffer final {
 
         // ====================================================================
-        // CRITICAL SAFETY GATES (Deadlock Prevention)
+        // Nothrow requirements
         // ====================================================================
-        // If extracting or destroying an item throws an exception inside pop(), 
-        // the atomic sequence counter would never advance, permanently chaining
-        // and deadlocking that specific hardware queue slot forever.
-        // Lock-free data structures absolutely demand nothrow compliance!
-        static_assert(std::is_nothrow_move_constructible_v<T>, "T must be strictly nothrow move constructible!");
-        static_assert(std::is_nothrow_destructible_v<T>, "T must be strictly nothrow destructible!");
+        // A cell is claimed (CAS) before its data is moved in or out, and published
+        // afterwards. If that move or the destructor threw, the cell would stay
+        // claimed forever and block the queue at that position.
+        static_assert(std::is_nothrow_move_constructible_v<T>, "T must be nothrow move constructible");
+        static_assert(std::is_nothrow_destructible_v<T>, "T must be nothrow destructible");
 
     private:
         // Hardware cache line size. std::hardware_destructive_interference_size is avoided on
@@ -45,53 +49,48 @@ namespace fk {
         // so over-aligned element types keep their own (stricter) alignment.
         static constexpr size_t CELL_ALIGN = alignof(T) > CACHE_LINE ? alignof(T) : CACHE_LINE;
 
-        // Represents the exact mathematical distance between sequence numbers
+        // Signed distance between a cell's sequence number and a position
         using diff_t = std::make_signed_t<size_t>;
 
         // ====================================================================
-        // THE CELL PADDING (Exterminates False-Sharing)
+        // Cell layout
         // ====================================================================
-        // By aligning EACH INDIVIDUAL CELL to the exact CPU cache line boundary,
-        // we guarantee that adjacent Cells sit on completely different hardware 
-        // cache lines. C++ standard [expr.sizeof] guarantees that the array element 
-        // size will rigidly be padded to a perfect multiple of CELL_ALIGN.
-        // This physically eradicates "False Sharing" when Producer A writes to
-        // Cell 0, while Producer B simultaneously writes to Cell 1.
+        // Each cell is aligned to CELL_ALIGN, so the array element size is a multiple
+        // of it ([expr.sizeof]) and neighboring cells never share a cache line. This
+        // avoids false sharing when two threads work on adjacent cells, at the cost of
+        // at least CACHE_LINE bytes per cell.
         struct alignas(CELL_ALIGN) Cell {
             std::atomic<size_t> sequence;
             std::optional<T> data;
         };
 
-        // Mathematical validation of the C++ compiler's layout algorithm
-        static_assert(sizeof(Cell) % CELL_ALIGN == 0, "Compiler failed to pad Cell to cache boundary!");
+        static_assert(sizeof(Cell) % CELL_ALIGN == 0, "Cell size must be a multiple of its alignment");
 
-        // --- GROUP 1: Read-Only Data (Shared safely among all cores) ---
-        // unique_ptr automatically sizes and aligns the raw contiguous C-array 
-        // strictly according to the alignas() rules of the Cell struct.
+        // --- Shared, read-only after construction ---
+        // make_unique<Cell[]> uses the aligned operator new[] for the over-aligned Cell.
         std::unique_ptr<Cell[]> m_buffer;
         size_t m_buffer_mask;
 
-        // --- GROUP 2: Producer State ---
-        // Isolated, heavily written index pointer to prevent cross-core invalidations.
-        alignas(CACHE_LINE) std::atomic<size_t> m_head; 
+        // --- Producer position ---
+        // On its own cache line, so producer CASes do not invalidate the lines above.
+        alignas(CACHE_LINE) std::atomic<size_t> m_head;
 
-        // --- GROUP 3: Consumer State ---
-        // Fully isolated from Producer state physically in the L1-D / L2 Cache!
-        alignas(CACHE_LINE) std::atomic<size_t> m_tail; 
+        // --- Consumer position ---
+        // Separated from m_head, so producers and consumers do not share a cache line.
+        alignas(CACHE_LINE) std::atomic<size_t> m_tail;
 
     public:
         explicit LockFreeRingBuffer(size_t capacity) {
-            // Validate Power of 2 requirements for bitwise operations
+            // Positions are mapped to cells with a bit mask
             if (capacity < 2 || (capacity & (capacity - 1)) != 0) {
                 throw std::invalid_argument("Capacity must be a power of 2!");
             }
 
             m_buffer_mask = capacity - 1;
 
-            // C++17/20 automatically calls 'new align_val_t' safely prioritizing the Cell alignment 
             m_buffer = std::make_unique<Cell[]>(capacity);
 
-            // Initialize the sequence trackers strictly for every cell.
+            // Cell i initially waits for the producer at position i.
             for (size_t i = 0; i < capacity; ++i) {
                 m_buffer[i].sequence.store(i, std::memory_order_relaxed);
             }
@@ -100,23 +99,23 @@ namespace fk {
             m_tail.store(0, std::memory_order_relaxed);
         }
 
-        // Clean-Up is fully automated: remaining items are destroyed together with the cells.
+        // Remaining items are destroyed together with the cells.
         // Like any destructor, it must not run while other threads still push or pop.
-        ~LockFreeRingBuffer() = default; 
+        ~LockFreeRingBuffer() = default;
 
-        // Strictly disallow copying and moving to uphold structural threading guarantees
+        // Not copyable (and therefore not movable either)
         LockFreeRingBuffer(const LockFreeRingBuffer&) = delete;
         LockFreeRingBuffer& operator=(const LockFreeRingBuffer&) = delete;
 
         // ====================================================================
         // Push (Producer API)
-        // Returns false if the queue is completely full and cannot accept data.
+        // Returns false if the queue is full.
         // ====================================================================
         template <typename U>
         bool push(U&& item) noexcept {
-            // Assert at compile time if U's conversion to T is prone to throwing exceptions!
-            static_assert(std::is_nothrow_constructible_v<T, U&&>, 
-                "Pushing logic must be noexcept to protect queue lifecycle consistency.");
+            // Constructing T must not throw once the cell is claimed (see the static_asserts above).
+            static_assert(std::is_nothrow_constructible_v<T, U&&>,
+                "T must be nothrow constructible from the pushed argument");
 
             Cell* cell = nullptr;
             size_t pos = m_head.load(std::memory_order_relaxed);
@@ -128,29 +127,28 @@ namespace fk {
                 // passed; acquire/release are mere optimization hints without semantics.
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
 
-                // FIX: Evaluate subtraction first as unsigned (natural modulo wrap-around), 
-                // THEN cast to signed integer diff_t. This is immune to architecture overflows 
-                // even if the server runs relentlessly for 500 years.
+                // Subtract as unsigned (well-defined wrap-around), then convert to signed:
+                // the result is correct even after the counters wrap.
                 diff_t diff = static_cast<diff_t>(seq - pos);
 
                 if (diff == 0) {
-                    // Spot Claim: Target is empty and perfectly synchronized with our Ticket.
-                    // If CAS fails, 'pos' is naturally overwritten with the aggressive new head by hardware.
+                    // The cell is free for position 'pos': try to claim the position.
+                    // On failure, compare_exchange_weak stores the current head in 'pos'.
                     if (m_head.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
-                        break; 
+                        break;
                     }
-                } 
+                }
                 else if (diff < 0) {
-                    // Sequence lags behind Head = The ring's cycle is full!
-                    return false; 
-                } 
+                    // The cell still holds an item from the previous round: the queue is full.
+                    return false;
+                }
                 else {
-                    // Another producer thread overtook us. Sync to reality.
+                    // Another producer has already taken this position: retry with the current head.
                     pos = m_head.load(std::memory_order_relaxed);
                 }
             }
 
-            // EXCLUSIVELY OWNING CELL: We now operate fundamentally thread-safe without locks.
+            // The cell is claimed by this thread; no other thread accesses its data now.
             cell->data.emplace(std::forward<U>(item));
 
             // Publish to consumers. Consumers only claim a cell whose sequence is pos + 1, and the
@@ -162,7 +160,7 @@ namespace fk {
 
         // ====================================================================
         // Pop (Consumer API)
-        // Returns an empty std::optional if the queue is fully empty.
+        // Returns an empty std::optional if the queue is empty.
         // ====================================================================
         std::optional<T> pop() noexcept {
             // Every path returns this one variable, so compilers apply NRVO (a second
@@ -177,39 +175,38 @@ namespace fk {
                 // Sequentially consistent load (memory_order_acquire is only a hint, see push())
                 size_t seq = cell->sequence.load(std::memory_order_acquire);
 
-                // Consumers rigidly expect the sequence to be exactly (pos + 1)
+                // A published item at position 'pos' has sequence pos + 1
                 diff_t diff = static_cast<diff_t>(seq - (pos + 1));
 
                 if (diff == 0) {
-                    // Claim sequence verified!
+                    // The cell holds the item for position 'pos': try to claim the position.
                     if (m_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
-                        break; 
+                        break;
                     }
-                } 
+                }
                 else if (diff < 0) {
-                    // Sequence lags behind Tail = The queue is dry/empty.
+                    // No published item at this position: the queue is empty.
                     return extracted; // empty
-                } 
+                }
                 else {
-                    // Another consumer stripped the targeted slot. Catch-up time!
+                    // Another consumer has already taken this position: retry with the current tail.
                     pos = m_tail.load(std::memory_order_relaxed);
                 }
             }
 
-            // EXCLUSIVELY OWNING CELL
-            // Thanks to static_assert, this move is strictly guaranteed to never throw.
+            // The cell is claimed by this thread. The move cannot throw (see the static_asserts).
             // The value is moved exactly once; 'extracted' is returned via NRVO.
             extracted.emplace(std::move(*cell->data));
             cell->data.reset(); // Destroys the moved-from value
 
-            // Publish to producers that this cell is wiped and ready for the next rotation.
-            // Pos + Mask + 1 equates precisely to the ticket sequence a producer 
-            // naturally aims for when it eventually loops around the ring to this exact slot again.
+            // Make the cell free again: pos + capacity is the position at which the
+            // producers reach this cell in the next round.
             cell->sequence.store(pos + m_buffer_mask + 1, std::memory_order_release);
             return extracted;
         }
 
-        // Extremely rough approximation (as active thread-swarms constantly modify head/tail async)
+        // Snapshot of head - tail, only approximate while other threads push or pop.
+        // Operations in progress (claimed but not yet published) are counted as well.
         size_t approximate_size() const noexcept {
             size_t head = m_head.load(std::memory_order_relaxed);
             size_t tail = m_tail.load(std::memory_order_relaxed);
