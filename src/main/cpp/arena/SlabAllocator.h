@@ -23,6 +23,8 @@ class SlabAllocator {
     // Configuration
     static constexpr size_t MIN_SIZE = 8;      // Smallest bin is 8 bytes (needs to fit a Node*)
     static constexpr size_t MAX_SIZE = 4'096;  // Largest pooled bin is 4096 bytes
+    // Alignment of pooled blocks: min(size_class, MAX_BIN_ALIGNMENT)
+    static constexpr size_t MAX_BIN_ALIGNMENT = 64;
     // How many bins we have: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 (10 bins)
     static constexpr size_t NUM_BINS = std::countr_zero(MAX_SIZE) - std::countr_zero(MIN_SIZE) + 1;
 
@@ -54,7 +56,18 @@ public:
         // e.g., if size_class is 32 (2^5), countr_zero(32) is 5. 
         // 5 - 3 (which is countr_zero(8)) = index 2.
         size_t bin_index = std::countr_zero(size_class) - std::countr_zero(MIN_SIZE);
-        
+
+        // Every block of a bin is carved with the same alignment, so a recycled block
+        // satisfies any request up to that alignment - no matter who used it before.
+        const size_t bin_alignment = std::min(size_class, MAX_BIN_ALIGNMENT);
+
+        if (alignment > bin_alignment) {
+            // Stricter than the bin guarantees: never serve it from the free list.
+            // The fresh block is also bin_alignment-aligned (alignments are powers of two)
+            // and size_class bytes large, so deallocate() may still recycle it.
+            return source_arena.allocate_raw_aligned(size_class, alignment);
+        }
+
         // Is there a recycled block available?
         if (Node* free_node = free_lists[bin_index]) {
             free_lists[bin_index] = free_node->next; // pop front
@@ -64,7 +77,7 @@ public:
         // If no recycled block is available, carve it freshly from the arena.
         // We strictly use `size_class` as the allocation size, NOT `size`, so that
         // recycling guarantees the required block dimensions
-        return source_arena.allocate_raw_aligned(size_class, std::max(alignment, alignof(Node)));
+        return source_arena.allocate_raw_aligned(size_class, bin_alignment);
     }
 
     // Recycle memory. The user MUST pass the original size requested (or object size),

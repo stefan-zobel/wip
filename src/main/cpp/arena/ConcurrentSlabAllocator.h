@@ -27,6 +27,8 @@ template <ConcurrentSlabArena Arena = ConcurrentArena>
 class ConcurrentSlabAllocator final {
     static constexpr size_t MIN_SIZE = 8;
     static constexpr size_t MAX_SIZE = 4'096;
+    // Alignment of pooled blocks: min(size_class, MAX_BIN_ALIGNMENT)
+    static constexpr size_t MAX_BIN_ALIGNMENT = 64;
     static constexpr size_t NUM_BINS =
         std::countr_zero(MAX_SIZE) - std::countr_zero(MIN_SIZE) + 1;
 
@@ -113,10 +115,16 @@ public:
 
         const size_t size_class = std::bit_ceil(required_size);
 
-        // Pooling is only safe if the requested alignment is guaranteed by the bin.
-        if (alignment > size_class) {
+        // Every block of a bin is carved with the same alignment, so a recycled block
+        // satisfies any request up to that alignment - no matter who used it before.
+        const size_t bin_alignment = std::min(size_class, MAX_BIN_ALIGNMENT);
+
+        if (alignment > bin_alignment) {
+            // Stricter than the bin guarantees: never serve it from the cache. The fresh
+            // block is still size_class bytes large and bin_alignment-aligned (alignments
+            // are powers of two), so deallocate() may recycle it into its bin.
             direct_arena_allocations_.fetch_add(1, std::memory_order_relaxed);
-            return source_arena_.allocate_raw_aligned(op, required_size, alignment);
+            return source_arena_.allocate_raw_aligned(op, size_class, alignment);
         }
 
         const size_t bin_index = size_class_to_bin_index(size_class);
@@ -136,12 +144,12 @@ public:
         }
 
         fresh_bin_allocations_.fetch_add(1, std::memory_order_relaxed);
-        return source_arena_.allocate_raw_aligned(op,
-                                                  size_class,
-                                                  std::max(alignment, alignof(Node)));
+        return source_arena_.allocate_raw_aligned(op, size_class, bin_alignment);
     }
 
-    void deallocate(void* ptr, size_t original_size, size_t original_alignment = 64) noexcept {
+    // original_alignment is kept for API compatibility: every block up to MAX_SIZE is
+    // size_class bytes large and at least bin_alignment-aligned, so it always fits its bin.
+    void deallocate(void* ptr, size_t original_size, [[maybe_unused]] size_t original_alignment = 64) noexcept {
         if (!ptr) {
             return;
         }
@@ -159,10 +167,6 @@ public:
         }
 
         const size_t size_class = std::bit_ceil(required_size);
-
-        if (original_alignment > size_class) {
-            return;
-        }
 
         const size_t bin_index = size_class_to_bin_index(size_class);
         ThreadCacheEntry& entry = get_thread_entry(arena_epoch);
