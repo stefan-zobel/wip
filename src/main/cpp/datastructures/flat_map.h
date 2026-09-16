@@ -42,6 +42,9 @@ namespace fk {
         
         size_t m_capacity = 0;
         size_t m_size = 0;
+        // Number of CTRL_DELETED slots. Tombstones count against the load factor,
+        // otherwise a table without any CTRL_EMPTY slot makes the probe loops spin forever.
+        size_t m_tombstones = 0;
 
         Slot* data_slots() noexcept {
             return reinterpret_cast<Slot*>(m_data_memory.get());
@@ -84,8 +87,10 @@ namespace fk {
         // ====================================================================
         template <typename K, typename V>
         bool emplace(K&& key, V&& value) {
-            if (m_size >= max_load()) {
-                rehash(m_capacity * 2);
+            if (m_size + m_tombstones >= max_load()) {
+                // If mostly tombstones fill the table, rehashing at the same capacity is enough
+                // to purge them; only grow when the live elements themselves need the room.
+                rehash(m_size + 1 > max_load() / 2 ? m_capacity * 2 : m_capacity);
             }
 
             const size_t full_hash = Hash{}(key);
@@ -104,6 +109,9 @@ namespace fk {
                 if (ctrl_byte == CTRL_EMPTY) {
                     // Spot is entirely pristine. Insert here (or in a prior tombstone if found).
                     const size_t target_idx = (first_deleted_idx != static_cast<size_t>(-1)) ? first_deleted_idx : idx;
+                    if (target_idx == first_deleted_idx) {
+                        m_tombstones--;
+                    }
                     insert_at(target_idx, h7, std::forward<K>(key), std::forward<V>(value));
                     return true;
                 }
@@ -185,6 +193,7 @@ namespace fk {
                     // Leave a tombstone so probing chains don't break
                     m_ctrl[idx] = CTRL_DELETED;
                     m_size--;
+                    m_tombstones++;
                     return true;
                 }
 
@@ -195,6 +204,7 @@ namespace fk {
     private:
         void initialize_arrays(size_t cap) {
             m_capacity = cap;
+            m_tombstones = 0;
 
             // Fill metadata completely with EMPTY flag
             m_ctrl.assign(cap, CTRL_EMPTY);
