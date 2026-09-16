@@ -17,6 +17,8 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -45,17 +47,25 @@ public:
     Mat operator-() const noexcept { puts("unary operator- called"); Mat result(*this); for (size_t i = 0; i < result.len(); ++i) { result.a[i] = -result.a[i]; } return result; }
     Mat& operator+=(const Mat& o) noexcept { puts("op+= called"); const auto ii = len(); for (size_t i = 0; i < ii; ++i) { a[i] += o.a[i]; } return *this; }
     Mat& operator-=(const Mat& o) noexcept { puts("op-= called"); const auto ii = len(); for (size_t i = 0; i < ii; ++i) { a[i] -= o.a[i]; } return *this; }
-    Mat& operator*=(const Mat& o) noexcept { puts("op*= called"); *this = *this * o; return *this; }
+    Mat& operator*=(const Mat& o) { puts("op*= called"); *this = *this * o; return *this; }
 public:
-    friend Mat operator*(const Mat& a, const Mat& b) noexcept {
+    // Throws std::invalid_argument on a dimension mismatch and std::runtime_error
+    // if the thread's scratch arena is too small for the product.
+    friend Mat operator*(const Mat& a, const Mat& b) {
         puts("friend operator* variant 1 called (using AVX2 Blocked GEMM)");
+        if (a.cols_ != b.rows_) {
+            throw std::invalid_argument("Mat operator*: a.cols != b.rows");
+        }
         Mat c{ a.rows_, b.cols_ };
 
         MatrixView<const double> viewA{ a.a.data(), a.rows_, a.cols_, a.cols_ };
         MatrixView<const double> viewB{ b.a.data(), b.rows_, b.cols_, b.cols_ };
         MatrixView<double>       viewC{ c.a.data(), c.rows_, c.cols_, c.cols_ };
 
-        gemm_nn_blocked_avx2<double>(get_thread_scratch_arena(), viewA, viewB, viewC);
+        const GemmStatus status = gemm_nn_blocked_avx2<double>(get_thread_scratch_arena(), viewA, viewB, viewC);
+        if (status != GemmStatus::Ok) {
+            throw std::runtime_error("Mat operator*: GEMM failed (status " + std::to_string(static_cast<int>(status)) + ")");
+        }
 
         return c; // NRVO
     }
@@ -77,37 +87,37 @@ private:
 };
 
 // Variant 1: Lvalue - Lvalue (Creates ONE necessary new matrix)
-Mat operator-(const Mat& a, const Mat& b) noexcept {
+inline Mat operator-(const Mat& a, const Mat& b) noexcept {
     puts("operator- variant 1 called");
     Mat result{ a }; // 1 Copy
     result -= b;
     return result; // No std::move because of NRVO
 }
-Mat operator+(const Mat& a, const Mat& b) noexcept {
+inline Mat operator+(const Mat& a, const Mat& b) noexcept {
     puts("operator+ variant 1 called");
     Mat result{ a };
     result += b;
     return result; // NRVO (Named Return Value Optimization)
 }
-Mat operator+(const Mat& a, Mat&& tmpB) noexcept {
+inline Mat operator+(const Mat& a, Mat&& tmpB) noexcept {
     puts("operator+ variant 2 called");
     return std::move(tmpB += a);
 }
 // Variant 3: Rvalue - Lvalue (Zero Allocations, re-uses tmpA)
-Mat operator-(Mat&& tmpA, const Mat& b) noexcept {
+inline Mat operator-(Mat&& tmpA, const Mat& b) noexcept {
     puts("operator- variant 3 called");
     return std::move(tmpA -= b);
 }
-Mat operator+(Mat&& tmpA, const Mat& b) noexcept {
+inline Mat operator+(Mat&& tmpA, const Mat& b) noexcept {
     puts("operator+ variant 3 called");
     return std::move(tmpA += b);
 }
 // Variant 4: Rvalue - Rvalue (Zero Allocations, re-uses tmpA)
-Mat operator-(Mat&& tmpA, Mat&& tmpB) noexcept {
+inline Mat operator-(Mat&& tmpA, Mat&& tmpB) noexcept {
     puts("operator- variant 4 called");
     return std::move(tmpA -= tmpB);
 }
-Mat operator+(Mat&& tmpA, Mat&& tmpB) noexcept {
+inline Mat operator+(Mat&& tmpA, Mat&& tmpB) noexcept {
     puts("operator+ variant 4 called");
     return std::move(tmpA += tmpB);
 }

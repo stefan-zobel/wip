@@ -136,6 +136,7 @@ private:
     void copy(const Dim2Arr& other) {
         if (other.rows_ > 0) {
             double** tmp = new double*[other.rows_];
+            tmp[0] = new double[other.rows_ * other.cols_];
             std::memcpy(tmp[0], other.a[0], other.rows_ * other.cols_ * sizeof(double));
             for (size_t i = 1; i < other.rows_; ++i) {
                 tmp[i] = tmp[i - 1] + other.cols_;
