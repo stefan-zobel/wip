@@ -1,8 +1,11 @@
 #pragma once
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 
 #include <memory>
+#include <new>
 #include <type_traits>
 #include <cstdint>
 #include <algorithm>

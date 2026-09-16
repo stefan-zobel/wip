@@ -52,7 +52,8 @@ class ConcurrentSlabAllocator final {
     };
 
     struct ThreadCacheListOwner {
-        ThreadCacheEntry* head = nullptr;
+        ThreadCacheEntry* head;
+        ThreadCacheListOwner() noexcept : head(nullptr) {}
 
         ~ThreadCacheListOwner() {
             while (head) {

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cstddef>
+#include <new>
 #include <utility>    // For std::forward
 #include "SimpleArena.h"
 

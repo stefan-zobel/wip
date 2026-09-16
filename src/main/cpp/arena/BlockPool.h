@@ -2,6 +2,7 @@
 
 #include "SimpleArena.h"
 #include <utility>
+#include <new>
 #include <algorithm>
 
 template <typename T>

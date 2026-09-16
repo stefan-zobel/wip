@@ -17,6 +17,7 @@
 
 #include <cassert>
 #include <cstring> // std::memcpy
+#include <iterator>  // std::data
 #include <algorithm> // std::swap
 
 // A 2-dimensional double array whose dimensions need not be known at compile-time.

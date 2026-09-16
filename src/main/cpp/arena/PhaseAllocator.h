@@ -33,7 +33,7 @@ public:
     // Proxy the object construction to the *currently active* arena phase
     template <typename T, typename... Args>
     T* construct(Args&&... args) {
-        return arenas[current_phase]->construct<T>(std::forward<Args>(args)...);
+        return arenas[current_phase]->template construct<T>(std::forward<Args>(args)...);
     }
 
     // Finalizes the current phase, moves to the next one, and strictly WIPES the 

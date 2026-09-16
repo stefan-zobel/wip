@@ -397,7 +397,7 @@ inline void sgemm_micro_kernel_8x6_avx2(const float* packed_a,
         const __m256 av2 = _mm256_load_ps(a2);
         const __m256 av3 = _mm256_load_ps(a3);
 
-#if defined(__AVX2__)
+#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
         acc0 = _mm256_fmadd_ps(av0, _mm256_broadcast_ss(b0 + 0), acc0);
         acc1 = _mm256_fmadd_ps(av0, _mm256_broadcast_ss(b0 + 1), acc1);
         acc2 = _mm256_fmadd_ps(av0, _mm256_broadcast_ss(b0 + 2), acc2);
@@ -462,7 +462,7 @@ inline void sgemm_micro_kernel_8x6_avx2(const float* packed_a,
 
         const __m256 a = _mm256_load_ps(a_ptr);
 
-#if defined(__AVX2__)
+#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
         acc0 = _mm256_fmadd_ps(a, _mm256_broadcast_ss(b_ptr + 0), acc0);
         acc1 = _mm256_fmadd_ps(a, _mm256_broadcast_ss(b_ptr + 1), acc1);
         acc2 = _mm256_fmadd_ps(a, _mm256_broadcast_ss(b_ptr + 2), acc2);
@@ -553,7 +553,7 @@ inline void dgemm_micro_kernel_4x6_avx2(const double* packed_a,
         const __m256d av2 = _mm256_load_pd(a2);
         const __m256d av3 = _mm256_load_pd(a3);
 
-#if defined(__AVX2__)
+#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
         acc0 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 0), acc0);
         acc1 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 1), acc1);
         acc2 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 2), acc2);
@@ -618,7 +618,7 @@ inline void dgemm_micro_kernel_4x6_avx2(const double* packed_a,
 
         const __m256d a = _mm256_load_pd(a_ptr);
 
-#if defined(__AVX2__)
+#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
         acc0 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 0), acc0);
         acc1 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 1), acc1);
         acc2 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 2), acc2);

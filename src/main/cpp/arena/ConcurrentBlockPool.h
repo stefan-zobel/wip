@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <type_traits>
 #include <utility>
 
@@ -44,7 +45,8 @@ class ConcurrentBlockPool final {
     };
 
     struct ThreadCacheListOwner {
-        ThreadCacheEntry* head = nullptr;
+        ThreadCacheEntry* head;
+        ThreadCacheListOwner() noexcept : head(nullptr) {}
 
         ~ThreadCacheListOwner() {
             while (head) {
