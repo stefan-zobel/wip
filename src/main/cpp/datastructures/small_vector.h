@@ -96,7 +96,7 @@ namespace fk {
         template <typename... Args>
         reference emplace_back(Args&&... args) {
             if (m_size == m_capacity) {
-                grow_capacity();
+                return grow_and_emplace_back(std::forward<Args>(args)...);
             }
 
             T* target_ptr = data() + m_size;
@@ -150,25 +150,49 @@ namespace fk {
         // Core Internal Mechanics
         // ====================================================================
 
-        void grow_capacity() {
-            size_type new_capacity = (m_capacity == 0) ? 1 : m_capacity * 2;
+        // Grows the buffer and appends a new element, with the strong exception guarantee.
+        //
+        // The new element is constructed FIRST, while the old elements are still alive:
+        // the arguments may refer to an element of this vector (e.g. v.push_back(v[0])).
+        // The old elements are only destroyed after everything was relocated successfully,
+        // so any exception leaves the vector unchanged.
+        template <typename... Args>
+        reference grow_and_emplace_back(Args&&... args) {
+            const size_type new_capacity = (m_capacity == 0) ? 1 : m_capacity * 2;
 
             // Standard malloc/new fallback for heap allocation
             T* new_heap_data = static_cast<T*>(::operator new(new_capacity * sizeof(T), std::align_val_t(alignof(T))));
 
-            // Move contents from old location (either inline or old heap) to new heap
+            // 1. Construct the new element at its final position.
+            try {
+                new (new_heap_data + m_size) T(std::forward<Args>(args)...);
+            } catch (...) {
+                ::operator delete(new_heap_data, std::align_val_t(alignof(T)));
+                throw;
+            }
+
+            // 2. Relocate the old elements (move if that cannot throw, copy otherwise).
             T* old_data = data();
-            for (size_type i = 0; i < m_size; ++i) {
-                if constexpr (std::is_nothrow_move_constructible_v<T>) {
-                    new (new_heap_data + i) T(std::move(old_data[i]));
-                } else {
-                    new (new_heap_data + i) T(old_data[i]); // Fallback to copy if move risks exceptions
+            size_type relocated = 0;
+            try {
+                for (; relocated < m_size; ++relocated) {
+                    new (new_heap_data + relocated) T(std::move_if_noexcept(old_data[relocated]));
                 }
-                // Destroy old object now that it has been moved
+            } catch (...) {
+                for (size_type i = 0; i < relocated; ++i) {
+                    new_heap_data[i].~T();
+                }
+                new_heap_data[m_size].~T();
+                ::operator delete(new_heap_data, std::align_val_t(alignof(T)));
+                throw;
+            }
+
+            // 3. Nothing can throw from here on: destroy the old elements and switch buffers.
+            for (size_type i = 0; i < m_size; ++i) {
                 old_data[i].~T();
             }
 
-            // Free the old array ONLY if it was previously dynamically allocated 
+            // Free the old array ONLY if it was previously dynamically allocated
             // (we obviously can't 'delete' the inline storage buffer)
             if (is_heap_allocated()) {
                 ::operator delete(m_heap_data, std::align_val_t(alignof(T)));
@@ -176,6 +200,7 @@ namespace fk {
 
             m_heap_data = new_heap_data;
             m_capacity = new_capacity;
+            return new_heap_data[m_size++];
         }
 
         void destroy_and_free() noexcept {
