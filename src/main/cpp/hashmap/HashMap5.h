@@ -23,11 +23,29 @@
 #include <memory>
 #include <memory_resource> // for pmr::
 #include <concepts>
+#include <cstddef>    // for std::byte
 #include <functional> // for std::invoke
 
 #include "ConcurrentMap.h"
 
 // A minimal thread-safe hash map with value semantics and a Java-like interface.
+//
+// Callback contract
+// -----------------
+// The map is split into shards, each protected by its own std::shared_mutex. The callbacks
+// passed to inspect, inspect2, update, updateIf, computeIfAbsent, computeIfAbsent2, merge,
+// removeIf, forEach, forEachUntil, containsIf and find run WHILE the lock of their shard is held.
+// Therefore a callback must:
+//  - never call a method of the same map. If the key lands in the same shard, the thread
+//    deadlocks on itself (formally undefined behavior: std::shared_mutex is not recursive).
+//    If it lands in another shard, two threads doing this can block each other. Which shard
+//    a key belongs to depends on its hash, so such a bug shows up seemingly at random.
+//  - be short and not acquire other locks that a caller of this map might hold.
+//  - for allocator-aware values (std::pmr::string, ...): not move a value out of the
+//    reference it receives; the moved value would keep using the shard's unsynchronized
+//    memory pool. Copying is safe (copies use the default allocator).
+// There is deliberately no run-time detection of reentrant calls (it would cost a
+// thread_local lookup on every operation).
 
 // internal helpers
 namespace detail {
@@ -38,6 +56,24 @@ namespace detail {
     // Extract the inner type or keep the type itself
     template<typename T> struct extract_optional_type { using type = T; };
     template<typename T> struct extract_optional_type<std::optional<T>> { using type = T; };
+
+    // True for allocator-aware types that would pick up the shard's pmr pool (std::pmr::string, ...)
+    template<typename T>
+    concept pmr_allocator_aware = std::uses_allocator_v<T, std::pmr::polymorphic_allocator<std::byte>>;
+
+    // Hands a stored value out of the map. Allocator-aware values are rebuilt with the default
+    // memory resource (allocator-extended move: costs a copy of the contents, but works for
+    // move-only elements), so they no longer refer to the shard's unsynchronized pool.
+    // All other types are simply moved (no extra cost).
+    template<typename T>
+    T take_out(T& stored) {
+        if constexpr (pmr_allocator_aware<T>) {
+            return std::make_obj_using_allocator<T>(std::pmr::polymorphic_allocator<std::byte>{}, std::move(stored));
+        }
+        else {
+            return std::move(stored);
+        }
+    }
 }
 
 
@@ -84,18 +120,21 @@ public:
         return slotFor(key).getOrDefault(key, found, std::forward<VALUE_TYPE>(defaultValue));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
         requires std::invocable<FUNC, const V&>
     bool inspect(const K& key, FUNC && callback) const {
         return slotFor(key).inspect(key, std::forward<FUNC>(callback));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
         requires std::invocable<FUNC, V&>
     bool update(const K& key, FUNC && callback) {
         return slotFor(key).update(key, std::forward<FUNC>(callback));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename PREDICATE>
         requires UpdatePredicate<PREDICATE, K, V>
     size_t updateIf(PREDICATE && predicate) {
@@ -106,18 +145,21 @@ public:
         return totalUpdated;
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
         requires std::invocable<FUNC, const V&>
     auto inspect2(const K& key, FUNC && callback) const {
         return slotFor(key).inspect2(key, std::forward<FUNC>(callback));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename CREATE_FUNC, typename ACCESS_FUNC>
         requires ComputeIfAbsentFuncs<CREATE_FUNC, ACCESS_FUNC, V>
     void computeIfAbsent(const K& key, CREATE_FUNC && create, ACCESS_FUNC && access) {
         slotFor(key).computeIfAbsent(key, std::forward<CREATE_FUNC>(create), access);
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
         requires std::invocable<FUNC>&& std::convertible_to<std::invoke_result_t<FUNC>, V>
               && std::copy_constructible<V>
@@ -125,6 +167,7 @@ public:
         return slotFor(key).computeIfAbsent2(key, std::forward<FUNC>(createFunction));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<MergeCallback<K, V> FUNC>
     void merge(const K& key, V && value, FUNC && remappingFunction) {
         slotFor(key).merge(key, std::forward<V>(value), std::forward<FUNC>(remappingFunction));
@@ -134,6 +177,7 @@ public:
         return slotFor(key).remove(key);
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename PREDICATE>
         requires SearchPredicate<PREDICATE, K, V>
     size_t removeIf(PREDICATE && predicate) {
@@ -160,6 +204,7 @@ public:
         return slotFor(key).tryAdd(std::move(key), std::forward<VALUE_TYPE>(value));
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
         requires std::invocable<FUNC, const K&, const V&>
     void forEach(FUNC && callback) const {
@@ -172,6 +217,7 @@ public:
         return slotFor(key).contains(key);
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename PREDICATE>
         requires SearchPredicate<PREDICATE, K, V>
     bool containsIf(PREDICATE && predicate) const {
@@ -188,6 +234,7 @@ public:
         return found;
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename PREDICATE>
         requires SearchPredicate<PREDICATE, K, V> && std::copy_constructible<V>
     std::optional<V> find(PREDICATE && predicate) const {
@@ -200,6 +247,7 @@ public:
         return std::nullopt;
     }
 
+    // Runs the callback under the shard lock (see "Callback contract" above).
     template<typename FUNC>
     void forEachUntil(FUNC && func) const {
         for (const auto& slot : slots) {
@@ -386,7 +434,7 @@ private:
         std::optional<V> remove(const K& key) {
             std::unique_lock lock(mutex);
             if (auto it = map.find(key); it != map.end()) {
-                std::optional<V> old = std::move(it->second);
+                std::optional<V> old(std::in_place, detail::take_out(it->second));
                 map.erase(it);
                 return old;
             }
@@ -409,7 +457,7 @@ private:
             std::unique_lock lock(mutex);
             auto it = map.find(key);
             if (it != map.end()) {
-                std::optional<V> old = std::move(it->second);
+                std::optional<V> old(std::in_place, detail::take_out(it->second));
                 it->second = std::forward<VALUE_TYPE>(value);
                 return old;
             }
@@ -483,7 +531,9 @@ private:
         }
 
     private:
-        // The PMR allocator is what keeps this design competitive
+        // The PMR allocator is what keeps this design competitive.
+        // The pool is not synchronized: values leave the map only as copies (which use the
+        // default allocator) or through detail::take_out(), never by a plain move.
         std::pmr::unsynchronized_pool_resource local_pool;
         std::pmr::unordered_map<K, V> map;
         mutable std::shared_mutex mutex;
