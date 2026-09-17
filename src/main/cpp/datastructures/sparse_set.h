@@ -16,7 +16,7 @@ namespace fk {
     // Slots are recycled after erase() and clear(); the generation tells a
     // stale handle apart from the handle of the object that reuses its slot.
     // ========================================================================
-    struct DenseEntity : public fk::StrongType<uint64_t, struct DenseEntityTag> {
+    struct DenseEntity : public fk::StrongType<uint64_t, struct DenseEntityTag, fk::strong_policy::Id> {
         using StrongType::StrongType;
 
         // Internal marker for "Null / Invalid / Free" slot indices

@@ -18,7 +18,7 @@ namespace fk {
     // Layout: 
     // [16 Bits TypeID] [16 Bits Generation] [32 Bits Logic Slot]
     // ========================================================================
-    struct GlobalHandle : public fk::StrongType<uint64_t, struct GlobalHandleTag> {
+    struct GlobalHandle : public fk::StrongType<uint64_t, struct GlobalHandleTag, fk::strong_policy::Id> {
         using StrongType::StrongType; 
 
         static constexpr uint64_t SLOT_MASK = (1ULL << 32) - 1; // Lower 32 bits

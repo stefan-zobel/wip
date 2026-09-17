@@ -19,7 +19,7 @@ namespace fk {
     // lifecycles per specific slot; after that the slot is retired and
     // never reused, so a stale handle can never match again).
     // ========================================================================
-    struct GenHandle : public fk::StrongType<uint64_t, struct GenHandleTag> {
+    struct GenHandle : public fk::StrongType<uint64_t, struct GenHandleTag, fk::strong_policy::Id> {
         using StrongType::StrongType; 
 
         // Mask constants for bitwise packing/unpacking

@@ -50,8 +50,74 @@ namespace fk {
         }
     }
 
-    template <typename T, typename Tag>
+    // ========================================================================
+    // Policies
+    // A policy decides what a strong type can do:
+    //   implicit_conversion  converts implicitly to T (otherwise only via get() or static_cast)
+    //   arithmetic           + - * / %, unary -, += -= *= /= %=  (arithmetic T only)
+    //   bitwise              | & ^ ~ << >>, |= &= ^= <<= >>=     (integral T or std::byte)
+    //   increment            ++ and --                           (integral T)
+    // Comparison (== <=> ...) and std::hash are always available.
+    //
+    // Presets: Number (implicit, all operators; used by fk::i32 etc.), StrictNumber (explicit,
+    // all operators; the default), Id (explicit, comparison and hashing only).
+    // A user-defined policy is a struct with the same four static constexpr bool members.
+    //
+    // Operators only combine two operands of the same strong type and return that type
+    // (i32 + i32 is i32). With implicit_conversion, mixed expressions such as i32 + int or
+    // i32 + i64 still compile through the built-in operators on T; with an explicit policy they
+    // do not compile.
+    //
+    //     struct entity_id : fk::StrongType<uint32_t, struct EntityIdTag, fk::strong_policy::Id> {
+    //         using StrongType::StrongType;
+    //     };
+    // ========================================================================
+    template <typename P>
+    concept StrongTypePolicy = requires {
+        { std::bool_constant<P::implicit_conversion>{} };
+        { std::bool_constant<P::arithmetic>{} };
+        { std::bool_constant<P::bitwise>{} };
+        { std::bool_constant<P::increment>{} };
+    };
+
+    namespace strong_policy {
+        struct Number {
+            static constexpr bool implicit_conversion = true;
+            static constexpr bool arithmetic = true;
+            static constexpr bool bitwise = true;
+            static constexpr bool increment = true;
+        };
+
+        struct StrictNumber {
+            static constexpr bool implicit_conversion = false;
+            static constexpr bool arithmetic = true;
+            static constexpr bool bitwise = true;
+            static constexpr bool increment = true;
+        };
+
+        struct Id {
+            static constexpr bool implicit_conversion = false;
+            static constexpr bool arithmetic = false;
+            static constexpr bool bitwise = false;
+            static constexpr bool increment = false;
+        };
+    }
+
+    namespace strong_types_detail {
+        template <typename T>
+        concept arithmetic_value = std::is_arithmetic_v<T>;
+
+        template <typename T>
+        concept bitwise_value = (std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>;
+
+        template <typename T>
+        concept incrementable_value = std::is_integral_v<T> && !std::is_same_v<T, bool>;
+    }
+
+    template <typename T, typename Tag, StrongTypePolicy Policy = strong_policy::StrictNumber>
     struct StrongType {
+
+        using policy_type = Policy;
 
         explicit constexpr StrongType(T v) noexcept(std::is_nothrow_move_constructible_v<T>)
             : value(std::move(v)) {
@@ -64,12 +130,12 @@ namespace fk {
         // Return T by value if sizeof(T) <= 8 Byte, otherwise return const T&
         using ReturnType = std::conditional_t<(sizeof(T) <= sizeof(void*)), T, const T&>;
 
-        // Implicit cast to underlying type
-        constexpr operator ReturnType() const & noexcept {
+        // Cast to the underlying type (implicit only if the policy allows it)
+        constexpr explicit(!Policy::implicit_conversion) operator ReturnType() const & noexcept {
             return value;
         }
 
-        constexpr operator T&&() && noexcept {
+        constexpr explicit(!Policy::implicit_conversion) operator T&&() && noexcept {
             return std::move(value);
         }
 
@@ -83,205 +149,208 @@ namespace fk {
          */
         auto operator<=>(const StrongType&) const = default;
 
+    private:
+        // Value access for the operator templates below, whose operands are the derived type S
+        static constexpr const T& raw(const StrongType& s) noexcept { return static_cast<const T&>(s.value); }
+        static constexpr T& raw(StrongType& s) noexcept { return static_cast<T&>(s.value); }
+
+    public:
         // ====================================================================
-        // Arithmetic operators (hidden friends, automatically generated)
-        // Restricted via C++20 Concepts to arithmetic base types
+        // Operators (hidden friend templates)
+        // S is the actual strong type of both operands (e.g. fk::i32, not its StrongType base);
+        // it is deduced from both operands, so different strong types never combine.
         // ====================================================================
 
-        // Operator +
-        friend constexpr StrongType operator+(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            return StrongType(static_cast<T>(lhs.value) + static_cast<T>(rhs.value));
+        // Arithmetic operators
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S operator+(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) + raw(rhs)));
         }
 
-        // Operator -
-        friend constexpr StrongType operator-(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            return StrongType(static_cast<T>(lhs.value) - static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S operator-(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) - raw(rhs)));
         }
 
-        // Operator *
-        friend constexpr StrongType operator*(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            return StrongType(static_cast<T>(lhs.value) * static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S operator*(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) * raw(rhs)));
         }
 
-        // Operator /
-        friend constexpr StrongType operator/(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            return StrongType(static_cast<T>(lhs.value) / static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S operator/(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) / raw(rhs)));
         }
 
         // Modulo is strictly limited to integral types (except boolean)
-        friend constexpr StrongType operator%(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) % static_cast<T>(rhs.value));
-        }
-
-        // Compound Assignments (+=, -=, etc.)
-        constexpr StrongType& operator+=(const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            static_cast<T&>(value) += static_cast<const T&>(rhs.value);
-            return *this;
-        }
-
-        constexpr StrongType& operator-=(const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            static_cast<T&>(value) -= static_cast<const T&>(rhs.value);
-            return *this;
-        }
-
-        constexpr StrongType& operator*=(const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            static_cast<T&>(value) *= static_cast<const T&>(rhs.value);
-            return *this;
-        }
-
-        constexpr StrongType& operator/=(const StrongType& rhs) noexcept
-            requires std::is_arithmetic_v<T>
-        {
-            static_cast<T&>(value) /= static_cast<const T&>(rhs.value);
-            return *this;
-        }
-
-        constexpr StrongType& operator%=(const StrongType& rhs) noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) %= static_cast<const T&>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::incrementable_value<T>)
+        friend constexpr S operator%(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) % raw(rhs)));
         }
 
         // Unary minus (Ensure it is only defined for signed types)
-        friend constexpr StrongType operator-(const StrongType& v) noexcept
-            requires (std::is_arithmetic_v<T> && std::is_signed_v<T>)
-        {
-            return StrongType(-static_cast<T>(v.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T> && std::is_signed_v<T>)
+        friend constexpr S operator-(const S& v) noexcept {
+            return S(static_cast<T>(-raw(v)));
+        }
+
+        // Compound Assignments (+=, -=, etc.)
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S& operator+=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) += raw(rhs);
+            return lhs;
+        }
+
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S& operator-=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) -= raw(rhs);
+            return lhs;
+        }
+
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S& operator*=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) *= raw(rhs);
+            return lhs;
+        }
+
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::arithmetic_value<T>)
+        friend constexpr S& operator/=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) /= raw(rhs);
+            return lhs;
+        }
+
+        template <std::derived_from<StrongType> S>
+            requires (Policy::arithmetic && strong_types_detail::incrementable_value<T>)
+        friend constexpr S& operator%=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) %= raw(rhs);
+            return lhs;
         }
 
         // ====================================================================
         // Bitwise Operators (Crucial for bitmasks, flags, or std::byte types)
-        // Restricted to integers and non-boolean types.
+        // Restricted to integers and std::byte, excluding 'bool'.
         // ====================================================================
 
-        friend constexpr StrongType operator|(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) | static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator|(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) | raw(rhs)));
         }
 
-        friend constexpr StrongType operator&(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) & static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator&(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) & raw(rhs)));
         }
 
-        friend constexpr StrongType operator^(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) ^ static_cast<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator^(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) ^ raw(rhs)));
         }
 
-        friend constexpr StrongType operator~(const StrongType& v) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(~static_cast<T>(v.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator~(const S& v) noexcept {
+            return S(static_cast<T>(~raw(v)));
         }
 
         // Bitwise Shift operators (left/right)
-        friend constexpr StrongType operator<<(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) << strong_types_detail::shift_count<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator<<(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) << strong_types_detail::shift_count<T>(raw(rhs))));
         }
 
-        friend constexpr StrongType operator>>(const StrongType& lhs, const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            return StrongType(static_cast<T>(lhs.value) >> strong_types_detail::shift_count<T>(rhs.value));
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S operator>>(const S& lhs, const S& rhs) noexcept {
+            return S(static_cast<T>(raw(lhs) >> strong_types_detail::shift_count<T>(raw(rhs))));
         }
 
         // Bitwise Assignment Operators
-        constexpr StrongType& operator|=(const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) |= static_cast<const T&>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S& operator|=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) |= raw(rhs);
+            return lhs;
         }
 
-        constexpr StrongType& operator&=(const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) &= static_cast<const T&>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S& operator&=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) &= raw(rhs);
+            return lhs;
         }
 
-        constexpr StrongType& operator^=(const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) ^= static_cast<const T&>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S& operator^=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) ^= raw(rhs);
+            return lhs;
         }
 
-        constexpr StrongType& operator<<=(const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) <<= strong_types_detail::shift_count<T>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S& operator<<=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) <<= strong_types_detail::shift_count<T>(raw(rhs));
+            return lhs;
         }
 
-        constexpr StrongType& operator>>=(const StrongType& rhs) noexcept
-            requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
-        {
-            static_cast<T&>(value) >>= strong_types_detail::shift_count<T>(rhs.value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::bitwise && strong_types_detail::bitwise_value<T>)
+        friend constexpr S& operator>>=(S& lhs, const S& rhs) noexcept {
+            raw(lhs) >>= strong_types_detail::shift_count<T>(raw(rhs));
+            return lhs;
         }
-
 
         // ====================================================================
         // Increment / Decrement Operators
-        // Restricted to integers. Strictly excluding 'bool' because ++/-- on 
+        // Restricted to integers. Strictly excluding 'bool' because ++/-- on
         // boolean types is illogical and actively forbidden in modern C++.
         // ====================================================================
 
         // Pre-increment (++x)
-        constexpr StrongType& operator++() noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            ++static_cast<T&>(value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::increment && strong_types_detail::incrementable_value<T>)
+        friend constexpr S& operator++(S& v) noexcept {
+            ++raw(v);
+            return v;
         }
 
         // Post-increment (x++)
-        constexpr StrongType operator++(int) noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            StrongType copy(*this);
-            ++static_cast<T&>(value);
+        template <std::derived_from<StrongType> S>
+            requires (Policy::increment && strong_types_detail::incrementable_value<T>)
+        friend constexpr S operator++(S& v, int) noexcept {
+            S copy(v);
+            ++raw(v);
             return copy;
         }
 
         // Pre-decrement (--x)
-        constexpr StrongType& operator--() noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            --static_cast<T&>(value);
-            return *this;
+        template <std::derived_from<StrongType> S>
+            requires (Policy::increment && strong_types_detail::incrementable_value<T>)
+        friend constexpr S& operator--(S& v) noexcept {
+            --raw(v);
+            return v;
         }
 
         // Post-decrement (x--)
-        constexpr StrongType operator--(int) noexcept
-            requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-        {
-            StrongType copy(*this);
-            --static_cast<T&>(value);
+        template <std::derived_from<StrongType> S>
+            requires (Policy::increment && strong_types_detail::incrementable_value<T>)
+        friend constexpr S operator--(S& v, int) noexcept {
+            S copy(v);
+            --raw(v);
             return copy;
         }
 
@@ -300,7 +369,7 @@ namespace fk {
         }
 
         // Arrow operator (->)
-        // Requires that T supports member access either natively (pointers) 
+        // Requires that T supports member access either natively (pointers)
         // or via an overloaded operator-> (smart pointers).
         constexpr decltype(auto) operator->() const noexcept
             requires std::is_pointer_v<T> || requires(T t) { t.operator->(); }
@@ -313,26 +382,26 @@ namespace fk {
     };
 
     // cstdint types:
-    struct i8   : public StrongType<int8_t,   struct INT8Tag  > { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct i16  : public StrongType<int16_t , struct INT16Tag > { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct i32  : public StrongType<int32_t,  struct INT32Tag > { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct i64  : public StrongType<int64_t,  struct INT64Tag > { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct u8   : public StrongType<uint8_t,  struct UINT8Tag > { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct u16  : public StrongType<uint16_t, struct UINT16Tag> { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct u32  : public StrongType<uint32_t, struct UINT32Tag> { using StrongType::StrongType; /*inheriting constructor*/ };
-    struct u64  : public StrongType<uint64_t, struct UINT64Tag> { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct i8   : public StrongType<int8_t,   struct INT8Tag, strong_policy::Number  > { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct i16  : public StrongType<int16_t , struct INT16Tag, strong_policy::Number > { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct i32  : public StrongType<int32_t,  struct INT32Tag, strong_policy::Number > { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct i64  : public StrongType<int64_t,  struct INT64Tag, strong_policy::Number > { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct u8   : public StrongType<uint8_t,  struct UINT8Tag, strong_policy::Number > { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct u16  : public StrongType<uint16_t, struct UINT16Tag, strong_policy::Number> { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct u32  : public StrongType<uint32_t, struct UINT32Tag, strong_policy::Number> { using StrongType::StrongType; /*inheriting constructor*/ };
+    struct u64  : public StrongType<uint64_t, struct UINT64Tag, strong_policy::Number> { using StrongType::StrongType; /*inheriting constructor*/ };
 
     // floating-point types:
     using float32 = float;  // C++23: std::float32_t
     using float64 = double; // C++23: std::float64_t
 
-    struct f32 : public StrongType<float32, struct F32Tag> { using StrongType::StrongType; };
-    struct f64 : public StrongType<float64, struct F64Tag> { using StrongType::StrongType; };
+    struct f32 : public StrongType<float32, struct F32Tag, strong_policy::Number> { using StrongType::StrongType; };
+    struct f64 : public StrongType<float64, struct F64Tag, strong_policy::Number> { using StrongType::StrongType; };
 
     // byte / size_t / ptrdiff_t:
-    struct octet : public StrongType<std::byte, struct OCTETTag> { using StrongType::StrongType; };
-    struct usize : public StrongType<size_t   , struct USIZETag> { using StrongType::StrongType; };
-    struct isize : public StrongType<ptrdiff_t, struct ISIZETag> { using StrongType::StrongType; };
+    struct octet : public StrongType<std::byte, struct OCTETTag, strong_policy::Number> { using StrongType::StrongType; };
+    struct usize : public StrongType<size_t   , struct USIZETag, strong_policy::Number> { using StrongType::StrongType; };
+    struct isize : public StrongType<ptrdiff_t, struct ISIZETag, strong_policy::Number> { using StrongType::StrongType; };
 
 } // namespace fk
 
@@ -344,9 +413,9 @@ namespace fk {
 // std::unordered_map and std::unordered_set.
 // ====================================================================
 namespace fk::detail {
-    // Finds the StrongType<T, Tag> base of a derived strong type (deduction via base conversion).
-    template <typename T, typename Tag>
-    StrongType<T, Tag> strong_base_of(const StrongType<T, Tag>&);
+    // Finds the StrongType<T, Tag, Policy> base of a derived strong type (deduction via base conversion).
+    template <typename T, typename Tag, typename Policy>
+    StrongType<T, Tag, Policy> strong_base_of(const StrongType<T, Tag, Policy>&);
 
     template <typename S>
     concept derived_strong_type = requires(const S& s) { strong_base_of(s); }
@@ -354,9 +423,9 @@ namespace fk::detail {
 }
 
 namespace std {
-    template <typename T, typename Tag>
-    struct hash<fk::StrongType<T, Tag>> {
-        std::size_t operator()(const fk::StrongType<T, Tag>& st) const noexcept {
+    template <typename T, typename Tag, typename Policy>
+    struct hash<fk::StrongType<T, Tag, Policy>> {
+        std::size_t operator()(const fk::StrongType<T, Tag, Policy>& st) const noexcept {
             // Forward the hashing logic to the underlying type T
             return std::hash<T>{}(st.get());
         }
