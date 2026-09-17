@@ -28,6 +28,10 @@ struct NoCleanupPolicy {
     static constexpr size_t cleanup_node_size = 0;
     static constexpr size_t cleanup_node_alignment = 1;
 
+    [[nodiscard]] bool prepare_cleanup() noexcept {
+        return true;
+    }
+
     void publish_cleanup(void*, void*, DestructorFunc) noexcept {
     }
 
@@ -50,6 +54,10 @@ struct AtomicCleanupStackPolicy {
     static constexpr bool tracks_destructors = true;
     static constexpr size_t cleanup_node_size = sizeof(CleanupNode);
     static constexpr size_t cleanup_node_alignment = alignof(CleanupNode);
+
+    [[nodiscard]] bool prepare_cleanup() noexcept {
+        return true;
+    }
 
     void publish_cleanup(void* node_memory, void* object_ptr, DestructorFunc dtor) noexcept {
         CleanupNode* node = new (node_memory) CleanupNode{ object_ptr, dtor, nullptr };
@@ -79,6 +87,148 @@ private:
     std::atomic<CleanupNode*> cleanup_head_{ nullptr };
 };
 
+#if defined(_MSC_VER)
+#define FK_ARENA_NOINLINE __declspec(noinline)
+#else
+#define FK_ARENA_NOINLINE [[gnu::noinline]]
+#endif
+
+namespace concurrent_arena_detail {
+
+// Shared between an object and the thread-local entries that threads keep for it (chunks, pool
+// caches, cleanup lists). The object retires it in its destructor; entries of retired owners are
+// pruned and never run their thread-exit hook.
+class OwnerLifetime {
+public:
+    [[nodiscard]] bool alive() const noexcept {
+        return alive_.load(std::memory_order_acquire);
+    }
+
+    // Called by the owner's destructor. Waits until no thread-exit hook runs for the owner.
+    void retire() noexcept {
+        std::scoped_lock lock(mutex_);
+        alive_.store(false);
+    }
+
+    // Runs 'hook' only while the owner is alive; the owner's destructor waits meanwhile.
+    template <typename Hook>
+    void run_if_alive(Hook&& hook) noexcept {
+        std::scoped_lock lock(mutex_);
+        if (alive_.load(std::memory_order_acquire)) {
+            hook();
+        }
+    }
+
+private:
+    std::mutex mutex_;
+    std::atomic<bool> alive_{ true };
+};
+
+// Thread-local list of per-owner state of one class. Lookups of a live owner (the fast path) are
+// unchanged: a linear search by owner id. Creating an entry (the slow path) first removes the entries
+// of owners that no longer exist, so a thread's list stays as short as the number of live owners it
+// uses. At thread exit, every entry of a live owner runs its hook, e.g. to return
+// cached blocks to a pool.
+template <typename Payload>
+class ThreadEntryList {
+public:
+    using ExitHook = void (*)(void* owner, Payload& payload) noexcept;
+
+    // Hot fields first: a lookup reads owner_id and then uses the payload, which should share the
+    // cache line with it. The fields for pruning and thread exit are only used on slow paths.
+    struct Entry {
+        uint64_t owner_id = 0;
+        Payload payload{};
+        Entry* next = nullptr;
+        void* owner = nullptr;
+        ExitHook on_thread_exit = nullptr;
+        std::shared_ptr<OwnerLifetime> lifetime;
+    };
+
+    ThreadEntryList() noexcept = default;
+    ThreadEntryList(const ThreadEntryList&) = delete;
+    ThreadEntryList& operator=(const ThreadEntryList&) = delete;
+
+    ~ThreadEntryList() {
+        while (head_) {
+            Entry* entry = head_;
+            head_ = entry->next;
+            if (entry->on_thread_exit) {
+                entry->lifetime->run_if_alive([entry] { entry->on_thread_exit(entry->owner, entry->payload); });
+            }
+            delete entry;
+        }
+    }
+
+    // An owner only looks up its own entry while it is alive, so no liveness check is needed here.
+    [[nodiscard]] Entry* find(uint64_t owner_id) const noexcept {
+        for (Entry* entry = head_; entry != nullptr; entry = entry->next) {
+            if (entry->owner_id == owner_id) {
+                return entry;
+            }
+        }
+        return nullptr;
+    }
+
+    // Returns nullptr if memory is exhausted. Kept out of line, so that the lookups of the owners
+    // (find() plus this call on a miss) stay small enough to be inlined into their fast paths.
+    [[nodiscard]] FK_ARENA_NOINLINE Entry* create(uint64_t owner_id,
+                                void* owner,
+                                ExitHook on_thread_exit,
+                                const std::shared_ptr<OwnerLifetime>& lifetime) noexcept {
+        prune_retired_owners();
+        Entry* entry = new (std::nothrow) Entry{};
+        if (!entry) {
+            return nullptr;
+        }
+        entry->owner_id = owner_id;
+        entry->owner = owner;
+        entry->on_thread_exit = on_thread_exit;
+        entry->lifetime = lifetime;
+        entry->next = head_;
+        head_ = entry;
+        return entry;
+    }
+
+    // Removes the entry of an owner that is being destroyed on this thread (no hook).
+    void remove(uint64_t owner_id) noexcept {
+        for (Entry** link = &head_; *link != nullptr; link = &(*link)->next) {
+            if ((*link)->owner_id == owner_id) {
+                Entry* entry = *link;
+                *link = entry->next;
+                delete entry;
+                return;
+            }
+        }
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        size_t count = 0;
+        for (Entry* entry = head_; entry != nullptr; entry = entry->next) {
+            ++count;
+        }
+        return count;
+    }
+
+private:
+    void prune_retired_owners() noexcept {
+        Entry** link = &head_;
+        while (*link != nullptr) {
+            Entry* entry = *link;
+            if (entry->lifetime->alive()) {
+                link = &entry->next;
+            } else {
+                *link = entry->next;
+                delete entry;
+            }
+        }
+    }
+
+    Entry* head_ = nullptr;
+};
+
+} // namespace concurrent_arena_detail
+
 struct ThreadLocalCleanupPolicy {
     using DestructorFunc = void(*)(void*);
 
@@ -107,54 +257,49 @@ struct ThreadLocalCleanupPolicy {
         }
     };
 
-    struct ThreadCacheEntry {
-        uint64_t owner_id = 0;
-        std::shared_ptr<RegistryState> registry;
+    // Thread-local state: the cleanup list this thread appends to
+    struct ThreadState {
         LocalList* list = nullptr;
-        ThreadCacheEntry* next = nullptr;
     };
 
-    struct ThreadCacheListOwner {
-        ThreadCacheEntry* head;
-        ThreadCacheListOwner() noexcept : head(nullptr) {}
-
-        ~ThreadCacheListOwner() {
-            while (head) {
-                ThreadCacheEntry* next = head->next;
-
-                if (head->registry && head->list) {
-                    std::scoped_lock lock(head->registry->mutex);
-                    head->list->bound = false;
-                }
-
-                delete head;
-                head = next;
-            }
-        }
-    };
-
-    inline static thread_local ThreadCacheListOwner tls_cache_{};
+    inline static thread_local concurrent_arena_detail::ThreadEntryList<ThreadState> tls_cache_{};
     inline static std::atomic<uint64_t> next_owner_id_{ 1 };
 
     static constexpr bool tracks_destructors = true;
     static constexpr size_t cleanup_node_size = sizeof(CleanupNode);
     static constexpr size_t cleanup_node_alignment = alignof(CleanupNode);
 
-    ThreadLocalCleanupPolicy() noexcept
+    // Throws std::bad_alloc if the shared state cannot be allocated.
+    ThreadLocalCleanupPolicy()
         : owner_id_(next_owner_id_.fetch_add(1, std::memory_order_relaxed)),
-          registry_(std::make_shared<RegistryState>()) {
+          registry_(std::make_shared<RegistryState>()),
+          lifetime_(std::make_shared<concurrent_arena_detail::OwnerLifetime>()) {
     }
 
-    ~ThreadLocalCleanupPolicy() = default;
+    ~ThreadLocalCleanupPolicy() {
+        lifetime_->retire();
+        tls_cache_.remove(owner_id_);
+    }
 
     ThreadLocalCleanupPolicy(const ThreadLocalCleanupPolicy&) = delete;
     ThreadLocalCleanupPolicy& operator=(const ThreadLocalCleanupPolicy&) = delete;
     ThreadLocalCleanupPolicy(ThreadLocalCleanupPolicy&&) = delete;
     ThreadLocalCleanupPolicy& operator=(ThreadLocalCleanupPolicy&&) = delete;
 
+    // Diagnostics (tests): number of thread-local entries of this class on the calling thread.
+    [[nodiscard]] static size_t thread_entry_count() noexcept {
+        return tls_cache_.size();
+    }
+
+    // Creates this thread's cleanup list before an object is constructed, so that publish_cleanup()
+    // cannot fail afterwards. Returns false if memory is exhausted.
+    [[nodiscard]] bool prepare_cleanup() noexcept {
+        return get_or_create_local_list() != nullptr;
+    }
+
     void publish_cleanup(void* node_memory, void* object_ptr, DestructorFunc dtor) noexcept {
         CleanupNode* node = new (node_memory) CleanupNode{ object_ptr, dtor, nullptr };
-        LocalList* list = get_or_create_local_list();
+        LocalList* list = tls_cache_.find(owner_id_)->payload.list;  // created by prepare_cleanup()
         node->next = list->head;
         list->head = node;
     }
@@ -181,11 +326,17 @@ struct ThreadLocalCleanupPolicy {
     }
 
 private:
-    LocalList* get_or_create_local_list() {
-        for (ThreadCacheEntry* entry = tls_cache_.head; entry != nullptr; entry = entry->next) {
-            if (entry->owner_id == owner_id_) {
-                return entry->list;
-            }
+    // At thread exit the list stays in the registry (its destructors run at the next release) and
+    // may be bound by another thread.
+    static void unbind_list_at_thread_exit(void* owner, ThreadState& state) noexcept {
+        auto* policy = static_cast<ThreadLocalCleanupPolicy*>(owner);
+        std::scoped_lock lock(policy->registry_->mutex);
+        state.list->bound = false;
+    }
+
+    [[nodiscard]] LocalList* get_or_create_local_list() noexcept {
+        if (auto* entry = tls_cache_.find(owner_id_)) {
+            return entry->payload.list;
         }
 
         LocalList* list = nullptr;
@@ -202,26 +353,29 @@ private:
             }
 
             if (!list) {
-                list = new LocalList{};
+                list = new (std::nothrow) LocalList{};
+                if (!list) {
+                    return nullptr;
+                }
                 list->bound = true;
                 list->next = registry_->head;
                 registry_->head = list;
             }
         }
 
-        ThreadCacheEntry* entry = new ThreadCacheEntry{};
-        entry->owner_id = owner_id_;
-        entry->registry = registry_;
-        entry->list = list;
-        entry->next = tls_cache_.head;
-        tls_cache_.head = entry;
-
+        auto* entry = tls_cache_.create(owner_id_, this, &unbind_list_at_thread_exit, lifetime_);
+        if (!entry) {
+            std::scoped_lock lock(registry_->mutex);
+            list->bound = false;
+            return nullptr;
+        }
+        entry->payload.list = list;
         return list;
     }
 
-private:
     uint64_t owner_id_ = 0;
     std::shared_ptr<RegistryState> registry_;
+    std::shared_ptr<concurrent_arena_detail::OwnerLifetime> lifetime_;
 };
 
 namespace concurrent_arena_detail {
@@ -264,6 +418,19 @@ public:
 
     [[nodiscard]] bool is_sealed() const noexcept {
         return sealed_.load(std::memory_order_acquire);
+    }
+
+    // Registers an operation unless a release() is in progress; never waits.
+    [[nodiscard]] bool try_register_operation(size_t& stripe) noexcept {
+        if (is_sealed()) {
+            return false;
+        }
+        stripe = register_operation();
+        if (is_sealed()) {
+            deregister_operation(stripe);
+            return false;
+        }
+        return true;
     }
 
     void wait_while_sealed() noexcept {
@@ -348,6 +515,11 @@ struct QuiescentReleasePolicy {
         }
     }
 
+    // Never waits: fails while a release() is in progress.
+    bool try_enter_operation(size_t& stripe) noexcept {
+        return quiescence_.try_register_operation(stripe);
+    }
+
     void leave_operation(size_t stripe) noexcept {
         quiescence_.deregister_operation(stripe);
     }
@@ -388,6 +560,11 @@ struct TryEnterReleasePolicy {
         return true;
     }
 
+    // Same as enter_operation() for this policy.
+    bool try_enter_operation(size_t& stripe) noexcept {
+        return quiescence_.try_register_operation(stripe);
+    }
+
     void leave_operation(size_t stripe) noexcept {
         quiescence_.deregister_operation(stripe);
     }
@@ -419,6 +596,7 @@ concept ConcurrentArenaCleanupPolicy =
         { T::tracks_destructors } -> std::convertible_to<bool>;
         { T::cleanup_node_size } -> std::convertible_to<size_t>;
         { T::cleanup_node_alignment } -> std::convertible_to<size_t>;
+        { policy.prepare_cleanup() } -> std::convertible_to<bool>;
         policy.publish_cleanup(node_memory, object_ptr, dtor);
         policy.run_cleanup();
         policy.reset_cleanup();
@@ -429,6 +607,7 @@ concept ConcurrentArenaReleasePolicy =
     requires(T policy, size_t& stripe) {
         { T::blocks_on_seal } -> std::convertible_to<bool>;
         { policy.enter_operation(stripe) } -> std::convertible_to<bool>;
+        { policy.try_enter_operation(stripe) } -> std::convertible_to<bool>;
         policy.leave_operation(stripe);
         policy.begin_release();
         policy.wait_for_quiescence();
@@ -451,24 +630,6 @@ class ConcurrentArenaCore final : private CleanupPolicy, private ReleasePolicy {
     // Hit counters of the fast path are batched per thread, so the fast path does not write
     // shared memory on every allocation (see StatsSnapshot).
     static constexpr size_t STATS_BATCH = 64;
-
-    struct ThreadChunkEntry {
-        uint64_t owner_id = 0;
-        LocalChunk chunk{};
-        ThreadChunkEntry* next = nullptr;
-    };
-
-    struct ThreadChunkListOwner {
-        ThreadChunkEntry* head = nullptr;
-
-        ~ThreadChunkListOwner() {
-            while (head) {
-                ThreadChunkEntry* next = head->next;
-                delete head;
-                head = next;
-            }
-        }
-    };
 
     static constexpr size_t calculate_padding(uintptr_t address, size_t alignment) noexcept {
         return (alignment - (address & (alignment - 1))) & (alignment - 1);
@@ -496,6 +657,14 @@ public:
         explicit ScopedOperation(ConcurrentArenaCore& arena) noexcept
             : arena_(&arena),
               active_(arena_->release_policy().enter_operation(stripe_)) {
+        }
+
+        struct NonBlocking {};
+
+        // Never waits: inactive while a release() is in progress.
+        ScopedOperation(ConcurrentArenaCore& arena, NonBlocking) noexcept
+            : arena_(&arena),
+              active_(arena_->release_policy().try_enter_operation(stripe_)) {
         }
 
         ~ScopedOperation() {
@@ -537,6 +706,9 @@ public:
     };
 
     ~ConcurrentArenaCore() {
+        // First wait for thread-exit hooks of other threads, then forget this thread's entry.
+        lifetime_->retire();
+        tls_chunks_.remove(owner_id_);
         release();
         if (base_ptr_) {
             VirtualFree(base_ptr_, 0, MEM_RELEASE);
@@ -572,12 +744,24 @@ public:
             return nullptr;
         }
 
-        return std::unique_ptr<ConcurrentArenaCore>(
-            new ConcurrentArenaCore(base, reserve_size, initial_commit));
+        // The arena object and its policies allocate; without memory the reservation is given back.
+        try {
+            return std::unique_ptr<ConcurrentArenaCore>(
+                new ConcurrentArenaCore(base, reserve_size, initial_commit));
+        } catch (const std::bad_alloc&) {
+            VirtualFree(base, 0, MEM_RELEASE);
+            return nullptr;
+        }
     }
 
     [[nodiscard]] ScopedOperation acquire_operation() noexcept {
         return ScopedOperation(*this);
+    }
+
+    // Like acquire_operation(), but never waits: the operation is inactive while a release() is
+    // in progress.
+    [[nodiscard]] ScopedOperation try_acquire_operation() noexcept {
+        return ScopedOperation(*this, typename ScopedOperation::NonBlocking{});
     }
 
     void* allocate_raw_aligned(size_t size, size_t alignment = UNIVERSAL_MAX_ALIGN) {
@@ -616,6 +800,12 @@ public:
         void* cleanup_node_memory = nullptr;
 
         if constexpr (CleanupPolicy::tracks_destructors && !std::is_trivially_destructible_v<T>) {
+            // Everything that can fail happens before T is constructed: an object whose
+            // destructor cannot be registered must not exist.
+            if (!cleanup_policy().prepare_cleanup()) {
+                failed_allocations_.fetch_add(1, std::memory_order_relaxed);
+                return nullptr;
+            }
             cleanup_node_memory = allocate_raw_aligned_inside_operation(CleanupPolicy::cleanup_node_size,
                                                                         CleanupPolicy::cleanup_node_alignment);
             if (!cleanup_node_memory) {
@@ -689,6 +879,11 @@ public:
         return release_policy().is_sealed();
     }
 
+    // Diagnostics (tests): number of thread-local entries of this class on the calling thread.
+    [[nodiscard]] static size_t thread_entry_count() noexcept {
+        return tls_chunks_.size();
+    }
+
     [[nodiscard]] StatsSnapshot get_stats() const noexcept {
         return StatsSnapshot{
             .local_chunk_hits = local_chunk_hits_.load(std::memory_order_relaxed),
@@ -711,12 +906,14 @@ public:
 
 private:
 
-    ConcurrentArenaCore(void* base, size_t reserve_size, size_t initial_commit_size) noexcept
+    // Throws std::bad_alloc (the policies and the lifetime allocate); create() handles it.
+    ConcurrentArenaCore(void* base, size_t reserve_size, size_t initial_commit_size)
         : base_ptr_(base),
           reserved_size_(reserve_size),
           initial_commit_size_(initial_commit_size),
           owner_id_(next_chunk_owner_id_.fetch_add(1, std::memory_order_relaxed)),
-          committed_size_(initial_commit_size) {
+          committed_size_(initial_commit_size),
+          lifetime_(std::make_shared<concurrent_arena_detail::OwnerLifetime>()) {
     }
 
     [[nodiscard]] bool is_valid_operation(const ScopedOperation& op) noexcept {
@@ -759,7 +956,11 @@ private:
             return nullptr;
         }
 
-        LocalChunk& chunk = get_local_chunk(arena_epoch);
+        LocalChunk* chunk_entry = get_local_chunk(arena_epoch);
+        if (!chunk_entry) [[unlikely]] {
+            return nullptr;  // no memory for the thread-local entry: use the shared bump pointer
+        }
+        LocalChunk& chunk = *chunk_entry;
 
         for (;;) {
             if (chunk.current == nullptr || chunk.current == chunk.end) {
@@ -785,6 +986,11 @@ private:
         }
     }
 
+    // Thread-exit hook: the hits of a thread that ends are not lost.
+    static void publish_hits_at_thread_exit(void* owner, LocalChunk& chunk) noexcept {
+        static_cast<ConcurrentArenaCore*>(owner)->publish_local_chunk_hits(chunk);
+    }
+
     void publish_local_chunk_hits(LocalChunk& chunk) noexcept {
         if (chunk.pending_hits != 0) {
             local_chunk_hits_.fetch_add(chunk.pending_hits, std::memory_order_relaxed);
@@ -807,21 +1013,19 @@ private:
         return true;
     }
 
-    [[nodiscard]] LocalChunk& get_local_chunk(size_t arena_epoch) {
-        for (ThreadChunkEntry* entry = tls_chunks_.head; entry != nullptr; entry = entry->next) {
-            if (entry->owner_id == owner_id_) {
-                sync_local_chunk_epoch(entry->chunk, arena_epoch);
-                return entry->chunk;
-            }
+    // Returns nullptr if the thread has no entry yet and none can be allocated.
+    [[nodiscard]] LocalChunk* get_local_chunk(size_t arena_epoch) noexcept {
+        if (auto* entry = tls_chunks_.find(owner_id_)) {
+            sync_local_chunk_epoch(entry->payload, arena_epoch);
+            return &entry->payload;
         }
 
-        ThreadChunkEntry* entry = new ThreadChunkEntry{};
-        entry->owner_id = owner_id_;
-        entry->chunk.epoch = arena_epoch;
-        entry->next = tls_chunks_.head;
-        tls_chunks_.head = entry;
-
-        return entry->chunk;
+        auto* entry = tls_chunks_.create(owner_id_, this, &publish_hits_at_thread_exit, lifetime_);
+        if (!entry) {
+            return nullptr;
+        }
+        entry->payload.epoch = arena_epoch;
+        return &entry->payload;
     }
 
     void sync_local_chunk_epoch(LocalChunk& chunk, size_t arena_epoch) noexcept {
@@ -920,7 +1124,7 @@ private:
     }
 
 private:
-    inline static thread_local ThreadChunkListOwner tls_chunks_{};
+    inline static thread_local concurrent_arena_detail::ThreadEntryList<LocalChunk> tls_chunks_{};
     inline static std::atomic<uint64_t> next_chunk_owner_id_{ 1 };
 
     // Memory layout, grouped by access pattern (one cache line each):
@@ -948,6 +1152,7 @@ private:
     alignas(CACHE_LINE) std::atomic<size_t> failed_allocations_{ 0 };
     std::atomic<size_t> commit_calls_{ 0 };
     std::atomic<size_t> release_calls_{ 0 };
+    std::shared_ptr<concurrent_arena_detail::OwnerLifetime> lifetime_;
     std::mutex commit_mutex_;
     std::mutex release_mutex_;
 };

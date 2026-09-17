@@ -17,6 +17,7 @@ concept ConcurrentBlockPoolArena =
         typename A::ScopedOperation;
         { A::blocks_on_seal } -> std::convertible_to<bool>;
         { arena.acquire_operation() } -> std::same_as<typename A::ScopedOperation>;
+        { arena.try_acquire_operation() } -> std::same_as<typename A::ScopedOperation>;
         { arena.get_epoch() } -> std::convertible_to<size_t>;
         { arena.allocate_raw_aligned(op, size, alignment) } -> std::same_as<void*>;
     };
@@ -44,25 +45,6 @@ class ConcurrentBlockPool final {
     // shared memory on every operation (see StatsSnapshot).
     static constexpr size_t STATS_BATCH = 64;
 
-    struct ThreadCacheEntry {
-        uint64_t owner_id = 0;
-        LocalCache cache{};
-        ThreadCacheEntry* next = nullptr;
-    };
-
-    struct ThreadCacheListOwner {
-        ThreadCacheEntry* head;
-        ThreadCacheListOwner() noexcept : head(nullptr) {}
-
-        ~ThreadCacheListOwner() {
-            while (head) {
-                ThreadCacheEntry* next = head->next;
-                delete head;
-                head = next;
-            }
-        }
-    };
-
     static constexpr size_t block_size_ = std::max(sizeof(T), sizeof(Node));
     static constexpr size_t block_alignment_ = std::max(alignof(T), alignof(Node));
 
@@ -84,11 +66,20 @@ public:
     static constexpr size_t refill_batch_size = refill_batch_size_;
     static constexpr size_t drain_batch_size = drain_batch_size_;
 
-    explicit ConcurrentBlockPool(Arena& arena) noexcept
+    // Throws std::bad_alloc if the shared lifetime state cannot be allocated.
+    explicit ConcurrentBlockPool(Arena& arena)
         : source_arena_(arena),
           owner_id_(next_owner_id_.fetch_add(1, std::memory_order_relaxed)),
-          known_epoch_(arena.get_epoch()) {
+          known_epoch_(arena.get_epoch()),
+          lifetime_(std::make_shared<concurrent_arena_detail::OwnerLifetime>()) {
         free_list_head_.store(TaggedHead{ nullptr, 0 }, std::memory_order_relaxed);
+    }
+
+    // The arena must outlive the pool. Threads that still hold cache entries for this pool drop
+    // them later without touching the pool.
+    ~ConcurrentBlockPool() {
+        lifetime_->retire();
+        tls_cache_.remove(owner_id_);
     }
 
     ConcurrentBlockPool(const ConcurrentBlockPool&) = delete;
@@ -104,22 +95,28 @@ public:
         }
 
         const size_t arena_epoch = sync_epoch_inside_operation();
-        LocalCache& local = get_local_cache(arena_epoch);
+        LocalCache* local = get_local_cache(arena_epoch);
 
-        // Fast path: consume a previously recycled block from the local cache.
-        void* memory = pop_local_block(local);
-        if (memory) {
-            count_cache_hit(local);
-        }
-
-        // Refill the local cache from the shared global free list in small batches
-        // before falling back to the Arena for a fresh block.
-        if (!memory) {
-            refill_local_cache(local);
-            memory = pop_local_block(local);
+        void* memory = nullptr;
+        if (local) [[likely]] {
+            // Fast path: consume a previously recycled block from the local cache.
+            memory = pop_local_block(*local);
             if (memory) {
-                count_cache_hit(local);
+                count_cache_hit(*local);
             }
+
+            // Refill the local cache from the shared global free list in small batches
+            // before falling back to the Arena for a fresh block.
+            if (!memory) {
+                refill_local_cache(*local);
+                memory = pop_local_block(*local);
+                if (memory) {
+                    count_cache_hit(*local);
+                }
+            }
+        } else {
+            // No memory for a thread-local cache entry: use the shared free list directly.
+            memory = pop_free_block();
         }
 
         if (!memory) {
@@ -133,7 +130,7 @@ public:
         try {
             return new (memory) T(std::forward<Args>(args)...);
         } catch (...) {
-            push_local_block(local, memory);
+            recycle_block(local, memory);
             throw;
         }
     }
@@ -149,15 +146,20 @@ public:
         }
 
         const size_t arena_epoch = sync_epoch_inside_operation();
-        LocalCache& local = get_local_cache(arena_epoch);
+        LocalCache* local = get_local_cache(arena_epoch);
 
         ptr->~T();
 
-        if (local.count >= local_cache_capacity_) {
-            drain_local_cache(local, drain_batch_size_);
+        if (local && local->count >= local_cache_capacity_) {
+            drain_local_cache(*local, drain_batch_size_);
         }
 
-        push_local_block(local, ptr);
+        recycle_block(local, ptr);
+    }
+
+    // Diagnostics (tests): number of thread-local entries of this class on the calling thread.
+    [[nodiscard]] static size_t thread_entry_count() noexcept {
+        return tls_cache_.size();
     }
 
     [[nodiscard]] size_t get_known_epoch() const noexcept {
@@ -219,21 +221,55 @@ private:
         return arena_epoch;
     }
 
-    [[nodiscard]] LocalCache& get_local_cache(size_t arena_epoch) {
-        for (ThreadCacheEntry* entry = tls_cache_.head; entry != nullptr; entry = entry->next) {
-            if (entry->owner_id == owner_id_) {
-                sync_local_cache_epoch(entry->cache, arena_epoch);
-                return entry->cache;
-            }
+    // Returns nullptr if the thread has no entry yet and none can be allocated.
+    [[nodiscard]] LocalCache* get_local_cache(size_t arena_epoch) noexcept {
+        if (auto* entry = tls_cache_.find(owner_id_)) {
+            sync_local_cache_epoch(entry->payload, arena_epoch);
+            return &entry->payload;
         }
 
-        ThreadCacheEntry* entry = new ThreadCacheEntry{};
-        entry->owner_id = owner_id_;
-        entry->cache.epoch = arena_epoch;
-        entry->next = tls_cache_.head;
-        tls_cache_.head = entry;
+        auto* entry = tls_cache_.create(owner_id_, this, &return_cache_at_thread_exit, lifetime_);
+        if (!entry) [[unlikely]] {
+            return nullptr;
+        }
+        entry->payload.epoch = arena_epoch;
+        return &entry->payload;
+    }
 
-        return entry->cache;
+    // Puts a block without a live object into the local cache, or into the shared free list if
+    // the thread has no cache entry.
+    void recycle_block(LocalCache* local, void* ptr) noexcept {
+        if (local) [[likely]] {
+            push_local_block(*local, ptr);
+        } else {
+            ::new (ptr) Node{};
+            push_free_block(ptr);
+        }
+    }
+
+    // Thread-exit hook (runs only while the pool is alive, the pool's destructor waits): the
+    // cached blocks go back to the shared free list, so they are not lost until the next release.
+    static void return_cache_at_thread_exit(void* owner, LocalCache& cache) noexcept {
+        static_cast<ConcurrentBlockPool*>(owner)->return_cache(cache);
+    }
+
+    void return_cache(LocalCache& cache) noexcept {
+        publish_cache_hits(cache);
+        if (cache.count == 0) {
+            return;
+        }
+        // Never wait here: a release() whose destructors join this thread would deadlock. If a
+        // release() is in progress, the cached blocks are about to become invalid anyway.
+        auto op = source_arena_.try_acquire_operation();
+        if (!op) {
+            return;
+        }
+        if (cache.epoch != sync_epoch_inside_operation()) {
+            return;  // blocks of an earlier epoch were released with the arena
+        }
+        while (void* ptr = pop_local_block(cache)) {
+            push_free_block(ptr);
+        }
     }
 
     void count_cache_hit(LocalCache& cache) noexcept {
@@ -326,7 +362,8 @@ private:
     }
 
     void push_free_block(void* ptr) noexcept {
-        // Only blocks from pop_local_block() arrive here, so the Node already lives in them.
+        // Only blocks from pop_local_block() or recycle_block() arrive here, so the Node already
+        // lives in them.
         Node* node = static_cast<Node*>(ptr);
         TaggedHead head = free_list_head_.load(std::memory_order_acquire);
 
@@ -345,7 +382,7 @@ private:
     }
 
 private:
-    inline static thread_local ThreadCacheListOwner tls_cache_{};
+    inline static thread_local concurrent_arena_detail::ThreadEntryList<LocalCache> tls_cache_{};
     inline static std::atomic<uint64_t> next_owner_id_{ 1 };
 
     // Memory layout, grouped by access pattern (one cache line each):
@@ -369,6 +406,7 @@ private:
     alignas(CACHE_LINE) std::mutex epoch_mutex_;
     std::atomic<size_t> fresh_arena_blocks_{ 0 };
     std::atomic<size_t> epoch_resets_{ 0 };
+    std::shared_ptr<concurrent_arena_detail::OwnerLifetime> lifetime_;
 };
 
 static_assert(!std::copy_constructible<ConcurrentBlockPool<int>>);
