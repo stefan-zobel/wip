@@ -134,6 +134,14 @@ template <typename T>
 struct Tape {
     std::vector<Node<T>> nodes;
 
+    // Every Var holds a pointer to its Tape, so a copied or moved Tape would leave the Vars
+    // pointing at the old one.
+    Tape() = default;
+    Tape(const Tape&) = delete;
+    Tape& operator=(const Tape&) = delete;
+    Tape(Tape&&) = delete;
+    Tape& operator=(Tape&&) = delete;
+
 private:
     std::vector<uint8_t> active_;  // reusable working buffer for backward(); avoids per-call allocation
 

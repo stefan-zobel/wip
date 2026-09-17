@@ -54,6 +54,7 @@ public:
     }
 
     [[nodiscard]] std::vector<State> run(const SamplerConfig& cfg) {
+        detail::validate(cfg);
         for (std::size_t i = 0; i < cfg.burn_in; ++i) step();
 
         std::vector<State> samples;
@@ -90,6 +91,7 @@ public:
     {}
 
     [[nodiscard]] Results run() {
+        detail::validate(cfg_);
         Results results(cfg_.num_chains);
         {
             std::vector<std::jthread> threads;
@@ -97,7 +99,7 @@ public:
             for (std::size_t c = 0; c < cfg_.num_chains; ++c) {
                 threads.emplace_back([&, c](std::stop_token) {
                     GibbsChain<State, Conditionals> chain(
-                        initial_, cond_, cfg_.base_seed + c);
+                        initial_, cond_, detail::chain_seed(cfg_.base_seed, c));
                     results[c] = chain.run(cfg_);
                 });
             }

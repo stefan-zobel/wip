@@ -53,7 +53,9 @@ public:
         , rng_      (seed)
         , log_curr_ (target_.log_prob(current_))
         , adapt_cfg_(adapt_cfg)
-    {}
+    {
+        detail::require_valid_start(log_curr_);
+    }
 
     const State& step(bool adapt) {
         const State  proposed  = proposal_.propose(current_, rng_);
@@ -85,6 +87,7 @@ public:
     }
 
     [[nodiscard]] std::vector<State> run(const SamplerConfig& cfg) {
+        detail::validate(cfg);
         for (std::size_t i = 0; i < cfg.burn_in; ++i) step(true);
         accepted_ = 0; total_ = 0;  // report only post-burn-in rate
 
@@ -142,6 +145,8 @@ public:
     {}
 
     [[nodiscard]] Results run() {
+        detail::validate(cfg_);
+        detail::require_valid_start(target_.log_prob(initial_));
         Results results(cfg_.num_chains);
         rates_.assign(cfg_.num_chains, 0.0);
         final_steps_.assign(cfg_.num_chains, 0.0);
@@ -151,7 +156,7 @@ public:
             for (std::size_t c = 0; c < cfg_.num_chains; ++c) {
                 threads.emplace_back([&, c](std::stop_token) {
                     AdaptiveSamplerChain<State, Target, Proposal> chain(
-                        initial_, target_, proposal_, cfg_.base_seed + c, adapt_cfg_);
+                        initial_, target_, proposal_, detail::chain_seed(cfg_.base_seed, c), adapt_cfg_);
                     results[c]      = chain.run(cfg_);
                     rates_[c]       = chain.acceptance_rate();
                     final_steps_[c] = chain.final_step_size();

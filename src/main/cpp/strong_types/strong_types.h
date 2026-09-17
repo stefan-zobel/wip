@@ -36,6 +36,20 @@ namespace fk {
     };
 
 
+    namespace strong_types_detail {
+        // Shift count of a shift operator: std::byte only shifts by an integer, so an octet shifts by
+        // the integer value of its right operand.
+        template <typename T>
+        constexpr auto shift_count(const T& value) noexcept {
+            if constexpr (std::is_same_v<T, std::byte>) {
+                return std::to_integer<unsigned int>(value);
+            }
+            else {
+                return static_cast<T>(value);
+            }
+        }
+    }
+
     template <typename T, typename Tag>
     struct StrongType {
 
@@ -185,13 +199,13 @@ namespace fk {
         friend constexpr StrongType operator<<(const StrongType& lhs, const StrongType& rhs) noexcept
             requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
-            return StrongType(static_cast<T>(lhs.value) << static_cast<T>(rhs.value));
+            return StrongType(static_cast<T>(lhs.value) << strong_types_detail::shift_count<T>(rhs.value));
         }
 
         friend constexpr StrongType operator>>(const StrongType& lhs, const StrongType& rhs) noexcept
             requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
-            return StrongType(static_cast<T>(lhs.value) >> static_cast<T>(rhs.value));
+            return StrongType(static_cast<T>(lhs.value) >> strong_types_detail::shift_count<T>(rhs.value));
         }
 
         // Bitwise Assignment Operators
@@ -219,14 +233,14 @@ namespace fk {
         constexpr StrongType& operator<<=(const StrongType& rhs) noexcept
             requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
-            static_cast<T&>(value) <<= static_cast<const T&>(rhs.value);
+            static_cast<T&>(value) <<= strong_types_detail::shift_count<T>(rhs.value);
             return *this;
         }
 
         constexpr StrongType& operator>>=(const StrongType& rhs) noexcept
             requires ((std::is_integral_v<T> || std::is_same_v<T, std::byte>) && !std::is_same_v<T, bool>)
         {
-            static_cast<T&>(value) >>= static_cast<const T&>(rhs.value);
+            static_cast<T&>(value) >>= strong_types_detail::shift_count<T>(rhs.value);
             return *this;
         }
 

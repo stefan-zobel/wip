@@ -345,7 +345,8 @@ private:
         template<typename FUNC>
             requires std::invocable<FUNC, const V&>
         auto inspect2(const K& key, FUNC && callback) const {
-            using RawReturnType = std::invoke_result_t<FUNC, const V&>;
+            // A callback returning a reference yields a copy (std::optional<const T&> is not allowed).
+            using RawReturnType = std::remove_cvref_t<std::invoke_result_t<FUNC, const V&>>;
             // the T of optional<T> or keep the T
             using InnerType = typename detail::extract_optional_type<RawReturnType>::type;
 
@@ -470,8 +471,9 @@ private:
         template<std::convertible_to<V> VALUE_TYPE>
         bool tryAdd(K key, VALUE_TYPE && value) {
             std::unique_lock lock(mutex);
-            // 'inserted' is true when the key was not known
-            auto [it, inserted] = map.emplace(std::move(key), std::forward<VALUE_TYPE>(value));
+            // try_emplace leaves key and value untouched if the key is known; emplace may construct
+            // the node (consuming the value) before it looks up the key
+            auto [it, inserted] = map.try_emplace(std::move(key), std::forward<VALUE_TYPE>(value));
             return inserted;
         }
 
