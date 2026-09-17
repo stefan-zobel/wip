@@ -27,6 +27,7 @@
 #include <functional> // for std::invoke
 
 #include "ConcurrentMap.h"
+#include "HashMix.h"
 
 // A minimal thread-safe hash map with value semantics and a Java-like interface.
 //
@@ -562,10 +563,7 @@ private:
 
     // That's Stafford's "variant 13" bit mixing function
     [[nodiscard]] static size_t finalize(size_t h) noexcept {
-        h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
-        h = h ^ (h >> 31);
-        return h;
+        return hashmap_detail::mix_hash(h);
     }
 
     constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));

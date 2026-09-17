@@ -42,7 +42,11 @@ namespace fk {
         // 'sparse' is basically a lookup table: Sparse_ID -> Dense Array Index
         std::vector<uint32_t> m_sparse;
 
-        // Generates progressively growing unique Entity-IDs for new objects
+        // Generates progressively growing unique Entity-IDs for new objects. IDs are never reused,
+        // not even after erase() or clear(), so a stale handle can never resolve to a newer object.
+        // The price: m_sparse grows to the highest ID ever created (4 bytes per ID); clear() does not
+        // help, because IDs continue to count up. emplace() throws std::overflow_error once 32-bit IDs
+        // are exhausted.
         uint32_t m_next_entity_id = 0;
 
     public:

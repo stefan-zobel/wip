@@ -308,9 +308,9 @@ inline int run_reverse_mode_tests() {
         };
 
         clamp_test(-1.5, -1.0, 0.0);
-        clamp_test(-1.0, -1.0, 0.0);
+        clamp_test(-1.0, -1.0, 1.0);
         clamp_test(-0.5, -0.5, 1.0);
-        clamp_test(1.0, 1.0, 0.0);
+        clamp_test(1.0, 1.0, 1.0);
         clamp_test(1.5, 1.0, 0.0);
     }
 

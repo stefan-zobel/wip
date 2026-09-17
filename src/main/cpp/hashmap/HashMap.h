@@ -21,6 +21,9 @@
 #include <memory>
 #include <shared_mutex>
 #include <concepts>
+#include <cstddef>
+
+#include "HashMix.h"
 
 // A minimal (hopefully) thread-safe hash map with a Java-like interface.
 
@@ -92,16 +95,17 @@ private:
             }
             return {};
         }
-        template<class VALUE_TYPE>
-        std::shared_ptr<V> add(const K& key, VALUE_TYPE && value) {
+        // KEY is K or const K&: an rvalue key is moved into the map, not copied
+        template<class KEY, class VALUE_TYPE>
+        std::shared_ptr<V> add(KEY && key, VALUE_TYPE && value) {
             std::unique_lock lock(mutex);
             auto it = map.find(key);
             if (it != map.end()) {
-                auto old = it->second;
+                auto old = std::make_shared<V>(std::move(it->second));
                 it->second = std::forward<VALUE_TYPE>(value);
-                return std::make_shared<V>(old);
+                return old;
             } else {
-                map.insert_or_assign(key, std::forward<VALUE_TYPE>(value));
+                map.insert_or_assign(std::forward<KEY>(key), std::forward<VALUE_TYPE>(value));
                 return {};
             }
         }
@@ -122,12 +126,20 @@ private:
         mutable std::shared_mutex mutex;
     };
 
-    Slot& slotFor(K const& key) noexcept {
+public:
+    // Diagnostics (tests): index of the shard that 'key' belongs to.
+    [[nodiscard]] std::size_t slot_index(const K& key) const noexcept {
+        const std::size_t mixed = hashmap_detail::mix_hash(hash(key));
         if constexpr (SIZE_IS_POW2) {
-            return slots[hash(key) & (SLOT_SIZE - 1)];
+            return mixed & (SLOT_SIZE - 1);
         } else {
-            return slots[hash(key) % SLOT_SIZE];
+            return mixed % SLOT_SIZE;
         }
+    }
+
+private:
+    Slot& slotFor(const K& key) noexcept {
+        return slots[slot_index(key)];
     }
 
     constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));

@@ -21,6 +21,9 @@
 #include <memory>
 #include <shared_mutex>
 #include <concepts>
+#include <cstddef>
+
+#include "HashMix.h"
 
 // A minimal (hopefully) thread-safe hash map with Java reference semantics.
 
@@ -126,12 +129,20 @@ private:
         mutable std::shared_mutex mutex;
     };
 
-    Slot& slotFor(const K& key) noexcept {
+public:
+    // Diagnostics (tests): index of the shard that 'key' belongs to.
+    [[nodiscard]] std::size_t slot_index(const K& key) const noexcept {
+        const std::size_t mixed = hashmap_detail::mix_hash(hash(key));
         if constexpr (SIZE_IS_POW2) {
-            return slots[hash(key) & (SLOT_SIZE - 1)];
+            return mixed & (SLOT_SIZE - 1);
         } else {
-            return slots[hash(key) % SLOT_SIZE];
+            return mixed % SLOT_SIZE;
         }
+    }
+
+private:
+    Slot& slotFor(const K& key) noexcept {
+        return slots[slot_index(key)];
     }
 
     constexpr static bool SIZE_IS_POW2 = (SLOT_SIZE && ((SLOT_SIZE & (SLOT_SIZE - 1)) == 0));

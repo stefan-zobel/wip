@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <random>
 #include <span>
 #include <string>
@@ -40,7 +41,8 @@ struct DenseLayer {
     std::vector<double> weights{};
     std::vector<double> biases{};
 
-    // for momentum SGD (or Adam's first moment 'm')
+    // Optimizer state of the optimizer that SimpleMlp::train_step used last (it is reset when the
+    // optimizer changes): the velocities for momentum SGD, or Adam's first moment 'm'
     std::vector<double> weight_velocities;
     std::vector<double> bias_velocities;
 
@@ -57,7 +59,7 @@ struct DenseLayer {
           v_weights(in* out, 0.0), v_biases(out, 0.0) {
     }
 
-    void initialize(std::mt19937& rng, MlpActivation activation) {
+    void initialize(std::mt19937& rng) {
         // He initialization (normal) for ReLU/Swish: std = sqrt(2 / fan_in)
         // Glorot/Xavier uniform for Tanh/Sigmoid/Linear: bound = sqrt(6 / (fan_in + fan_out))
         if (activation == MlpActivation::Relu || activation == MlpActivation::Swish) {
@@ -75,6 +77,10 @@ struct DenseLayer {
         }
 
         std::fill(biases.begin(), biases.end(), 0.0);
+        reset_optimizer_state();
+    }
+
+    void reset_optimizer_state() {
         std::fill(weight_velocities.begin(), weight_velocities.end(), 0.0);
         std::fill(bias_velocities.begin(), bias_velocities.end(), 0.0);
         std::fill(v_weights.begin(), v_weights.end(), 0.0);
@@ -136,11 +142,12 @@ public:
                 throw std::invalid_argument("Dropout rates must be in the range [0, 1). ");
             }
             layers_.emplace_back(layer_sizes[i], layer_sizes[i + 1], activations[i], dropout_rate);
-            layers_.back().initialize(rng, activations[i]);
+            layers_.back().initialize(rng);
         }
 
         // Reset Adam step counter whenever the network is rebuilt
         adam_step_ = 0;
+        last_optimizer_.reset();
 
         // Allocate memory arenas for runtime reuse
         initialize_reusable_buffers();
@@ -185,7 +192,9 @@ public:
         return total / static_cast<double>(samples.size());
     }
 
-    // Execution with 0 allocations supporting dual optimizers
+    // Execution with 0 allocations supporting dual optimizers. Training is per sample, so the
+    // gradient clipping below also applies per sample. Switching the optimizer resets the optimizer
+    // state (momentum SGD and Adam share the moment vectors).
     double train_step(std::span<const double> input,
         std::span<const double> target,
         double learning_rate,
@@ -194,6 +203,14 @@ public:
         double weight_decay) {
         assert_shape(input.size(), input_size(), "input");
         assert_shape(target.size(), output_size(), "target");
+
+        if (last_optimizer_ != optimizer) {
+            for (DenseLayer& layer : layers_) {
+                layer.reset_optimizer_state();
+            }
+            adam_step_ = 0;
+            last_optimizer_ = optimizer;
+        }
 
         // 1. Reset tape memory
         tape.reset();
@@ -243,6 +260,7 @@ public:
         tape.backward(loss);
 
         // 5a. Gradient clipping: rescale all parameter gradients so their global L2 norm <= max_grad_norm
+        //     (the gradients of this one sample)
         constexpr double max_grad_norm = 5.0;
         {
             double sq_norm = 0.0;
@@ -362,6 +380,8 @@ private:
 
     // Per-update step counter for correct Adam bias correction (not per-epoch)
     long long adam_step_ = 0;
+    // Optimizer of the last train_step; a different one resets the optimizer state
+    std::optional<MlpOptimizer> last_optimizer_{};
     // Gradient clipping scale factor, recomputed each train_step before parameter updates
     double clip_scale_ = 1.0;
 

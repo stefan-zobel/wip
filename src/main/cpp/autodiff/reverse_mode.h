@@ -143,7 +143,10 @@ struct Tape {
     Tape& operator=(Tape&&) = delete;
 
 private:
-    std::vector<uint8_t> active_;  // reusable working buffer for backward(); avoids per-call allocation
+    // Reusable working buffers for backward(), sized from nodes.capacity(): once the tape has
+    // reserved enough nodes, backward() does not allocate, even if the graph size varies.
+    std::vector<uint8_t> active_;
+    std::vector<std::size_t> stack_;
 
     [[nodiscard]] Var<T> make_leaf(OpType op, const T& value) {
         nodes.push_back(Node<T>{ .val = value, .op = op });
@@ -236,19 +239,26 @@ public:
             node.adj = reverse_mode_detail::zero<T>();
         }
 
+        if (active_.capacity() < nodes.capacity()) {
+            active_.reserve(nodes.capacity());
+        }
         active_.assign(nodes.size(), 0);
-        std::vector<std::size_t> stack;
-        stack.reserve(losses.size());
+        // Every popped node adds at most one net entry (it pushes at most two parents once), so the
+        // stack never holds more than losses.size() + nodes.size() entries.
+        if (stack_.capacity() < losses.size() + nodes.capacity()) {
+            stack_.reserve(losses.size() + nodes.capacity());
+        }
+        stack_.clear();
 
         for (std::size_t i = 0; i < losses.size(); ++i) {
             assert(losses[i].tape == this);
             nodes[losses[i].idx].adj += seeds.empty() ? reverse_mode_detail::one<T>() : seeds[i];
-            stack.push_back(losses[i].idx);
+            stack_.push_back(losses[i].idx);
         }
 
-        while (!stack.empty()) {
-            const std::size_t idx = stack.back();
-            stack.pop_back();
+        while (!stack_.empty()) {
+            const std::size_t idx = stack_.back();
+            stack_.pop_back();
 
             if (active_[idx]) continue;
             active_[idx] = 1;
@@ -274,7 +284,7 @@ public:
             case OpType::Log:
             case OpType::Sqrt:
             case OpType::Abs:
-                stack.push_back(nd.left_idx);
+                stack_.push_back(nd.left_idx);
                 break;
 
             case OpType::Add:
@@ -283,8 +293,8 @@ public:
             case OpType::Div:
             case OpType::Pow:
             case OpType::Atan2:
-                stack.push_back(nd.left_idx);
-                stack.push_back(nd.right_idx);
+                stack_.push_back(nd.left_idx);
+                stack_.push_back(nd.right_idx);
                 break;
             }
         }
@@ -585,9 +595,11 @@ template <typename L, typename R>
     return if_else(primal_greater(lhs, rhs), lhs, rhs);
 }
 
+// Passes 'value' through on the closed interval [lower, upper], so its gradient is 1 on the bounds
+// too (the convention of PyTorch and of the forward-mode tests); outside, the bound is returned.
 template <typename V, typename L, typename U>
 [[nodiscard]] inline auto autodiff_clamp(const V& value, const L& lower, const U& upper) {
-    return autodiff_min(autodiff_max(value, lower), upper);
+    return if_else(primal_less(value, lower), lower, if_else(primal_greater(value, upper), upper, value));
 }
 
 // ---------------------------------------------------------------------------

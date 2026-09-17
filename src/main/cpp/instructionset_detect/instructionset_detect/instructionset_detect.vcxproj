@@ -88,8 +88,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;INSTRUCTIONSETDETECT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include;F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -105,8 +105,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;INSTRUCTIONSETDETECT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include;F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -122,8 +122,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;INSTRUCTIONSETDETECT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include;F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -140,8 +140,6 @@
       <PreprocessorDefinitions>NDEBUG;INSTRUCTIONSETDETECT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include;F:\Java\jdk16.0.0+36-Zulu16.28.11-CA\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

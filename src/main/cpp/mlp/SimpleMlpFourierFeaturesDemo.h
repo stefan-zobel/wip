@@ -20,7 +20,7 @@ namespace simple_mlp_fourier_demo_detail {
     }
 
     // Instead of: mlp.forward({x, y}) -> Input size 2
-    // Try a Fourier Mapping -> Input size 8 (2 raw + 3 sines + 3 cosines)
+    // Try a Fourier Mapping -> Input size 14 (2 raw + 3 frequencies x sin/cos of x and y)
     inline std::vector<double> fourier_features(double x, double y) {
         std::vector<double> features;
 
