@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <concepts>
 #include <cstddef>
@@ -223,123 +224,192 @@ private:
     std::shared_ptr<RegistryState> registry_;
 };
 
-struct QuiescentReleasePolicy {
-    static constexpr bool blocks_on_seal = true;
+namespace concurrent_arena_detail {
 
-    bool enter_operation() noexcept {
-        for (;;) {
-            while (sealed_.load(std::memory_order_acquire)) {
-                sealed_.wait(true, std::memory_order_acquire);
-            }
+// Counts the operations in progress for the release policies and implements the handshake with
+// release(). Instead of one shared counter, every thread registers on one of STRIPES counters,
+// each on its own cache line, so operations of different threads do not write the same line.
+//
+// Handshake (Dekker): an operation increments its stripe and then loads sealed_; release() stores
+// sealed_ and then loads all stripes. Every operation that is still active has incremented its
+// stripe before it loaded sealed_ == false, i.e. before sealed_ was set, so release() sees that
+// increment when it sums the stripes afterwards. The sum is taken stripe by stripe and not
+// atomically: it can only miss decrements (wait longer), never an increment of an active operation.
+// All counter updates are locked instructions and sealed_ / release_waiting_ are stored
+// sequentially consistent (xchg): a plain store could still sit in the store buffer while this
+// thread already loads the stripes.
+class OperationQuiescence {
+public:
+    static constexpr size_t STRIPES = 16;
 
-            active_operations_.fetch_add(1, std::memory_order_acq_rel);
+    // Registers an operation on the stripe of the calling thread and returns that stripe.
+    [[nodiscard]] size_t register_operation() noexcept {
+        const size_t stripe = current_thread_stripe();
+        stripes_[stripe].count.fetch_add(1, std::memory_order_acq_rel);
+        return stripe;
+    }
 
-            if (!sealed_.load(std::memory_order_acquire)) {
-                return true;
-            }
-
-            leave_operation();
+    // Deregisters an operation from the stripe returned by register_operation().
+    void deregister_operation(size_t stripe) noexcept {
+        // Decrement first, then load release_waiting_: if the flag is still unset, release() stores
+        // it later and then sums the stripes, which already contain this decrement. Otherwise the
+        // generation changes before the notification, so a release() that loaded the generation
+        // before its sum does not fall asleep. Without a waiting release() nothing is written.
+        stripes_[stripe].count.fetch_sub(1, std::memory_order_acq_rel);
+        if (release_waiting_.load(std::memory_order_acquire)) {
+            wake_generation_.fetch_add(1, std::memory_order_acq_rel);
+            wake_generation_.notify_all();
         }
-    }
-
-    void leave_operation() noexcept {
-        if (active_operations_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            active_operations_.notify_all();
-        }
-    }
-
-    void begin_release() noexcept {
-        // Must be a sequentially consistent (serializing) store. This is one half of a Dekker
-        // handshake: release() stores sealed_ and then loads the operation count, an operation
-        // increments the count and then loads sealed_. With memory_order_release, gcc and MSVC emit
-        // a plain mov on x86-64; the store can still sit in this core's store buffer while this
-        // thread already loads the count, so both sides miss each other and release() frees memory
-        // that an operation still uses (concurrent_arena_test.release_during_operations). The
-        // default order emits xchg, which drains the store buffer first.
-        sealed_.store(true);
-    }
-
-    void wait_for_quiescence() noexcept {
-        size_t active = active_operations_.load(std::memory_order_acquire);
-        while (active != 0) {
-            active_operations_.wait(active, std::memory_order_acquire);
-            active = active_operations_.load(std::memory_order_acquire);
-        }
-    }
-
-    void end_release() noexcept {
-        // Serializing as well (see begin_release), so a thread that is about to wait for
-        // sealed_ == true cannot miss the change and the notification.
-        sealed_.store(false);
-        sealed_.notify_all();
     }
 
     [[nodiscard]] bool is_sealed() const noexcept {
         return sealed_.load(std::memory_order_acquire);
     }
 
+    void wait_while_sealed() noexcept {
+        while (sealed_.load(std::memory_order_acquire)) {
+            sealed_.wait(true, std::memory_order_acquire);
+        }
+    }
+
+    void begin_release() noexcept {
+        // Sequentially consistent (serializing) store, see the class comment.
+        sealed_.store(true);
+    }
+
+    void wait_for_quiescence() noexcept {
+        release_waiting_.store(true);
+        for (;;) {
+            // Load the generation before the sum (see deregister_operation).
+            const uint32_t generation = wake_generation_.load(std::memory_order_acquire);
+            size_t active = 0;
+            for (const Stripe& stripe : stripes_) {
+                active += stripe.count.load(std::memory_order_acquire);
+            }
+            if (active == 0) {
+                break;
+            }
+            wake_generation_.wait(generation, std::memory_order_acquire);
+        }
+        release_waiting_.store(false);
+    }
+
+    void end_release() noexcept {
+        // Serializing as well, so a thread that is about to wait for sealed_ == true cannot miss
+        // the change and the notification.
+        sealed_.store(false);
+        sealed_.notify_all();
+    }
+
 private:
-    std::atomic<bool> sealed_{ false };
-    std::atomic<size_t> active_operations_{ 0 };
+    static constexpr size_t CACHE_LINE = 64;
+
+    struct alignas(CACHE_LINE) Stripe {
+        std::atomic<size_t> count{ 0 };
+    };
+
+    // Stripes are handed out round-robin to threads on their first operation, so the first
+    // STRIPES threads never share a stripe. The thread_local is constant-initialized (0 = none
+    // yet), which avoids a TLS initialization guard on every operation.
+    [[nodiscard]] static size_t current_thread_stripe() noexcept {
+        size_t stripe_plus_one = tls_stripe_plus_one_;
+        if (stripe_plus_one == 0) {
+            stripe_plus_one = next_stripe_.fetch_add(1, std::memory_order_relaxed) % STRIPES + 1;
+            tls_stripe_plus_one_ = stripe_plus_one;
+        }
+        return stripe_plus_one - 1;
+    }
+
+    inline static std::atomic<size_t> next_stripe_{ 0 };
+    inline static thread_local size_t tls_stripe_plus_one_ = 0;
+
+    // Read by every operation: one cache line of its own
+    alignas(CACHE_LINE) std::atomic<bool> sealed_{ false };
+    std::atomic<bool> release_waiting_{ false };
+    std::atomic<uint32_t> wake_generation_{ 0 };
+
+    std::array<Stripe, STRIPES> stripes_{};
+};
+
+} // namespace concurrent_arena_detail
+
+struct QuiescentReleasePolicy {
+    static constexpr bool blocks_on_seal = true;
+
+    // Waits while a release() is in progress. Returns true with 'stripe' set.
+    bool enter_operation(size_t& stripe) noexcept {
+        for (;;) {
+            quiescence_.wait_while_sealed();
+            stripe = quiescence_.register_operation();
+            if (!quiescence_.is_sealed()) {
+                return true;
+            }
+            quiescence_.deregister_operation(stripe);
+        }
+    }
+
+    void leave_operation(size_t stripe) noexcept {
+        quiescence_.deregister_operation(stripe);
+    }
+
+    void begin_release() noexcept {
+        quiescence_.begin_release();
+    }
+
+    void wait_for_quiescence() noexcept {
+        quiescence_.wait_for_quiescence();
+    }
+
+    void end_release() noexcept {
+        quiescence_.end_release();
+    }
+
+    [[nodiscard]] bool is_sealed() const noexcept {
+        return quiescence_.is_sealed();
+    }
+
+private:
+    concurrent_arena_detail::OperationQuiescence quiescence_;
 };
 
 struct TryEnterReleasePolicy {
     static constexpr bool blocks_on_seal = false;
 
-    bool enter_operation() noexcept {
-        if (sealed_.load(std::memory_order_acquire)) {
+    // Fails instead of waiting while a release() is in progress.
+    bool enter_operation(size_t& stripe) noexcept {
+        if (quiescence_.is_sealed()) {
             return false;
         }
-
-        active_operations_.fetch_add(1, std::memory_order_acq_rel);
-
-        if (sealed_.load(std::memory_order_acquire)) {
-            leave_operation();
+        stripe = quiescence_.register_operation();
+        if (quiescence_.is_sealed()) {
+            quiescence_.deregister_operation(stripe);
             return false;
         }
-
         return true;
     }
 
-    void leave_operation() noexcept {
-        if (active_operations_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            active_operations_.notify_all();
-        }
+    void leave_operation(size_t stripe) noexcept {
+        quiescence_.deregister_operation(stripe);
     }
 
     void begin_release() noexcept {
-        // Must be a sequentially consistent (serializing) store. This is one half of a Dekker
-        // handshake: release() stores sealed_ and then loads the operation count, an operation
-        // increments the count and then loads sealed_. With memory_order_release, gcc and MSVC emit
-        // a plain mov on x86-64; the store can still sit in this core's store buffer while this
-        // thread already loads the count, so both sides miss each other and release() frees memory
-        // that an operation still uses (concurrent_arena_test.release_during_operations). The
-        // default order emits xchg, which drains the store buffer first.
-        sealed_.store(true);
+        quiescence_.begin_release();
     }
 
     void wait_for_quiescence() noexcept {
-        size_t active = active_operations_.load(std::memory_order_acquire);
-        while (active != 0) {
-            active_operations_.wait(active, std::memory_order_acquire);
-            active = active_operations_.load(std::memory_order_acquire);
-        }
+        quiescence_.wait_for_quiescence();
     }
 
     void end_release() noexcept {
-        // Serializing as well (see begin_release), so a thread that is about to wait for
-        // sealed_ == true cannot miss the change and the notification.
-        sealed_.store(false);
-        sealed_.notify_all();
+        quiescence_.end_release();
     }
 
     [[nodiscard]] bool is_sealed() const noexcept {
-        return sealed_.load(std::memory_order_acquire);
+        return quiescence_.is_sealed();
     }
 
 private:
-    std::atomic<bool> sealed_{ false };
-    std::atomic<size_t> active_operations_{ 0 };
+    concurrent_arena_detail::OperationQuiescence quiescence_;
 };
 
 template <typename T>
@@ -356,10 +426,10 @@ concept ConcurrentArenaCleanupPolicy =
 
 template <typename T>
 concept ConcurrentArenaReleasePolicy =
-    requires(T policy) {
+    requires(T policy, size_t& stripe) {
         { T::blocks_on_seal } -> std::convertible_to<bool>;
-        { policy.enter_operation() } -> std::convertible_to<bool>;
-        policy.leave_operation();
+        { policy.enter_operation(stripe) } -> std::convertible_to<bool>;
+        policy.leave_operation(stripe);
         policy.begin_release();
         policy.wait_for_quiescence();
         policy.end_release();
@@ -425,12 +495,12 @@ public:
     public:
         explicit ScopedOperation(ConcurrentArenaCore& arena) noexcept
             : arena_(&arena),
-              active_(arena_->release_policy().enter_operation()) {
+              active_(arena_->release_policy().enter_operation(stripe_)) {
         }
 
         ~ScopedOperation() {
             if (active_) {
-                arena_->release_policy().leave_operation();
+                arena_->release_policy().leave_operation(stripe_);
             }
         }
 
@@ -439,6 +509,7 @@ public:
 
         ScopedOperation(ScopedOperation&& other) noexcept
             : arena_(other.arena_),
+              stripe_(other.stripe_),
               active_(other.active_) {
             other.arena_ = nullptr;
             other.active_ = false;
@@ -461,6 +532,7 @@ public:
 
     private:
         ConcurrentArenaCore* arena_ = nullptr;
+        size_t stripe_ = 0;  // declared before active_: enter_operation() sets it
         bool active_ = false;
     };
 
