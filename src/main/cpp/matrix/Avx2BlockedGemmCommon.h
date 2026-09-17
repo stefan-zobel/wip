@@ -68,13 +68,19 @@ struct Avx2GemmTraits<double> {
     using Scalar = double;
     using Vec = __m256d;
 
+    // 6x8: 12 accumulator registers keep the two FMA pipes busy despite the 4-cycle FMA
+    // latency, and one k step needs 6 broadcasts plus 2 vector loads for 12 FMAs, which
+    // stays below one load per FMA. See dgemm_micro_kernel_6x8_avx2.
     static constexpr size_t vector_lanes = 4;
-    static constexpr size_t mr = 4;
-    static constexpr size_t nr = 6;
+    static constexpr size_t mr = 6;
+    static constexpr size_t nr = 8;
 
-    static constexpr size_t kc = 192;
-    static constexpr size_t mc = 96;
-    static constexpr size_t nc = 192;
+    // A is packed once per nc block, so a wide nc cuts the packing work; kc trades the number of
+    // passes over C against the panel sizes. The packed A panel (mc x kc, 192 KB) is meant to stay
+    // in L2, the packed B panel (kc x nc, 1 MB) in L3. Measured on Zen 3 over n = 200 ... 2000.
+    static constexpr size_t kc = 256;
+    static constexpr size_t mc = 96;  // 16 micro panels of mr rows
+    static constexpr size_t nc = 512; // 64 micro panels of nr columns
 
     static constexpr size_t alignment = 64;
 };

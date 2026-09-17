@@ -35,6 +35,17 @@ template <Avx2GemmScalar T>
     };
 }
 
+// Scratch bytes the default blocking needs: the two packing buffers plus the alignment padding
+// of both allocations. A scratch arena of this size never reports OutOfScratchMemory for the
+// default configuration, whatever the matrix dimensions are.
+template <Avx2GemmScalar T>
+[[nodiscard]] static constexpr size_t default_blocked_gemm_scratch_bytes() noexcept {
+    constexpr BlockedGemmConfig config = default_blocked_gemm_config<T>();
+    return (packed_a_panel_elements<T>(config.mc, config.kc) +
+            packed_b_panel_elements<T>(config.kc, config.nc)) * sizeof(T) +
+           2 * Avx2GemmTraits<T>::alignment;
+}
+
 template <Avx2GemmScalar T>
 static void zero_matrix(const MatrixView<T>& c) noexcept {
     for (size_t row = 0; row < c.rows; ++row) {
@@ -73,7 +84,7 @@ inline void gemm_micro_kernel_dispatch(const double* packed_a,
                                        double* c,
                                        size_t c_stride,
                                        size_t kc) noexcept {
-    dgemm_micro_kernel_4x6_avx2(packed_a, packed_b, c, c_stride, kc);
+    dgemm_micro_kernel_6x8_avx2(packed_a, packed_b, c, c_stride, kc);
 }
 
 // Result of a GEMM call. On any status other than Ok, C has not been modified.

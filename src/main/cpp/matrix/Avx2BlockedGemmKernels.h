@@ -179,11 +179,13 @@ inline void pack_a_panel<double>(const MatrixView<const double>& a,
             const double* row1 = a.data + (m0 + mp + 1) * a.stride + k0;
             const double* row2 = a.data + (m0 + mp + 2) * a.stride + k0;
             const double* row3 = a.data + (m0 + mp + 3) * a.stride + k0;
+            const double* row4 = a.data + (m0 + mp + 4) * a.stride + k0;
+            const double* row5 = a.data + (m0 + mp + 5) * a.stride + k0;
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
                     prefetch_l1(row0, k + 32);
-                    prefetch_l1(row2, k + 32);
+                    prefetch_l1(row3, k + 32);
                 }
 
                 double* dst = dst_panel + k * Traits::mr;
@@ -191,6 +193,8 @@ inline void pack_a_panel<double>(const MatrixView<const double>& a,
                 dst[1] = row1[k];
                 dst[2] = row2[k];
                 dst[3] = row3[k];
+                dst[4] = row4[k];
+                dst[5] = row5[k];
             }
         }
         else {
@@ -337,21 +341,6 @@ inline void transpose8_ps(__m256& row0,
     row5 = _mm256_permute2f128_ps(s1, s5, 0x31);
     row6 = _mm256_permute2f128_ps(s2, s6, 0x31);
     row7 = _mm256_permute2f128_ps(s3, s7, 0x31);
-}
-
-inline void transpose4_pd(__m256d& row0,
-    __m256d& row1,
-    __m256d& row2,
-    __m256d& row3) noexcept {
-    __m256d t0 = _mm256_unpacklo_pd(row0, row1);
-    __m256d t1 = _mm256_unpackhi_pd(row0, row1);
-    __m256d t2 = _mm256_unpacklo_pd(row2, row3);
-    __m256d t3 = _mm256_unpackhi_pd(row2, row3);
-
-    row0 = _mm256_permute2f128_pd(t0, t2, 0x20);
-    row1 = _mm256_permute2f128_pd(t1, t3, 0x20);
-    row2 = _mm256_permute2f128_pd(t0, t2, 0x31);
-    row3 = _mm256_permute2f128_pd(t1, t3, 0x31);
 }
 
 // -----------------------------------------------------------------------------
@@ -511,159 +500,111 @@ inline void sgemm_micro_kernel_8x6_avx2(const float* packed_a,
     _mm256_maskstore_ps(c7, store_mask, _mm256_add_ps(_mm256_maskload_ps(c7, store_mask), row7));
 }
 
+// One multiply-add step of the double micro-kernel: a single rounded instruction where FMA is
+// available, a separate multiply and add otherwise. The two forms round differently, which is
+// what gemm_test_fma and gemm_test_nofma cover.
+inline __m256d gemm_madd_pd(__m256d a, __m256d b, __m256d acc) noexcept {
+#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
+    return _mm256_fmadd_pd(a, b, acc);
+#else
+    return _mm256_add_pd(acc, _mm256_mul_pd(a, b));
+#endif
+}
+
 // -----------------------------------------------------------------------------
-// AVX2 micro-kernel: DGEMM 4x6
+// AVX2 micro-kernel: DGEMM 6x8
 //
-// The k-loop is unrolled by 4. The first 4 columns are written back as vectors.
-// The last 2 columns remain a lightweight scalar tail.
+// One k step broadcasts the 6 rows of the A micro panel and loads the 8 columns of the B micro
+// panel as two vectors: 8 loads feed 12 FMAs. Two properties decide the speed of this loop:
+//
+//   * 12 independent accumulators. An FMA has a latency of 4 cycles and two of them can start
+//     per cycle, so 8 independent chains are the minimum to keep both pipes busy.
+//   * Fewer than one load per FMA. The load unit retires 2 per cycle, the FMA pipes 2 per
+//     cycle, so anything above one load per FMA makes the load unit the limit.
+//
+// The accumulators hold C in row order, so the storeback is a plain load/add/store without a
+// transpose. Register budget: 12 accumulators + 2 B vectors + 1 broadcast = 15 of 16.
 // -----------------------------------------------------------------------------
-inline void dgemm_micro_kernel_4x6_avx2(const double* packed_a,
+inline void dgemm_micro_kernel_6x8_avx2(const double* packed_a,
     const double* packed_b,
     double* c,
     size_t c_stride,
     size_t kc) noexcept {
-    __m256d acc0 = _mm256_setzero_pd();
-    __m256d acc1 = _mm256_setzero_pd();
-    __m256d acc2 = _mm256_setzero_pd();
-    __m256d acc3 = _mm256_setzero_pd();
-    __m256d acc4 = _mm256_setzero_pd();
-    __m256d acc5 = _mm256_setzero_pd();
+    // acc<row><half>: rows 0..5 of C, columns 0..3 (half 0) and 4..7 (half 1)
+    __m256d acc00 = _mm256_setzero_pd();
+    __m256d acc01 = _mm256_setzero_pd();
+    __m256d acc10 = _mm256_setzero_pd();
+    __m256d acc11 = _mm256_setzero_pd();
+    __m256d acc20 = _mm256_setzero_pd();
+    __m256d acc21 = _mm256_setzero_pd();
+    __m256d acc30 = _mm256_setzero_pd();
+    __m256d acc31 = _mm256_setzero_pd();
+    __m256d acc40 = _mm256_setzero_pd();
+    __m256d acc41 = _mm256_setzero_pd();
+    __m256d acc50 = _mm256_setzero_pd();
+    __m256d acc51 = _mm256_setzero_pd();
 
     constexpr size_t MR = Avx2GemmTraits<double>::mr;
     constexpr size_t NR = Avx2GemmTraits<double>::nr;
 
-    size_t k = 0;
-
-    for (; k + 3 < kc; k += 4) {
-        const double* a0 = packed_a + (k + 0) * MR;
-        const double* a1 = packed_a + (k + 1) * MR;
-        const double* a2 = packed_a + (k + 2) * MR;
-        const double* a3 = packed_a + (k + 3) * MR;
-
-        const double* b0 = packed_b + (k + 0) * NR;
-        const double* b1 = packed_b + (k + 1) * NR;
-        const double* b2 = packed_b + (k + 2) * NR;
-        const double* b3 = packed_b + (k + 3) * NR;
-
-        prefetch_l1(a3, 16 * MR);
-        prefetch_l1(b3, 16 * NR);
-
-        const __m256d av0 = _mm256_load_pd(a0);
-        const __m256d av1 = _mm256_load_pd(a1);
-        const __m256d av2 = _mm256_load_pd(a2);
-        const __m256d av3 = _mm256_load_pd(a3);
-
-#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
-        acc0 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 0), acc0);
-        acc1 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 1), acc1);
-        acc2 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 2), acc2);
-        acc3 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 3), acc3);
-        acc4 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 4), acc4);
-        acc5 = _mm256_fmadd_pd(av0, _mm256_broadcast_sd(b0 + 5), acc5);
-
-        acc0 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 0), acc0);
-        acc1 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 1), acc1);
-        acc2 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 2), acc2);
-        acc3 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 3), acc3);
-        acc4 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 4), acc4);
-        acc5 = _mm256_fmadd_pd(av1, _mm256_broadcast_sd(b1 + 5), acc5);
-
-        acc0 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 0), acc0);
-        acc1 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 1), acc1);
-        acc2 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 2), acc2);
-        acc3 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 3), acc3);
-        acc4 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 4), acc4);
-        acc5 = _mm256_fmadd_pd(av2, _mm256_broadcast_sd(b2 + 5), acc5);
-
-        acc0 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 0), acc0);
-        acc1 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 1), acc1);
-        acc2 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 2), acc2);
-        acc3 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 3), acc3);
-        acc4 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 4), acc4);
-        acc5 = _mm256_fmadd_pd(av3, _mm256_broadcast_sd(b3 + 5), acc5);
-#else
-        acc0 = _mm256_add_pd(acc0, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 0)));
-        acc1 = _mm256_add_pd(acc1, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 1)));
-        acc2 = _mm256_add_pd(acc2, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 2)));
-        acc3 = _mm256_add_pd(acc3, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 3)));
-        acc4 = _mm256_add_pd(acc4, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 4)));
-        acc5 = _mm256_add_pd(acc5, _mm256_mul_pd(av0, _mm256_broadcast_sd(b0 + 5)));
-
-        acc0 = _mm256_add_pd(acc0, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 0)));
-        acc1 = _mm256_add_pd(acc1, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 1)));
-        acc2 = _mm256_add_pd(acc2, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 2)));
-        acc3 = _mm256_add_pd(acc3, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 3)));
-        acc4 = _mm256_add_pd(acc4, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 4)));
-        acc5 = _mm256_add_pd(acc5, _mm256_mul_pd(av1, _mm256_broadcast_sd(b1 + 5)));
-
-        acc0 = _mm256_add_pd(acc0, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 0)));
-        acc1 = _mm256_add_pd(acc1, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 1)));
-        acc2 = _mm256_add_pd(acc2, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 2)));
-        acc3 = _mm256_add_pd(acc3, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 3)));
-        acc4 = _mm256_add_pd(acc4, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 4)));
-        acc5 = _mm256_add_pd(acc5, _mm256_mul_pd(av2, _mm256_broadcast_sd(b2 + 5)));
-
-        acc0 = _mm256_add_pd(acc0, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 0)));
-        acc1 = _mm256_add_pd(acc1, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 1)));
-        acc2 = _mm256_add_pd(acc2, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 2)));
-        acc3 = _mm256_add_pd(acc3, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 3)));
-        acc4 = _mm256_add_pd(acc4, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 4)));
-        acc5 = _mm256_add_pd(acc5, _mm256_mul_pd(av3, _mm256_broadcast_sd(b3 + 5)));
-#endif
-    }
-
-    for (; k < kc; ++k) {
+    for (size_t k = 0; k < kc; ++k) {
         const double* a_ptr = packed_a + k * MR;
         const double* b_ptr = packed_b + k * NR;
 
-        const __m256d a = _mm256_load_pd(a_ptr);
+        if ((k & 7) == 0) {
+            prefetch_l1(a_ptr, 16 * MR);
+            prefetch_l1(b_ptr, 16 * NR);
+        }
 
-#if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
-        acc0 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 0), acc0);
-        acc1 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 1), acc1);
-        acc2 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 2), acc2);
-        acc3 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 3), acc3);
-        acc4 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 4), acc4);
-        acc5 = _mm256_fmadd_pd(a, _mm256_broadcast_sd(b_ptr + 5), acc5);
-#else
-        acc0 = _mm256_add_pd(acc0, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 0)));
-        acc1 = _mm256_add_pd(acc1, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 1)));
-        acc2 = _mm256_add_pd(acc2, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 2)));
-        acc3 = _mm256_add_pd(acc3, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 3)));
-        acc4 = _mm256_add_pd(acc4, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 4)));
-        acc5 = _mm256_add_pd(acc5, _mm256_mul_pd(a, _mm256_broadcast_sd(b_ptr + 5)));
-#endif
+        // Both panels are 64-byte aligned buffers, but an unaligned load costs nothing on an
+        // aligned address and keeps the kernel correct if the panel geometry ever changes.
+        const __m256d b0 = _mm256_loadu_pd(b_ptr + 0);
+        const __m256d b1 = _mm256_loadu_pd(b_ptr + 4);
+
+        __m256d a = _mm256_broadcast_sd(a_ptr + 0);
+        acc00 = gemm_madd_pd(a, b0, acc00);
+        acc01 = gemm_madd_pd(a, b1, acc01);
+
+        a = _mm256_broadcast_sd(a_ptr + 1);
+        acc10 = gemm_madd_pd(a, b0, acc10);
+        acc11 = gemm_madd_pd(a, b1, acc11);
+
+        a = _mm256_broadcast_sd(a_ptr + 2);
+        acc20 = gemm_madd_pd(a, b0, acc20);
+        acc21 = gemm_madd_pd(a, b1, acc21);
+
+        a = _mm256_broadcast_sd(a_ptr + 3);
+        acc30 = gemm_madd_pd(a, b0, acc30);
+        acc31 = gemm_madd_pd(a, b1, acc31);
+
+        a = _mm256_broadcast_sd(a_ptr + 4);
+        acc40 = gemm_madd_pd(a, b0, acc40);
+        acc41 = gemm_madd_pd(a, b1, acc41);
+
+        a = _mm256_broadcast_sd(a_ptr + 5);
+        acc50 = gemm_madd_pd(a, b0, acc50);
+        acc51 = gemm_madd_pd(a, b1, acc51);
     }
-
-    __m256d row0 = acc0;
-    __m256d row1 = acc1;
-    __m256d row2 = acc2;
-    __m256d row3 = acc3;
-    transpose4_pd(row0, row1, row2, row3);
-
-    alignas(32) double tail4[4];
-    alignas(32) double tail5[4];
-    _mm256_store_pd(tail4, acc4);
-    _mm256_store_pd(tail5, acc5);
 
     double* c0 = c + 0 * c_stride;
     double* c1 = c + 1 * c_stride;
     double* c2 = c + 2 * c_stride;
     double* c3 = c + 3 * c_stride;
+    double* c4 = c + 4 * c_stride;
+    double* c5 = c + 5 * c_stride;
 
-    _mm256_storeu_pd(c0, _mm256_add_pd(_mm256_loadu_pd(c0), row0));
-    _mm256_storeu_pd(c1, _mm256_add_pd(_mm256_loadu_pd(c1), row1));
-    _mm256_storeu_pd(c2, _mm256_add_pd(_mm256_loadu_pd(c2), row2));
-    _mm256_storeu_pd(c3, _mm256_add_pd(_mm256_loadu_pd(c3), row3));
-
-    c0[4] += tail4[0];
-    c0[5] += tail5[0];
-    c1[4] += tail4[1];
-    c1[5] += tail5[1];
-    c2[4] += tail4[2];
-    c2[5] += tail5[2];
-    c3[4] += tail4[3];
-    c3[5] += tail5[3];
+    _mm256_storeu_pd(c0 + 0, _mm256_add_pd(_mm256_loadu_pd(c0 + 0), acc00));
+    _mm256_storeu_pd(c0 + 4, _mm256_add_pd(_mm256_loadu_pd(c0 + 4), acc01));
+    _mm256_storeu_pd(c1 + 0, _mm256_add_pd(_mm256_loadu_pd(c1 + 0), acc10));
+    _mm256_storeu_pd(c1 + 4, _mm256_add_pd(_mm256_loadu_pd(c1 + 4), acc11));
+    _mm256_storeu_pd(c2 + 0, _mm256_add_pd(_mm256_loadu_pd(c2 + 0), acc20));
+    _mm256_storeu_pd(c2 + 4, _mm256_add_pd(_mm256_loadu_pd(c2 + 4), acc21));
+    _mm256_storeu_pd(c3 + 0, _mm256_add_pd(_mm256_loadu_pd(c3 + 0), acc30));
+    _mm256_storeu_pd(c3 + 4, _mm256_add_pd(_mm256_loadu_pd(c3 + 4), acc31));
+    _mm256_storeu_pd(c4 + 0, _mm256_add_pd(_mm256_loadu_pd(c4 + 0), acc40));
+    _mm256_storeu_pd(c4 + 4, _mm256_add_pd(_mm256_loadu_pd(c4 + 4), acc41));
+    _mm256_storeu_pd(c5 + 0, _mm256_add_pd(_mm256_loadu_pd(c5 + 0), acc50));
+    _mm256_storeu_pd(c5 + 4, _mm256_add_pd(_mm256_loadu_pd(c5 + 4), acc51));
 }
 
 // -----------------------------------------------------------------------------
@@ -873,11 +814,13 @@ inline void pack_b_panel_transposed<double>(const MatrixView<const double>& b,
             const double* row3 = b.data + (n0 + np + 3) * b.stride + k0;
             const double* row4 = b.data + (n0 + np + 4) * b.stride + k0;
             const double* row5 = b.data + (n0 + np + 5) * b.stride + k0;
+            const double* row6 = b.data + (n0 + np + 6) * b.stride + k0;
+            const double* row7 = b.data + (n0 + np + 7) * b.stride + k0;
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
                     prefetch_l1(row0, k + 32);
-                    prefetch_l1(row3, k + 32);
+                    prefetch_l1(row4, k + 32);
                 }
 
                 double* dst = dst_panel + k * Traits::nr;
@@ -887,6 +830,8 @@ inline void pack_b_panel_transposed<double>(const MatrixView<const double>& b,
                 dst[3] = row3[k];
                 dst[4] = row4[k];
                 dst[5] = row5[k];
+                dst[6] = row6[k];
+                dst[7] = row7[k];
             }
         } else {
             for (size_t k = 0; k < kc; ++k) {

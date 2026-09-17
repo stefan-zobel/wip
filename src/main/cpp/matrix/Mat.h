@@ -35,7 +35,10 @@
 inline SimpleArena& get_thread_scratch_arena() {
     thread_local std::unique_ptr<SimpleArena> arena;
     if (!arena) {
-        arena = SimpleArena::create(512 * 1024);
+        // Derived from the blocking, so the arena stays in step with Avx2GemmTraits<double>.
+        // The arena only reserves address space and commits on demand, so nothing is paid
+        // for up front.
+        arena = SimpleArena::create(default_blocked_gemm_scratch_bytes<double>());
         if (!arena) {
             throw std::bad_alloc();
         }
