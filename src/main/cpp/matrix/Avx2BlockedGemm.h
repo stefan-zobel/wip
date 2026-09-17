@@ -81,7 +81,8 @@ enum class GemmStatus : uint8_t {
     Ok = 0,
     NullPointer,         // a, b or c has no data (and is not empty)
     DimensionMismatch,   // inner dimensions of op(A), op(B) differ or C has the wrong shape
-    OutOfScratchMemory   // the scratch arena cannot hold the packing buffers
+    OutOfScratchMemory,  // the scratch arena cannot hold the packing buffers
+    Aliasing             // C shares memory with A or B
 };
 
 // C = op(A) * op(B) (overwrite == true) or C += op(A) * op(B) (overwrite == false).
@@ -118,6 +119,11 @@ template <Avx2GemmScalar T, bool TransA, bool TransB>
             zero_matrix(c);
         }
         return GemmStatus::Ok;
+    }
+
+    // C is written block by block while A and B are still read
+    if (views_overlap(c, a) || views_overlap(c, b)) {
+        return GemmStatus::Aliasing;
     }
 
     const size_t mc_block = std::max(config.mc, Traits::mr);

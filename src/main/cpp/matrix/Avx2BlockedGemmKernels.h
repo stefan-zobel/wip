@@ -126,8 +126,8 @@ inline void pack_a_panel<float>(const MatrixView<const float>& a,
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
-                    prefetch_l1(row0 + k + 32);
-                    prefetch_l1(row4 + k + 32);
+                    prefetch_l1(row0, k + 32);
+                    prefetch_l1(row4, k + 32);
                 }
 
                 float* dst = dst_panel + k * Traits::mr;
@@ -182,8 +182,8 @@ inline void pack_a_panel<double>(const MatrixView<const double>& a,
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
-                    prefetch_l1(row0 + k + 32);
-                    prefetch_l1(row2 + k + 32);
+                    prefetch_l1(row0, k + 32);
+                    prefetch_l1(row2, k + 32);
                 }
 
                 double* dst = dst_panel + k * Traits::mr;
@@ -233,7 +233,7 @@ inline void pack_b_panel<float>(const MatrixView<const float>& b,
                 const float* src = b.data + (k0 + k) * b.stride + (n0 + np);
 
                 if ((k & 31) == 0) {
-                    prefetch_l1(src + 32);
+                    prefetch_l1(src, 32);
                 }
 
                 std::memcpy(dst_panel + k * Traits::nr, src, Traits::nr * sizeof(float));
@@ -280,7 +280,7 @@ inline void pack_b_panel<double>(const MatrixView<const double>& b,
                 const double* src = b.data + (k0 + k) * b.stride + (n0 + np);
 
                 if ((k & 31) == 0) {
-                    prefetch_l1(src + 32);
+                    prefetch_l1(src, 32);
                 }
 
                 std::memcpy(dst_panel + k * Traits::nr, src, Traits::nr * sizeof(double));
@@ -389,8 +389,8 @@ inline void sgemm_micro_kernel_8x6_avx2(const float* packed_a,
         const float* b2 = packed_b + (k + 2) * NR;
         const float* b3 = packed_b + (k + 3) * NR;
 
-        prefetch_l1(a3 + 16 * MR);
-        prefetch_l1(b3 + 16 * NR);
+        prefetch_l1(a3, 16 * MR);
+        prefetch_l1(b3, 16 * NR);
 
         const __m256 av0 = _mm256_load_ps(a0);
         const __m256 av1 = _mm256_load_ps(a1);
@@ -545,8 +545,8 @@ inline void dgemm_micro_kernel_4x6_avx2(const double* packed_a,
         const double* b2 = packed_b + (k + 2) * NR;
         const double* b3 = packed_b + (k + 3) * NR;
 
-        prefetch_l1(a3 + 16 * MR);
-        prefetch_l1(b3 + 16 * NR);
+        prefetch_l1(a3, 16 * MR);
+        prefetch_l1(b3, 16 * NR);
 
         const __m256d av0 = _mm256_load_pd(a0);
         const __m256d av1 = _mm256_load_pd(a1);
@@ -716,7 +716,7 @@ inline void pack_a_panel_transposed<float>(const MatrixView<const float>& a,
                 const float* src = a.data + (k0 + k) * a.stride + (m0 + mp);
 
                 if ((k & 31) == 0) {
-                    prefetch_l1(src + 32);
+                    prefetch_l1(src, 32);
                 }
 
                 std::memcpy(dst_panel + k * Traits::mr, src, Traits::mr * sizeof(float));
@@ -755,7 +755,7 @@ inline void pack_a_panel_transposed<double>(const MatrixView<const double>& a,
                 const double* src = a.data + (k0 + k) * a.stride + (m0 + mp);
 
                 if ((k & 31) == 0) {
-                    prefetch_l1(src + 32);
+                    prefetch_l1(src, 32);
                 }
 
                 std::memcpy(dst_panel + k * Traits::mr, src, Traits::mr * sizeof(double));
@@ -825,8 +825,8 @@ inline void pack_b_panel_transposed<float>(const MatrixView<const float>& b,
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
-                    prefetch_l1(row0 + k + 32);
-                    prefetch_l1(row3 + k + 32);
+                    prefetch_l1(row0, k + 32);
+                    prefetch_l1(row3, k + 32);
                 }
 
                 float* dst = dst_panel + k * Traits::nr;
@@ -876,8 +876,8 @@ inline void pack_b_panel_transposed<double>(const MatrixView<const double>& b,
 
             for (size_t k = 0; k < kc; ++k) {
                 if ((k & 31) == 0) {
-                    prefetch_l1(row0 + k + 32);
-                    prefetch_l1(row3 + k + 32);
+                    prefetch_l1(row0, k + 32);
+                    prefetch_l1(row3, k + 32);
                 }
 
                 double* dst = dst_panel + k * Traits::nr;

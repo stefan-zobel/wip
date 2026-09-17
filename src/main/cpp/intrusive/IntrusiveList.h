@@ -402,45 +402,47 @@ private:
         free_head = idx;
     }
 
-    constexpr T& write_access(IndexType idx) {
-        return access(idx, true);
-    }
-
-    constexpr const T& read_access(IndexType idx) const {
-        return access(idx, false);
-    }
-
-    static constexpr IndexType Clean = Nil;
+    // link.prev of the sentinel after a write access through an illegal index
     static constexpr IndexType Dirty = 1;
 
-    // common internal logic for read and write access paths
-    constexpr T& access(IndexType idx, bool is_write_intent) const {
+    // An illegal index (release builds) yields the sentinel. The caller may write to it, so it is
+    // reset to T{} before it is handed out again.
+    constexpr T& write_access(IndexType idx) {
         if (idx == Nil || idx > Cap) {
             if (std::is_constant_evaluated()) {
                 throw "Critical error: Access with illegal index!";
             }
 #ifdef _DEBUG
-            is_write_intent; // suppress 'not referenced' warning
             throw std::out_of_range("Critical error: Access with illegal index!");
 #else
-            auto& sentinel = const_cast<NodeType&>(storage[Nil]);
-
+            NodeType& sentinel = storage[Nil];
             if (sentinel.link.prev == Dirty) {
                 // The sentinel might have been contaminated
                 static_cast<T&>(sentinel) = T{};
-                sentinel.link.prev = Clean;
             }
-
-            if (is_write_intent) {
-                // The caller could write to it, so
-                // we make provisions for that case
-                sentinel.link.prev = Dirty;
-            }
-
+            sentinel.link.prev = Dirty;
             return static_cast<T&>(sentinel);
 #endif
         }
-        return static_cast<T&>(const_cast<NodeType&>(storage[idx]));
+        return static_cast<T&>(storage[idx]);
     }
+
+    // An illegal index (release builds) yields a default value. A read never writes, because
+    // several threads may read the same list concurrently.
+    constexpr const T& read_access(IndexType idx) const {
+        if (idx == Nil || idx > Cap) {
+            if (std::is_constant_evaluated()) {
+                throw "Critical error: Access with illegal index!";
+            }
+#ifdef _DEBUG
+            throw std::out_of_range("Critical error: Access with illegal index!");
+#else
+            return invalid_read_value;
+#endif
+        }
+        return static_cast<const T&>(storage[idx]);
+    }
+
+    inline static const T invalid_read_value{};
 };
 

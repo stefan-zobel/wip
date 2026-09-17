@@ -17,6 +17,8 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <memory>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -28,9 +30,16 @@
 // This is just a small study on how the operator overloading of a matrix class could be designed
 
 
-// Define a thread_local memory arena for our AVX2 blocked GEMM computations
+// Define a thread_local memory arena for our AVX2 blocked GEMM computations.
+// Throws std::bad_alloc if the arena cannot be reserved; a later call tries again.
 inline SimpleArena& get_thread_scratch_arena() {
-    thread_local auto arena = SimpleArena::create(512 * 1024);
+    thread_local std::unique_ptr<SimpleArena> arena;
+    if (!arena) {
+        arena = SimpleArena::create(512 * 1024);
+        if (!arena) {
+            throw std::bad_alloc();
+        }
+    }
     return *arena;
 }
 

@@ -33,6 +33,17 @@ struct MatrixView {
     }
 };
 
+// True if the elements of two non-empty views share memory. Compared as integers, because the
+// order of pointers into different objects is unspecified.
+template <typename T, typename U>
+[[nodiscard]] bool views_overlap(const MatrixView<T>& x, const MatrixView<U>& y) noexcept {
+    const std::uintptr_t x_first = reinterpret_cast<std::uintptr_t>(x.data);
+    const std::uintptr_t x_end = x_first + ((x.rows - 1) * x.stride + x.cols) * sizeof(T);
+    const std::uintptr_t y_first = reinterpret_cast<std::uintptr_t>(y.data);
+    const std::uintptr_t y_end = y_first + ((y.rows - 1) * y.stride + y.cols) * sizeof(U);
+    return x_first < y_end && y_first < x_end;
+}
+
 template <typename T>
 struct Avx2GemmTraits;
 
@@ -110,6 +121,15 @@ template <typename T>
 
 inline void prefetch_l1(const void* ptr) noexcept {
     _mm_prefetch(static_cast<const char*>(ptr), _MM_HINT_T0);
+}
+
+// Prefetches the element 'offset' positions after 'base'. The address is computed as an integer:
+// it may lie past the end of the array, where forming a pointer would be undefined behavior.
+// _mm_prefetch never faults.
+template <typename T>
+inline void prefetch_l1(const T* base, size_t offset) noexcept {
+    const std::uintptr_t address = reinterpret_cast<std::uintptr_t>(base) + offset * sizeof(T);
+    _mm_prefetch(reinterpret_cast<const char*>(address), _MM_HINT_T0);
 }
 
 inline void prefetch_l2(const void* ptr) noexcept {

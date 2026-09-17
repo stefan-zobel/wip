@@ -55,6 +55,7 @@ public:
         , adapt_cfg_(adapt_cfg)
     {
         detail::require_valid_start(log_curr_);
+        step_size_ = proposal_.step_size();
     }
 
     const State& step(bool adapt) {
@@ -80,6 +81,7 @@ public:
                 proposal_.set_step_size(std::clamp(
                     proposal_.step_size() * std::exp(gamma * (rate - adapt_cfg_.target_accept)),
                     adapt_cfg_.step_min, adapt_cfg_.step_max));
+                step_size_ = proposal_.step_size();
                 win_steps_ = 0; win_accepts_ = 0;
             }
         }
@@ -105,7 +107,8 @@ public:
     [[nodiscard]] double acceptance_rate()    const noexcept {
         return total_ ? static_cast<double>(accepted_) / static_cast<double>(total_) : 0.0;
     }
-    [[nodiscard]] double       final_step_size() const noexcept { return proposal_.step_size(); }
+    // Cached: AdaptableProposal does not require step_size() to be const.
+    [[nodiscard]] double       final_step_size() const noexcept { return step_size_; }
     [[nodiscard]] const State& current_state()   const noexcept { return current_; }
 
 private:
@@ -115,6 +118,7 @@ private:
     std::mt19937_64 rng_;
     double          log_curr_;
     AdaptiveConfig  adapt_cfg_;
+    double          step_size_   = 0.0;
     std::size_t     accepted_    = 0;
     std::size_t     total_       = 0;
     std::size_t     adapt_n_     = 0;

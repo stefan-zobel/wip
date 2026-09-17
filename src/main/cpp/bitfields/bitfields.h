@@ -16,56 +16,56 @@
 #pragma once
 
 #include <concepts>
+#include <type_traits>
 
 // Bitwise operators for scoped enums
+//
+// Usage: invoke ENABLE_BITMASK_OPERATORS(E) in the namespace that declares the enum E (the global
+// namespace for a global enum):
+//
+//     namespace lib {
+//     enum class Flags : uint32_t { None = 0, X = 1, Y = 2 };
+//     ENABLE_BITMASK_OPERATORS(Flags)
+//     }
+//
+// The macro defines the operators |, &, ^, ~, |= and &= for E in that namespace, where
+// argument-dependent lookup finds them from everywhere, even in a namespace that declares an
+// operator| of its own (templates in the global namespace would be hidden there). has_all, has_any
+// and create accept every enum for which the macro was invoked this way.
 
-// A helper template to decide which enums are allowed to have bitwise operators
+// Marker declared by ENABLE_BITMASK_OPERATORS and found by argument-dependent lookup
 template<typename E>
-struct is_bitmask_enum : std::false_type {};
+concept BitmaskEnum = std::is_enum_v<E> && requires(E e) {
+    { fk_bitmask_enum_marker(e) } -> std::same_as<bool>;
+};
 
-// Bitwise operators
+namespace bitmask_detail {
+
 template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E operator|(E lhs, E rhs) {
+constexpr E bit_or(E lhs, E rhs) noexcept {
     using T = std::underlying_type_t<E>;
     return static_cast<E>(static_cast<T>(lhs) | static_cast<T>(rhs));
 }
 
 template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E operator&(E lhs, E rhs) {
+constexpr E bit_and(E lhs, E rhs) noexcept {
     using T = std::underlying_type_t<E>;
     return static_cast<E>(static_cast<T>(lhs) & static_cast<T>(rhs));
 }
 
 template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E operator^(E lhs, E rhs) {
+constexpr E bit_xor(E lhs, E rhs) noexcept {
     using T = std::underlying_type_t<E>;
     return static_cast<E>(static_cast<T>(lhs) ^ static_cast<T>(rhs));
 }
 
 template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E operator~(E lhs) {
+constexpr E bit_not(E value) noexcept {
     using T = std::underlying_type_t<E>;
-    return static_cast<E>(~static_cast<T>(lhs));
+    return static_cast<E>(~static_cast<T>(value));
 }
 
-// Compound assignment operators
-template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E& operator|=(E& lhs, E rhs) {
-    lhs = lhs | rhs;
-    return lhs;
-}
-
-template<typename E>
-    requires is_bitmask_enum<E>::value
-constexpr E& operator&=(E& lhs, E rhs) {
-    lhs = lhs & rhs;
-    return lhs;
-}
+} // namespace bitmask_detail
 
 // Syntax explanation (((value & flags) == flags) && ...)
 // That's a "Unary Left Fold Expression".
@@ -75,7 +75,7 @@ constexpr E& operator&=(E& lhs, E rhs) {
  * Checks whether ALL passed flags are set in 'value'
  */
 template<typename E, typename... Args>
-    requires is_bitmask_enum<E>::value && (std::same_as<E, Args> && ...)
+    requires BitmaskEnum<E> && (std::same_as<E, Args> && ...)
 constexpr bool has_all(E value, Args... flags) {
     // Fold expression combines all comparisons with &&
     return (((value & flags) == flags) && ...);
@@ -85,7 +85,7 @@ constexpr bool has_all(E value, Args... flags) {
  * Checks whether AT LEAST ONE of the passed flags is set in 'value'
  */
 template<typename E, typename... Args>
-    requires is_bitmask_enum<E>::value && (std::same_as<E, Args> && ...)
+    requires BitmaskEnum<E> && (std::same_as<E, Args> && ...)
 constexpr bool has_any(E value, Args... flags) {
     // check whether the bitwise comparison is not equal to 0
     return (((value & flags) != E{ 0 }) || ...);
@@ -95,7 +95,7 @@ constexpr bool has_any(E value, Args... flags) {
  * Creates a new enum value where all the passed flags are set
  */
 template<typename E, typename... Args>
-    requires is_bitmask_enum<E>::value && (std::same_as<E, Args> && ...)
+    requires BitmaskEnum<E> && (std::same_as<E, Args> && ...)
 constexpr E create(Args... flags) {
     // if there are no arguments we return 0 (None)
     if constexpr (sizeof...(Args) == 0) {
@@ -107,6 +107,12 @@ constexpr E create(Args... flags) {
 }
 
 
-#define ENABLE_BITMASK_OPERATORS(E) \
-    template<> struct is_bitmask_enum<E> : std::true_type {};
-
+// Invoke in the namespace that declares E (see the usage note above).
+#define ENABLE_BITMASK_OPERATORS(E)                                                                \
+    [[maybe_unused]] constexpr bool fk_bitmask_enum_marker(E) noexcept { return true; }            \
+    [[maybe_unused]] constexpr E operator|(E lhs, E rhs) noexcept { return ::bitmask_detail::bit_or(lhs, rhs); }   \
+    [[maybe_unused]] constexpr E operator&(E lhs, E rhs) noexcept { return ::bitmask_detail::bit_and(lhs, rhs); }  \
+    [[maybe_unused]] constexpr E operator^(E lhs, E rhs) noexcept { return ::bitmask_detail::bit_xor(lhs, rhs); }  \
+    [[maybe_unused]] constexpr E operator~(E value) noexcept { return ::bitmask_detail::bit_not(value); }          \
+    [[maybe_unused]] constexpr E& operator|=(E& lhs, E rhs) noexcept { return lhs = ::bitmask_detail::bit_or(lhs, rhs); }  \
+    [[maybe_unused]] constexpr E& operator&=(E& lhs, E rhs) noexcept { return lhs = ::bitmask_detail::bit_and(lhs, rhs); }

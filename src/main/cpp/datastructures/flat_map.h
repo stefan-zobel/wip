@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <utility>
 #include <memory>
+#include <new>
 
 namespace fk {
 
@@ -27,8 +28,19 @@ namespace fk {
         static constexpr uint8_t CTRL_EMPTY   = 0b1000'0000; // 0x80 (128) - Never touched
         static constexpr uint8_t CTRL_DELETED = 0b1111'1110; // 0xFE (254) - Tombstone
 
-        // H7 Mask: Isolates the lower 7 bits of a full 64-bit hash
-        static constexpr size_t  H7_MASK      = 0b0111'1111; // 0x7F (127)
+        // The hash is mixed first (std::hash<int> is the identity with libstdc++). The slot index
+        // uses the low bits, the 7-bit tag (h7) the top 7 bits: if both used the same bits, all
+        // entries of a home slot would share their tag and the tag would not filter anything.
+        // Stafford's "variant 13" mixer, as in hashmap/HashMix.h
+        static constexpr size_t mix_hash(size_t h) noexcept {
+            h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
+            h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
+            return h ^ (h >> 31);
+        }
+
+        static constexpr uint8_t tag_of(size_t mixed_hash) noexcept {
+            return static_cast<uint8_t>(mixed_hash >> (sizeof(size_t) * 8 - 7));  // always < CTRL_EMPTY
+        }
 
         // The Metadata Array. 
         // 1 byte completely governs 1 slot of the data array.
@@ -37,8 +49,16 @@ namespace fk {
 
         // Using a dynamically allocated raw-byte buffer to completely avoid requiring 
         // a Default Constructor for Key or Value during capacity allocations.
+        // The buffer is allocated with the alignment of Slot (new[] of std::byte would not be
+        // aligned for over-aligned keys or values).
         using Slot = std::pair<Key, Value>;
-        std::unique_ptr<std::byte[]> m_data_memory;
+        struct AlignedDelete {
+            void operator()(std::byte* memory) const noexcept {
+                ::operator delete(memory, std::align_val_t{ alignof(Slot) });
+            }
+        };
+        using SlotMemory = std::unique_ptr<std::byte, AlignedDelete>;
+        SlotMemory m_data_memory;
         
         size_t m_capacity = 0;
         size_t m_size = 0;
@@ -82,6 +102,11 @@ namespace fk {
         bool   empty()    const noexcept { return m_size == 0; }
         size_t capacity() const noexcept { return m_capacity; }
 
+        // Diagnostics (tests): the slot where the probe sequence of 'key' starts.
+        size_t home_slot(const Key& key) const noexcept {
+            return mix_hash(Hash{}(key)) & (m_capacity - 1);
+        }
+
         // ====================================================================
         // Emplace / Insertion
         // ====================================================================
@@ -93,11 +118,11 @@ namespace fk {
                 rehash(m_size + 1 > max_load() / 2 ? m_capacity * 2 : m_capacity);
             }
 
-            const size_t full_hash = Hash{}(key);
-            const uint8_t h7 = static_cast<uint8_t>(full_hash & H7_MASK);
+            const size_t mixed_hash = mix_hash(Hash{}(key));
+            const uint8_t h7 = tag_of(mixed_hash);
 
             // Bitwise modulo using power-of-2 capacity
-            size_t idx = full_hash & (m_capacity - 1);
+            size_t idx = mixed_hash & (m_capacity - 1);
             size_t first_deleted_idx = static_cast<size_t>(-1);
             
             Slot* slots = data_slots();
@@ -140,9 +165,9 @@ namespace fk {
         // Get / Lookup
         // ====================================================================
         Value* get(const Key& key) noexcept {
-            const size_t full_hash = Hash{}(key);
-            const uint8_t h7 = static_cast<uint8_t>(full_hash & H7_MASK);
-            size_t idx = full_hash & (m_capacity - 1);
+            const size_t mixed_hash = mix_hash(Hash{}(key));
+            const uint8_t h7 = tag_of(mixed_hash);
+            size_t idx = mixed_hash & (m_capacity - 1);
 
             Slot* slots = data_slots();
 
@@ -171,9 +196,9 @@ namespace fk {
         // Erase (Tombstoning)
         // ====================================================================
         bool erase(const Key& key) noexcept {
-            const size_t full_hash = Hash{}(key);
-            const uint8_t h7 = static_cast<uint8_t>(full_hash & H7_MASK);
-            size_t idx = full_hash & (m_capacity - 1);
+            const size_t mixed_hash = mix_hash(Hash{}(key));
+            const uint8_t h7 = tag_of(mixed_hash);
+            size_t idx = mixed_hash & (m_capacity - 1);
 
             Slot* slots = data_slots();
 
@@ -210,7 +235,8 @@ namespace fk {
             m_ctrl.assign(cap, CTRL_EMPTY);
 
             // Allocate raw uninitialized bytes. No Default Constructors are called.
-            m_data_memory = std::make_unique<std::byte[]>(cap * sizeof(Slot));
+            m_data_memory = SlotMemory(static_cast<std::byte*>(
+                ::operator new(cap * sizeof(Slot), std::align_val_t{ alignof(Slot) })));
         }
 
         void destroy_all_elements() noexcept {
@@ -240,7 +266,7 @@ namespace fk {
         // and expand the universe safely.
         void rehash(size_t new_cap) {
             std::vector<uint8_t> old_ctrl = std::move(m_ctrl);
-            std::unique_ptr<std::byte[]> old_data_memory = std::move(m_data_memory);
+            SlotMemory old_data_memory = std::move(m_data_memory);
 
             size_t old_cap = m_capacity;
             Slot* old_slots = reinterpret_cast<Slot*>(old_data_memory.get());
