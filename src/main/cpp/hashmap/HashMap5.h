@@ -66,6 +66,18 @@ namespace detail {
     // memory resource (allocator-extended move: costs a copy of the contents, but works for
     // move-only elements), so they no longer refer to the shard's unsynchronized pool.
     // All other types are simply moved (no extra cost).
+    // Builds the value that replaces 'stored'. Allocator-aware values get the allocator of the
+    // stored value (the shard's pool), so that moving it into the map does not allocate.
+    template<typename T, typename U>
+    T make_like(const T& stored, U&& value) {
+        if constexpr (pmr_allocator_aware<T>) {
+            return std::make_obj_using_allocator<T>(stored.get_allocator(), std::forward<U>(value));
+        }
+        else {
+            return T(std::forward<U>(value));
+        }
+    }
+
     template<typename T>
     T take_out(T& stored) {
         if constexpr (pmr_allocator_aware<T>) {
@@ -459,8 +471,11 @@ private:
             std::unique_lock lock(mutex);
             auto it = map.find(key);
             if (it != map.end()) {
+                // Build the new value first: a throwing conversion leaves the stored value untouched.
+                // The strong guarantee holds if moving V does not throw.
+                V replacement = detail::make_like(it->second, std::forward<VALUE_TYPE>(value));
                 std::optional<V> old(std::in_place, detail::take_out(it->second));
-                it->second = std::forward<VALUE_TYPE>(value);
+                it->second = std::move(replacement);
                 return old;
             }
             else {
@@ -518,6 +533,7 @@ private:
             return result;
         }
 
+        // noexcept: only locks (a failing lock, std::system_error, is treated as fatal)
         size_t size() const noexcept {
             std::shared_lock lock(mutex);
             return map.size();

@@ -49,11 +49,11 @@ class Mat
 public:
     Mat(size_t rows, size_t cols) : rows_{ rows }, cols_{ cols }, a(len()) { puts("dimensions constructor called"); }
     Mat(size_t rows, size_t cols, const std::initializer_list<double>& vals) : rows_{ rows }, cols_{ cols }, a{vals} { puts("initializer list constructor called"); }
-    Mat(const Mat& o) noexcept : rows_{ o.rows_ }, cols_{ o.cols_ } { puts("copy constructor called"); a = o.a; }
+    Mat(const Mat& o) : rows_{ o.rows_ }, cols_{ o.cols_ } { puts("copy constructor called"); a = o.a; }
     Mat(Mat&& tmp) noexcept { puts("move constructor called"); rows_ = tmp.rows_; cols_ = tmp.cols_; a = std::move(tmp.a); tmp.rows_ = 0; tmp.cols_ = 0; }
-    Mat& operator=(const Mat& o) noexcept { puts("copy assignment called"); rows_ = o.rows_; cols_ = o.cols_; a = o.a; return *this; }
+    Mat& operator=(const Mat& o) { puts("copy assignment called"); rows_ = o.rows_; cols_ = o.cols_; a = o.a; return *this; }
     Mat& operator=(Mat&& tmp) noexcept { puts("move assignment called"); if (this != &tmp) { rows_ = tmp.rows_; cols_ = tmp.cols_; a = std::move(tmp.a); tmp.rows_ = 0; tmp.cols_ = 0; } return *this; }
-    Mat operator-() const noexcept { puts("unary operator- called"); Mat result(*this); for (size_t i = 0; i < result.len(); ++i) { result.a[i] = -result.a[i]; } return result; }
+    Mat operator-() const { puts("unary operator- called"); Mat result(*this); for (size_t i = 0; i < result.len(); ++i) { result.a[i] = -result.a[i]; } return result; }
     Mat& operator+=(const Mat& o) noexcept { puts("op+= called"); const auto ii = len(); for (size_t i = 0; i < ii; ++i) { a[i] += o.a[i]; } return *this; }
     Mat& operator-=(const Mat& o) noexcept { puts("op-= called"); const auto ii = len(); for (size_t i = 0; i < ii; ++i) { a[i] -= o.a[i]; } return *this; }
     Mat& operator*=(const Mat& o) { puts("op*= called"); *this = *this * o; return *this; }
@@ -96,13 +96,13 @@ private:
 };
 
 // Variant 1: Lvalue - Lvalue (Creates ONE necessary new matrix)
-inline Mat operator-(const Mat& a, const Mat& b) noexcept {
+inline Mat operator-(const Mat& a, const Mat& b) {
     puts("operator- variant 1 called");
     Mat result{ a }; // 1 Copy
     result -= b;
     return result; // No std::move because of NRVO
 }
-inline Mat operator+(const Mat& a, const Mat& b) noexcept {
+inline Mat operator+(const Mat& a, const Mat& b) {
     puts("operator+ variant 1 called");
     Mat result{ a };
     result += b;

@@ -93,17 +93,23 @@ public:
     [[nodiscard]] Results run() {
         detail::validate(cfg_);
         Results results(cfg_.num_chains);
+        std::vector<std::exception_ptr> errors(cfg_.num_chains);
         {
             std::vector<std::jthread> threads;
             threads.reserve(cfg_.num_chains);
             for (std::size_t c = 0; c < cfg_.num_chains; ++c) {
                 threads.emplace_back([&, c](std::stop_token) {
-                    GibbsChain<State, Conditionals> chain(
-                        initial_, cond_, detail::chain_seed(cfg_.base_seed, c));
-                    results[c] = chain.run(cfg_);
+                    try {
+                        GibbsChain<State, Conditionals> chain(
+                            initial_, cond_, detail::chain_seed(cfg_.base_seed, c));
+                        results[c] = chain.run(cfg_);
+                    } catch (...) {
+                        errors[c] = std::current_exception();
+                    }
                 });
             }
         } // jthreads join here (RAII)
+        detail::rethrow_first(errors);
         return results;
     }
 

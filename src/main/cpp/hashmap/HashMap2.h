@@ -29,6 +29,8 @@
 
 // Note 1: the noexcept claims are a bit exaggerated since std::unordered_map find() could actually throw
 // because std::equal_to<K> can throw depending on the type K. But when will that ever happen?
+// The noexcept functions only lock (a failing lock, std::system_error, is treated as fatal), look up
+// and hand out shared_ptr copies; none of them allocates.
 
 // Note 2: using shared_lock is enough for the read-only operation find() because this is const and
 // const member functions in the C++ containers library can be called concurrently by different threads.

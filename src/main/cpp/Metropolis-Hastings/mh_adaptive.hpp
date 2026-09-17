@@ -152,6 +152,7 @@ public:
         detail::validate(cfg_);
         detail::require_valid_start(target_.log_prob(initial_));
         Results results(cfg_.num_chains);
+        std::vector<std::exception_ptr> errors(cfg_.num_chains);
         rates_.assign(cfg_.num_chains, 0.0);
         final_steps_.assign(cfg_.num_chains, 0.0);
         {
@@ -159,14 +160,19 @@ public:
             threads.reserve(cfg_.num_chains);
             for (std::size_t c = 0; c < cfg_.num_chains; ++c) {
                 threads.emplace_back([&, c](std::stop_token) {
-                    AdaptiveSamplerChain<State, Target, Proposal> chain(
-                        initial_, target_, proposal_, detail::chain_seed(cfg_.base_seed, c), adapt_cfg_);
-                    results[c]      = chain.run(cfg_);
-                    rates_[c]       = chain.acceptance_rate();
-                    final_steps_[c] = chain.final_step_size();
+                    try {
+                        AdaptiveSamplerChain<State, Target, Proposal> chain(
+                            initial_, target_, proposal_, detail::chain_seed(cfg_.base_seed, c), adapt_cfg_);
+                        results[c]      = chain.run(cfg_);
+                        rates_[c]       = chain.acceptance_rate();
+                        final_steps_[c] = chain.final_step_size();
+                    } catch (...) {
+                        errors[c] = std::current_exception();
+                    }
                 });
             }
         } // jthreads join here (RAII)
+        detail::rethrow_first(errors);
         return results;
     }
 

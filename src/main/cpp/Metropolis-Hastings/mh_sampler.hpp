@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <exception>
 #include <vector>
 #include <random>
 #include <cmath>
@@ -27,6 +28,9 @@
 //     support of the target would never move); the parallel samplers check
 //     this in run() before any thread is started
 //   - SamplerConfig::thinning >= 1
+//
+// Exceptions thrown inside a chain (target, proposal, conditionals) are caught in
+// its thread; after all chains have finished, run() rethrows the first one.
 // ============================================================================
 
 namespace mh {
@@ -59,6 +63,15 @@ namespace detail {
 inline void validate(const SamplerConfig& cfg) {
     if (cfg.thinning == 0) {
         throw std::invalid_argument("SamplerConfig::thinning must be at least 1");
+    }
+}
+
+// Rethrows the first captured exception of the chains, if any.
+inline void rethrow_first(const std::vector<std::exception_ptr>& errors) {
+    for (const std::exception_ptr& error : errors) {
+        if (error) {
+            std::rethrow_exception(error);
+        }
     }
 }
 
@@ -158,19 +171,25 @@ public:
         detail::validate(cfg_);
         detail::require_valid_start(target_.log_prob(initial_));
         Results results(cfg_.num_chains);
+        std::vector<std::exception_ptr> errors(cfg_.num_chains);
         rates_.assign(cfg_.num_chains, 0.0);
         {
             std::vector<std::jthread> threads;
             threads.reserve(cfg_.num_chains);
             for (std::size_t c = 0; c < cfg_.num_chains; ++c) {
                 threads.emplace_back([&, c](std::stop_token) {
-                    SamplerChain<State, Target, Proposal> chain(
-                        initial_, target_, proposal_, detail::chain_seed(cfg_.base_seed, c));
-                    results[c] = chain.run(cfg_);
-                    rates_[c]  = chain.acceptance_rate();
+                    try {
+                        SamplerChain<State, Target, Proposal> chain(
+                            initial_, target_, proposal_, detail::chain_seed(cfg_.base_seed, c));
+                        results[c] = chain.run(cfg_);
+                        rates_[c]  = chain.acceptance_rate();
+                    } catch (...) {
+                        errors[c] = std::current_exception();
+                    }
                 });
             }
         } // jthreads join here (RAII)
+        detail::rethrow_first(errors);
         return results;
     }
 

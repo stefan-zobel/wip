@@ -134,10 +134,10 @@ namespace fk {
                 if (ctrl_byte == CTRL_EMPTY) {
                     // Spot is entirely pristine. Insert here (or in a prior tombstone if found).
                     const size_t target_idx = (first_deleted_idx != static_cast<size_t>(-1)) ? first_deleted_idx : idx;
-                    if (target_idx == first_deleted_idx) {
-                        m_tombstones--;
-                    }
                     insert_at(target_idx, h7, std::forward<K>(key), std::forward<V>(value));
+                    if (target_idx == first_deleted_idx) {
+                        m_tombstones--;  // only after a successful insertion
+                    }
                     return true;
                 }
 
@@ -227,16 +227,19 @@ namespace fk {
         }
 
     private:
-        void initialize_arrays(size_t cap) {
-            m_capacity = cap;
-            m_tombstones = 0;
+        // Allocates raw uninitialized bytes. No Default Constructors are called.
+        static SlotMemory allocate_slots(size_t cap) {
+            return SlotMemory(static_cast<std::byte*>(
+                ::operator new(cap * sizeof(Slot), std::align_val_t{ alignof(Slot) })));
+        }
 
+        // Only for a map without elements (constructors).
+        void initialize_arrays(size_t cap) {
             // Fill metadata completely with EMPTY flag
             m_ctrl.assign(cap, CTRL_EMPTY);
-
-            // Allocate raw uninitialized bytes. No Default Constructors are called.
-            m_data_memory = SlotMemory(static_cast<std::byte*>(
-                ::operator new(cap * sizeof(Slot), std::align_val_t{ alignof(Slot) })));
+            m_data_memory = allocate_slots(cap);
+            m_capacity = cap;
+            m_tombstones = 0;
         }
 
         void destroy_all_elements() noexcept {
@@ -252,38 +255,59 @@ namespace fk {
 
         template <typename K, typename V>
         void insert_at(size_t pos, uint8_t h7, K&& key, V&& value) {
-            m_ctrl[pos] = h7;
-
             Slot* slots = data_slots();
             // Placement new constructs the Pair strictly inside the raw byte buffer
             new (&slots[pos].first) Key(std::forward<K>(key));
-            new (&slots[pos].second) Value(std::forward<V>(value));
+            try {
+                new (&slots[pos].second) Value(std::forward<V>(value));
+            } catch (...) {
+                slots[pos].first.~Key();
+                throw;
+            }
 
+            // The slot counts as used only once key and value are constructed
+            m_ctrl[pos] = h7;
             m_size++;
         }
 
         // Extremely expensive, but physically required to eliminate Tombstones 
         // and expand the universe safely.
+        // Basic exception guarantee: if allocating the new arrays throws, the map is unchanged. If
+        // moving an element throws, the map keeps the elements moved so far, the others are
+        // destroyed (lost), and the exception propagates.
         void rehash(size_t new_cap) {
-            std::vector<uint8_t> old_ctrl = std::move(m_ctrl);
-            SlotMemory old_data_memory = std::move(m_data_memory);
+            std::vector<uint8_t> new_ctrl(new_cap, CTRL_EMPTY);
+            SlotMemory new_data_memory = allocate_slots(new_cap);
 
-            size_t old_cap = m_capacity;
+            std::vector<uint8_t> old_ctrl = std::exchange(m_ctrl, std::move(new_ctrl));
+            SlotMemory old_data_memory = std::exchange(m_data_memory, std::move(new_data_memory));
+            const size_t old_cap = std::exchange(m_capacity, new_cap);
             Slot* old_slots = reinterpret_cast<Slot*>(old_data_memory.get());
+            m_size = 0;
+            m_tombstones = 0;
 
-            initialize_arrays(new_cap);
-            m_size = 0; 
+            size_t i = 0;
+            try {
+                for (; i < old_cap; ++i) {
+                    // If it wasn't empty or deleted, it contains a living H7 payload
+                    if (old_ctrl[i] < CTRL_EMPTY) {
+                        // Re-insert via Move-Semantics. This strips all tombstones out of existence implicitly.
+                        emplace(std::move(old_slots[i].first), std::move(old_slots[i].second));
 
-            for (size_t i = 0; i < old_cap; ++i) {
-                // If it wasn't empty or deleted, it contains a living H7 payload
-                if (old_ctrl[i] < CTRL_EMPTY) {
-                    // Re-insert via Move-Semantics. This strips all tombstones out of existence implicitly.
-                    emplace(std::move(old_slots[i].first), std::move(old_slots[i].second));
-
-                    // Destroy the extracted old payload
-                    old_slots[i].first.~Key();
-                    old_slots[i].second.~Value();
+                        // Destroy the extracted old payload
+                        old_slots[i].first.~Key();
+                        old_slots[i].second.~Value();
+                    }
                 }
+            } catch (...) {
+                // Element i was not inserted; destroy it and all elements not yet moved
+                for (; i < old_cap; ++i) {
+                    if (old_ctrl[i] < CTRL_EMPTY) {
+                        old_slots[i].first.~Key();
+                        old_slots[i].second.~Value();
+                    }
+                }
+                throw;
             }
         }
     };

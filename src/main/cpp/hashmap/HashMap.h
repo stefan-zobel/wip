@@ -29,6 +29,8 @@
 
 // Note 1: the noexcept claims are a bit exaggerated since std::unordered_map find() could actually throw
 // because std::equal_to<K> can throw depending on the type K. But when will that ever happen?
+// The remaining noexcept functions only lock (a failing lock, std::system_error, is treated as fatal)
+// and look up; get() and remove() copy the value and may throw.
 
 // Note 2: using shared_lock is enough for the read-only operation find() because this is const and
 // const member functions in the C++ containers library can be called concurrently by different threads.
@@ -40,10 +42,10 @@ class HashMap {
     static_assert(SLOT_SIZE > 0, "SLOT_SIZE must be > 0.");
 public:
 
-    std::shared_ptr<V> get(const K& key) noexcept {
+    std::shared_ptr<V> get(const K& key) {
         return slotFor(key).get(key);
     }
-    std::shared_ptr<V> remove(const K& key) noexcept {
+    std::shared_ptr<V> remove(const K& key) {
         return slotFor(key).remove(key);
     }
     template<std::convertible_to<V> VALUE_TYPE>
@@ -77,7 +79,7 @@ private:
     class Slot {
     public:
 
-        std::shared_ptr<V> get(const K& key) const noexcept {
+        std::shared_ptr<V> get(const K& key) const {
             std::shared_lock lock(mutex);
             auto it = map.find(key);
             if (it != map.end()) {
@@ -85,7 +87,8 @@ private:
             }
             return {};
         }
-        std::shared_ptr<V> remove(const K& key) noexcept {
+        // The copy is made before the entry is erased, so a throwing copy keeps the entry.
+        std::shared_ptr<V> remove(const K& key) {
             std::unique_lock lock(mutex);
             auto it = map.find(key);
             if (it != map.end()) {
