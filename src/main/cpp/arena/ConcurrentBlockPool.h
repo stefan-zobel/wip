@@ -36,7 +36,13 @@ class ConcurrentBlockPool final {
         Node* head = nullptr;
         size_t count = 0;
         size_t epoch = 0;
+        // Cache hits not yet added to the shared local_cache_hits_ counter
+        size_t pending_hits = 0;
     };
+
+    // Hit counters of the fast path are batched per thread, so the fast path does not write
+    // shared memory on every operation (see StatsSnapshot).
+    static constexpr size_t STATS_BATCH = 64;
 
     struct ThreadCacheEntry {
         uint64_t owner_id = 0;
@@ -103,7 +109,7 @@ public:
         // Fast path: consume a previously recycled block from the local cache.
         void* memory = pop_local_block(local);
         if (memory) {
-            local_cache_hits_.fetch_add(1, std::memory_order_relaxed);
+            count_cache_hit(local);
         }
 
         // Refill the local cache from the shared global free list in small batches
@@ -112,7 +118,7 @@ public:
             refill_local_cache(local);
             memory = pop_local_block(local);
             if (memory) {
-                local_cache_hits_.fetch_add(1, std::memory_order_relaxed);
+                count_cache_hit(local);
             }
         }
 
@@ -158,6 +164,10 @@ public:
         return known_epoch_.load(std::memory_order_acquire);
     }
 
+    // local_cache_hits is collected per thread and published in batches of STATS_BATCH (and on
+    // every refill or drain of the local cache), so it may lag behind by up to STATS_BATCH - 1 per
+    // thread. reset_stats() cannot clear batches that other threads have not published yet.
+    // All other counters are exact.
     struct StatsSnapshot {
         size_t local_cache_hits = 0;
         size_t local_cache_refills = 0;
@@ -226,8 +236,22 @@ private:
         return entry->cache;
     }
 
-    static void sync_local_cache_epoch(LocalCache& cache, size_t arena_epoch) noexcept {
+    void count_cache_hit(LocalCache& cache) noexcept {
+        if (++cache.pending_hits == STATS_BATCH) {
+            publish_cache_hits(cache);
+        }
+    }
+
+    void publish_cache_hits(LocalCache& cache) noexcept {
+        if (cache.pending_hits != 0) {
+            local_cache_hits_.fetch_add(cache.pending_hits, std::memory_order_relaxed);
+            cache.pending_hits = 0;
+        }
+    }
+
+    void sync_local_cache_epoch(LocalCache& cache, size_t arena_epoch) noexcept {
         if (cache.epoch != arena_epoch) {
+            publish_cache_hits(cache);
             cache.head = nullptr;
             cache.count = 0;
             cache.epoch = arena_epoch;
@@ -246,13 +270,16 @@ private:
     }
 
     static void push_local_block(LocalCache& cache, void* ptr) noexcept {
-        Node* node = static_cast<Node*>(ptr);
+        // The block holds no object now: start the lifetime of a Node (and its std::atomic)
+        // before using it. Only this thread owns the block at this point.
+        Node* node = ::new (ptr) Node{};
         node->next.store(cache.head, std::memory_order_relaxed);
         cache.head = node;
         ++cache.count;
     }
 
     void refill_local_cache(LocalCache& cache) noexcept {
+        publish_cache_hits(cache);
         local_cache_refills_.fetch_add(1, std::memory_order_relaxed);
         while (cache.count < refill_batch_size_) {
             void* ptr = pop_free_block();
@@ -265,6 +292,7 @@ private:
     }
 
     void drain_local_cache(LocalCache& cache, size_t count) noexcept {
+        publish_cache_hits(cache);
         local_cache_drains_.fetch_add(1, std::memory_order_relaxed);
         for (size_t i = 0; i < count; ++i) {
             void* ptr = pop_local_block(cache);
@@ -298,6 +326,7 @@ private:
     }
 
     void push_free_block(void* ptr) noexcept {
+        // Only blocks from pop_local_block() arrive here, so the Node already lives in them.
         Node* node = static_cast<Node*>(ptr);
         TaggedHead head = free_list_head_.load(std::memory_order_acquire);
 
@@ -319,19 +348,25 @@ private:
     inline static thread_local ThreadCacheListOwner tls_cache_{};
     inline static std::atomic<uint64_t> next_owner_id_{ 1 };
 
+    // Memory layout, grouped by access pattern (one cache line each):
+    // 1. Read by every operation, rarely written.
+    // 2. Written when a thread refills or drains its local cache.
+    // 3. Cold: mutex and rarely updated counters.
+    static constexpr size_t CACHE_LINE = 64;
+
     Arena& source_arena_;
     uint64_t owner_id_ = 0;
-    std::atomic<TaggedHead> free_list_head_{ TaggedHead{ nullptr, 0 } };
     std::atomic<size_t> known_epoch_{ 0 };
 
-    std::mutex epoch_mutex_;
-
+    alignas(CACHE_LINE) std::atomic<TaggedHead> free_list_head_{ TaggedHead{ nullptr, 0 } };
     // Instrumentation counters for cache efficiency and slow-path pressure.
     std::atomic<size_t> local_cache_hits_{ 0 };
     std::atomic<size_t> local_cache_refills_{ 0 };
     std::atomic<size_t> local_cache_drains_{ 0 };
     std::atomic<size_t> global_free_list_pops_{ 0 };
     std::atomic<size_t> global_free_list_pushes_{ 0 };
+
+    alignas(CACHE_LINE) std::mutex epoch_mutex_;
     std::atomic<size_t> fresh_arena_blocks_{ 0 };
     std::atomic<size_t> epoch_resets_{ 0 };
 };

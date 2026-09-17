@@ -50,8 +50,14 @@ class ConcurrentSlabAllocator final {
         uint64_t owner_id = 0;
         size_t epoch = 0;
         std::array<LocalBinCache, NUM_BINS> bins{};
+        // Cache hits not yet added to the shared local_cache_hits_ counter
+        size_t pending_hits = 0;
         ThreadCacheEntry* next = nullptr;
     };
+
+    // Hit counters of the fast path are batched per thread, so the fast path does not write
+    // shared memory on every operation (see StatsSnapshot).
+    static constexpr size_t STATS_BATCH = 64;
 
     struct ThreadCacheListOwner {
         ThreadCacheEntry* head;
@@ -132,14 +138,15 @@ public:
         LocalBinCache& local = entry.bins[bin_index];
 
         if (void* ptr = pop_local_block(local)) {
-            local_cache_hits_.fetch_add(1, std::memory_order_relaxed);
+            count_cache_hit(entry);
             return ptr;
         }
 
+        publish_cache_hits(entry);
         refill_local_cache(local, bin_index);
 
         if (void* ptr = pop_local_block(local)) {
-            local_cache_hits_.fetch_add(1, std::memory_order_relaxed);
+            count_cache_hit(entry);
             return ptr;
         }
 
@@ -173,6 +180,7 @@ public:
         LocalBinCache& local = entry.bins[bin_index];
 
         if (local.count >= local_cache_capacity_) {
+            publish_cache_hits(entry);
             drain_local_cache(local, bin_index, drain_batch_size_);
         }
 
@@ -220,6 +228,10 @@ public:
         return NUM_BINS;
     }
 
+    // local_cache_hits is collected per thread and published in batches of STATS_BATCH (and on
+    // every refill or drain of a local bin cache), so it may lag behind by up to STATS_BATCH - 1 per
+    // thread. reset_stats() cannot clear batches that other threads have not published yet.
+    // All other counters are exact.
     struct StatsSnapshot {
         size_t local_cache_hits = 0;
         size_t local_cache_refills = 0;
@@ -298,10 +310,25 @@ private:
         return *entry;
     }
 
-    static void sync_local_epoch(ThreadCacheEntry& entry, size_t arena_epoch) noexcept {
+    void count_cache_hit(ThreadCacheEntry& entry) noexcept {
+        if (++entry.pending_hits == STATS_BATCH) {
+            publish_cache_hits(entry);
+        }
+    }
+
+    void publish_cache_hits(ThreadCacheEntry& entry) noexcept {
+        if (entry.pending_hits != 0) {
+            local_cache_hits_.fetch_add(entry.pending_hits, std::memory_order_relaxed);
+            entry.pending_hits = 0;
+        }
+    }
+
+    void sync_local_epoch(ThreadCacheEntry& entry, size_t arena_epoch) noexcept {
         if (entry.epoch == arena_epoch) {
             return;
         }
+
+        publish_cache_hits(entry);
 
         for (auto& bin : entry.bins) {
             bin.head = nullptr;
@@ -323,7 +350,9 @@ private:
     }
 
     static void push_local_block(LocalBinCache& cache, void* ptr) noexcept {
-        Node* node = static_cast<Node*>(ptr);
+        // The block holds no object now: start the lifetime of a Node (and its std::atomic)
+        // before using it. Only this thread owns the block at this point.
+        Node* node = ::new (ptr) Node{};
         node->next.store(cache.head, std::memory_order_relaxed);
         cache.head = node;
         ++cache.count;
@@ -377,6 +406,7 @@ private:
     }
 
     void push_free_block(size_t bin_index, void* ptr) noexcept {
+        // Only blocks from pop_local_block() arrive here, so the Node already lives in them.
         Node* node = static_cast<Node*>(ptr);
         TaggedHead head = free_lists_[bin_index].load(std::memory_order_acquire);
 
@@ -398,14 +428,17 @@ private:
     inline static thread_local ThreadCacheListOwner tls_cache_{};
     inline static std::atomic<uint64_t> next_owner_id_{ 1 };
 
+    // Memory layout, grouped by access pattern:
+    // 1. Read by every operation, rarely written.
+    // 2. Free-list heads and counters, written on refill, drain and arena fallback paths.
+    // 3. Cold: mutex and rarely updated counters.
+    static constexpr size_t CACHE_LINE = 64;
+
     Arena& source_arena_;
     uint64_t owner_id_ = 0;
     std::atomic<size_t> known_epoch_{ 0 };
 
-    std::array<std::atomic<TaggedHead>, NUM_BINS> free_lists_{};
-
-    std::mutex epoch_mutex_;
-
+    alignas(CACHE_LINE) std::array<std::atomic<TaggedHead>, NUM_BINS> free_lists_{};
     // Instrumentation counters for per-bin cache efficiency and slow-path use.
     std::atomic<size_t> local_cache_hits_{ 0 };
     std::atomic<size_t> local_cache_refills_{ 0 };
@@ -414,6 +447,8 @@ private:
     std::atomic<size_t> global_bin_pushes_{ 0 };
     std::atomic<size_t> fresh_bin_allocations_{ 0 };
     std::atomic<size_t> direct_arena_allocations_{ 0 };
+
+    alignas(CACHE_LINE) std::mutex epoch_mutex_;
     std::atomic<size_t> epoch_resets_{ 0 };
 };
 

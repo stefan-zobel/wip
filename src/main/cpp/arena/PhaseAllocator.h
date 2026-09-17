@@ -12,6 +12,8 @@
 // game loops, or video/audio processing frame tasks.
 template <size_t N = 2>
 class PhaseAllocator {
+    static_assert(N > 0, "PhaseAllocator needs at least one phase");
+
 public:
     // Initialize the phase allocator explicitly by generating N underlying arenas
     static std::unique_ptr<PhaseAllocator> create(size_t reserve_per_arena) {

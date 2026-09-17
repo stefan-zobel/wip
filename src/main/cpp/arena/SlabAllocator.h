@@ -109,7 +109,13 @@ public:
         void* ptr = allocate(sizeof(T), alignof(T));
         if (!ptr) return nullptr;
 
-        return new (ptr) T(std::forward<Args>(args)...);
+        // If the constructor throws, the block goes back to its bin instead of being lost.
+        try {
+            return new (ptr) T(std::forward<Args>(args)...);
+        } catch (...) {
+            deallocate(ptr, sizeof(T));
+            throw;
+        }
     }
 
     template <typename T>

@@ -356,7 +356,13 @@ class ConcurrentArenaCore final : private CleanupPolicy, private ReleasePolicy {
         char* current = nullptr;
         char* end = nullptr;
         size_t epoch = 0;
+        // Local chunk hits not yet added to the shared local_chunk_hits_ counter
+        size_t pending_hits = 0;
     };
+
+    // Hit counters of the fast path are batched per thread, so the fast path does not write
+    // shared memory on every allocation (see StatsSnapshot).
+    static constexpr size_t STATS_BATCH = 64;
 
     struct ThreadChunkEntry {
         uint64_t owner_id = 0;
@@ -430,6 +436,11 @@ public:
             return active_;
         }
 
+        // True if this operation was acquired from 'arena' (and not moved away)
+        [[nodiscard]] bool belongs_to(const ConcurrentArenaCore& arena) const noexcept {
+            return arena_ == &arena;
+        }
+
     private:
         ConcurrentArenaCore* arena_ = nullptr;
         bool active_ = false;
@@ -447,6 +458,9 @@ public:
     ConcurrentArenaCore(ConcurrentArenaCore&&) = delete;
     ConcurrentArenaCore& operator=(ConcurrentArenaCore&&) = delete;
 
+    // local_chunk_hits is collected per thread and published in batches of STATS_BATCH (and on
+    // every chunk refill), so it may lag behind by up to STATS_BATCH - 1 per thread. reset_stats()
+    // cannot clear batches that other threads have not published yet. All other counters are exact.
     struct StatsSnapshot {
         size_t local_chunk_hits = 0;
         size_t local_chunk_refills = 0;
@@ -484,7 +498,12 @@ public:
         return allocate_raw_aligned(op, size, alignment);
     }
 
-    void* allocate_raw_aligned(ScopedOperation&, size_t size, size_t alignment = UNIVERSAL_MAX_ALIGN) {
+    // 'op' must be an active operation of this arena; otherwise nothing protects the
+    // allocation against a concurrent release() and nullptr is returned.
+    void* allocate_raw_aligned(ScopedOperation& op, size_t size, size_t alignment = UNIVERSAL_MAX_ALIGN) {
+        if (!is_valid_operation(op)) {
+            return nullptr;
+        }
         return allocate_raw_aligned_inside_operation(size, alignment);
     }
 
@@ -497,8 +516,13 @@ public:
         return construct<T>(op, std::forward<Args>(args)...);
     }
 
+    // 'op' must be an active operation of this arena (see allocate_raw_aligned).
     template <typename T, typename... Args>
-    T* construct(ScopedOperation&, Args&&... args) {
+    T* construct(ScopedOperation& op, Args&&... args) {
+        if (!is_valid_operation(op)) {
+            return nullptr;
+        }
+
         void* cleanup_node_memory = nullptr;
 
         if constexpr (CleanupPolicy::tracks_destructors && !std::is_trivially_destructible_v<T>) {
@@ -605,6 +629,14 @@ private:
           committed_size_(initial_commit_size) {
     }
 
+    [[nodiscard]] bool is_valid_operation(const ScopedOperation& op) noexcept {
+        if (op.active() && op.belongs_to(*this)) {
+            return true;
+        }
+        failed_allocations_.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+
     [[nodiscard]] void* allocate_raw_aligned_inside_operation(size_t size, size_t alignment) {
         if (size == 0 || !is_power_of_two(alignment)) {
             failed_allocations_.fetch_add(1, std::memory_order_relaxed);
@@ -656,12 +688,22 @@ private:
 
             char* result = chunk.current + padding;
             chunk.current = result + size;
-            local_chunk_hits_.fetch_add(1, std::memory_order_relaxed);
+            if (++chunk.pending_hits == STATS_BATCH) {
+                publish_local_chunk_hits(chunk);
+            }
             return result;
         }
     }
 
+    void publish_local_chunk_hits(LocalChunk& chunk) noexcept {
+        if (chunk.pending_hits != 0) {
+            local_chunk_hits_.fetch_add(chunk.pending_hits, std::memory_order_relaxed);
+            chunk.pending_hits = 0;
+        }
+    }
+
     [[nodiscard]] bool refill_local_chunk(LocalChunk& chunk) {
+        publish_local_chunk_hits(chunk);
         void* memory = allocate_raw_aligned_global_inside_operation(LOCAL_CHUNK_SIZE, UNIVERSAL_MAX_ALIGN);
         if (!memory) {
             chunk.current = nullptr;
@@ -692,8 +734,9 @@ private:
         return entry->chunk;
     }
 
-    static void sync_local_chunk_epoch(LocalChunk& chunk, size_t arena_epoch) noexcept {
+    void sync_local_chunk_epoch(LocalChunk& chunk, size_t arena_epoch) noexcept {
         if (chunk.epoch != arena_epoch) {
+            publish_local_chunk_hits(chunk);
             chunk.current = nullptr;
             chunk.end = nullptr;
             chunk.epoch = arena_epoch;
@@ -790,26 +833,33 @@ private:
     inline static thread_local ThreadChunkListOwner tls_chunks_{};
     inline static std::atomic<uint64_t> next_chunk_owner_id_{ 1 };
 
-    void* base_ptr_ = nullptr;
+    // Memory layout, grouped by access pattern (one cache line each):
+    // 1. The policy base classes come first; their counters (active_operations_, cleanup_head_)
+    //    are written by every operation.
+    // 2. Read by every allocation, rarely written.
+    // 3. Written by every allocation from the shared bump pointer (e.g. each local chunk refill).
+    // 4. Cold: mutexes and rarely updated counters.
+    static constexpr size_t CACHE_LINE = 64;
+
+    alignas(CACHE_LINE) void* base_ptr_ = nullptr;
     size_t reserved_size_ = 0;
     size_t initial_commit_size_ = 0;
     uint64_t owner_id_ = 0;
-
     std::atomic<size_t> committed_size_{ 0 };
-    std::atomic<size_t> offset_{ 0 };
     std::atomic<size_t> current_epoch_{ 0 };
 
-    std::mutex commit_mutex_;
-    std::mutex release_mutex_;
-
+    alignas(CACHE_LINE) std::atomic<size_t> offset_{ 0 };
     // Lightweight instrumentation counters.
     // All counters are monotonic and intentionally sampled with relaxed ordering.
     std::atomic<size_t> local_chunk_hits_{ 0 };
     std::atomic<size_t> local_chunk_refills_{ 0 };
     std::atomic<size_t> global_allocations_{ 0 };
-    std::atomic<size_t> failed_allocations_{ 0 };
+
+    alignas(CACHE_LINE) std::atomic<size_t> failed_allocations_{ 0 };
     std::atomic<size_t> commit_calls_{ 0 };
     std::atomic<size_t> release_calls_{ 0 };
+    std::mutex commit_mutex_;
+    std::mutex release_mutex_;
 };
 
 using ConcurrentArena = ConcurrentArenaCore<AtomicCleanupStackPolicy, QuiescentReleasePolicy>;

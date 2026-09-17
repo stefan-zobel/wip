@@ -4,6 +4,7 @@
 #define NOMINMAX
 #endif
 
+#include <concepts>
 #include <memory>
 #include <new>
 #include <type_traits>
@@ -38,6 +39,12 @@ public:
     static constexpr size_t PAGE_SIZE = 4096;
     static constexpr size_t INITIAL_COMMIT = 64 * 1024;
 
+    // The arena owns its reservation and the cleanup list: a copy would free both twice.
+    SimpleArena(const SimpleArena&) = delete;
+    SimpleArena& operator=(const SimpleArena&) = delete;
+    SimpleArena(SimpleArena&&) = delete;
+    SimpleArena& operator=(SimpleArena&&) = delete;
+
     ~SimpleArena() {
         release();
         if (base_ptr) {
@@ -63,7 +70,7 @@ public:
             return nullptr; // alignment must be a power of two
         }
 
-        size_t current_addr = reinterpret_cast<size_t>(base_ptr) + offset;
+        uintptr_t current_addr = reinterpret_cast<uintptr_t>(base_ptr) + offset;
         size_t padding = (alignment - (current_addr & (alignment - 1))) & (alignment - 1);
 
         // Overflow-safe form of 'offset + padding + size > reserved_size'
@@ -127,7 +134,7 @@ public:
     Marker get_marker() const noexcept {
         // Rollbacks MUST snap to a universally safe boundary (Cache-Line size).
         // This makes it completely immune to extreme AVX/SIMD instructions.
-        size_t current_addr = reinterpret_cast<size_t>(base_ptr) + offset;
+        uintptr_t current_addr = reinterpret_cast<uintptr_t>(base_ptr) + offset;
         size_t alignment = UNIVERSAL_MAX_ALIGN;
         size_t padding = (alignment - (current_addr & (alignment - 1))) & (alignment - 1);
         
@@ -201,3 +208,6 @@ private:
     SimpleArena(void* base, size_t reserve, size_t commit)
         : base_ptr(base), reserved_size(reserve), committed_size(commit) {}
 };
+
+static_assert(!std::copy_constructible<SimpleArena>);
+static_assert(!std::movable<SimpleArena>);

@@ -26,8 +26,14 @@ public:
             return nullptr; // Underlying arena is completely out of memory
         }
 
-        // Execute placement new to construct the object in the reserved memory
-        return new (ptr) T(std::forward<Args>(args)...);
+        // Execute placement new to construct the object in the reserved memory.
+        // If the constructor throws, the block goes back to the free list instead of being lost.
+        try {
+            return new (ptr) T(std::forward<Args>(args)...);
+        } catch (...) {
+            recycle(ptr);
+            throw;
+        }
     }
 
     // Destroys the object and recycles its memory into the free list
@@ -37,13 +43,17 @@ public:
         // 1. Explicitly call the destructor
         ptr->~T();
 
-        // 2. Clear the memory and morph it into a free list node
-        Node* new_node = reinterpret_cast<Node*>(ptr);
-        new_node->next = free_list;
-        free_list = new_node;
+        // 2. Morph the memory into a free list node
+        recycle(ptr);
     }
 
 private:
+    // Puts a block without a live object onto the free list
+    void recycle(T* ptr) noexcept {
+        Node* new_node = ::new (static_cast<void*>(ptr)) Node{ free_list };
+        free_list = new_node;
+    }
+
     // Fetches memory either from recycling or the underlying arena
     T* allocate_block() {
         // Automatic sync:
