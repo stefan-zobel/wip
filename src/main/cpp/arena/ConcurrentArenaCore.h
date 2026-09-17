@@ -249,7 +249,14 @@ struct QuiescentReleasePolicy {
     }
 
     void begin_release() noexcept {
-        sealed_.store(true, std::memory_order_release);
+        // Must be a sequentially consistent (serializing) store. This is one half of a Dekker
+        // handshake: release() stores sealed_ and then loads the operation count, an operation
+        // increments the count and then loads sealed_. With memory_order_release, gcc and MSVC emit
+        // a plain mov on x86-64; the store can still sit in this core's store buffer while this
+        // thread already loads the count, so both sides miss each other and release() frees memory
+        // that an operation still uses (concurrent_arena_test.release_during_operations). The
+        // default order emits xchg, which drains the store buffer first.
+        sealed_.store(true);
     }
 
     void wait_for_quiescence() noexcept {
@@ -261,7 +268,9 @@ struct QuiescentReleasePolicy {
     }
 
     void end_release() noexcept {
-        sealed_.store(false, std::memory_order_release);
+        // Serializing as well (see begin_release), so a thread that is about to wait for
+        // sealed_ == true cannot miss the change and the notification.
+        sealed_.store(false);
         sealed_.notify_all();
     }
 
@@ -299,7 +308,14 @@ struct TryEnterReleasePolicy {
     }
 
     void begin_release() noexcept {
-        sealed_.store(true, std::memory_order_release);
+        // Must be a sequentially consistent (serializing) store. This is one half of a Dekker
+        // handshake: release() stores sealed_ and then loads the operation count, an operation
+        // increments the count and then loads sealed_. With memory_order_release, gcc and MSVC emit
+        // a plain mov on x86-64; the store can still sit in this core's store buffer while this
+        // thread already loads the count, so both sides miss each other and release() frees memory
+        // that an operation still uses (concurrent_arena_test.release_during_operations). The
+        // default order emits xchg, which drains the store buffer first.
+        sealed_.store(true);
     }
 
     void wait_for_quiescence() noexcept {
@@ -311,7 +327,9 @@ struct TryEnterReleasePolicy {
     }
 
     void end_release() noexcept {
-        sealed_.store(false, std::memory_order_release);
+        // Serializing as well (see begin_release), so a thread that is about to wait for
+        // sealed_ == true cannot miss the change and the notification.
+        sealed_.store(false);
         sealed_.notify_all();
     }
 
