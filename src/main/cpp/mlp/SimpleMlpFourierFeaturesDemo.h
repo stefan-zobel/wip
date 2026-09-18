@@ -80,11 +80,15 @@ namespace simple_mlp_fourier_demo_detail {
     }
 }
 
-inline void run_simple_mlp_fourier_demo() {
+inline void run_simple_mlp_fourier_demo(MlpTrainingMode mode = MlpTrainingMode::MiniBatch) {
     using namespace simple_mlp_fourier_demo_detail;
 
     std::cout << "\n=== Simple MLP demo: 2D nonlinear regression ===\n";
     std::cout << "Target: f(x,y) = sin(pi*x) * cos(0.5*pi*y) + 0.3*x*y\n";
+    std::cout << "Training path: "
+              << (mode == MlpTrainingMode::MiniBatch ? "mini-batches through the blocked GEMM"
+                                                     : "scalar reverse-mode tape, one sample at a time")
+              << "\n";
 
     const std::array<std::size_t, 4> sizes{ 14, 24, 24, 1 };
     const std::array<MlpActivation, 3> activations{
@@ -110,17 +114,31 @@ inline void run_simple_mlp_fourier_demo() {
 
     constexpr int epochs = 3500;
 
-    // Instantiate global tape for this thread
+    // Both training paths are kept; see run_simple_mlp_demo for the description. The scratch arena
+    // is only ever handed to the GEMM - it is sized exactly for the packing buffers.
+    constexpr std::size_t batch_size = 16;
     Tape<double> training_tape;
+    auto scratch_arena = SimpleArena::create(default_blocked_gemm_scratch_bytes<double>());
+    if (!scratch_arena) {
+        throw std::bad_alloc();
+    }
+    MlpBatchWorkspace workspace;
+    mlp.prepare_workspace(workspace, batch_size);
 
     // Select your optimizer to use here
     constexpr MlpOptimizer optimizer = MlpOptimizer::Adam;
 
     constexpr double weight_decay = 1e-4;
     // ADJUST HYPERPARAMETERS FOR ADAM
-    // If using MomentumSgd: set lr_max = 0.03, lr_min = 0.0001
-    // If using Adam:        set lr_max = 0.001, lr_min = 0.0001 (or keep flat 0.001)
-    double lr_max = (optimizer == MlpOptimizer::Adam) ? 0.001 : 0.03;
+    // Per sample:     MomentumSgd lr_max = 0.03,               Adam lr_max = 0.001
+    // Mini-batches:   MomentumSgd lr_max = 0.03 * batch_size,  Adam lr_max = 0.001 * sqrt(batch_size)
+    // Adam already normalizes by the gradient magnitude, so it takes the square root of the batch
+    // size rather than the linear scaling momentum SGD needs. At 0.004 the batched run is more
+    // accurate than the per-sample one, because the mean gradient of a batch is less noisy.
+    const double batch_factor = (mode == MlpTrainingMode::MiniBatch)
+        ? ((optimizer == MlpOptimizer::Adam) ? 4.0 : static_cast<double>(batch_size))
+        : 1.0;
+    double lr_max = batch_factor * ((optimizer == MlpOptimizer::Adam) ? 0.001 : 0.03);
     double lr_min = (optimizer == MlpOptimizer::Adam) ? 0.0001 : 0.0001;
     double max_epochs = epochs;
 
@@ -133,7 +151,10 @@ inline void run_simple_mlp_fourier_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, optimizer, weight_decay);
+        const double epoch_loss = (mode == MlpTrainingMode::MiniBatch)
+            ? mlp.train_epoch_batched(training_samples, batch_size, learning_rate, workspace,
+                  *scratch_arena, optimizer, weight_decay)
+            : mlp.train_epoch(training_samples, learning_rate, training_tape, optimizer, weight_decay);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);

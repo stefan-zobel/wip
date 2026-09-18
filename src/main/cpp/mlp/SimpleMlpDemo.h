@@ -54,10 +54,14 @@ namespace simple_mlp_demo_detail {
     }
 }
 
-inline void run_simple_mlp_demo() {
+inline void run_simple_mlp_demo(MlpTrainingMode mode = MlpTrainingMode::MiniBatch) {
     using namespace simple_mlp_demo_detail;
 
     std::cout << "\n=== Simple MLP demo: 2D nonlinear regression ===\n";
+    std::cout << "Training path: "
+              << (mode == MlpTrainingMode::MiniBatch ? "mini-batches through the blocked GEMM"
+                                                     : "scalar reverse-mode tape, one sample at a time")
+              << "\n";
     std::cout << "Target: f(x,y) = sin(pi*x) * cos(0.5*pi*y) + 0.3*x*y\n";
 
     const std::array<std::size_t, 4> sizes{ 2, 32, 32, 1 };
@@ -84,12 +88,27 @@ inline void run_simple_mlp_demo() {
 
     constexpr int epochs = 3000;
 
-    // Instantiate global tape for this thread
+    // Both training paths are kept so the demo can show either one.
+    //
+    // ScalarTape: one reverse-mode tape per sample, the original variant.
+    // MiniBatch:  forward and backward as matrix operations through the blocked AVX2 GEMM. The
+    //             scratch arena is only ever handed to the GEMM - it is sized exactly for the
+    //             packing buffers, so nothing else may be allocated from it.
+    constexpr std::size_t batch_size = 16;
     Tape<double> training_tape;
+    auto scratch_arena = SimpleArena::create(default_blocked_gemm_scratch_bytes<double>());
+    if (!scratch_arena) {
+        throw std::bad_alloc();
+    }
+    MlpBatchWorkspace workspace;
+    mlp.prepare_workspace(workspace, batch_size);
 
     constexpr double weight_decay = 0.0;
-    double lr_max = 0.03;   // max learning rate
-    double lr_min = 0.0001; // min learning rate
+    // A batch of 16 means 16 times fewer updates per epoch, so the step grows by the same factor
+    // (linear scaling rule): 0.03 * 16 = 0.48 reproduces the per-sample validation RMSE. Leaving the
+    // rate at 0.03 with batches would end three times worse.
+    double lr_max = (mode == MlpTrainingMode::MiniBatch) ? 0.48 : 0.03; // max learning rate
+    double lr_min = 0.0001;                                             // min learning rate
     double max_epochs = epochs;
 
     double min_valid_rmse = initial_valid_rmse;
@@ -101,7 +120,11 @@ inline void run_simple_mlp_demo() {
         // learning rate cosine decay
         double learning_rate = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(pi * epoch / max_epochs));
 
-        const double epoch_loss = mlp.train_epoch(training_samples, learning_rate, training_tape, MlpOptimizer::MomentumSgd, weight_decay);
+        const double epoch_loss = (mode == MlpTrainingMode::MiniBatch)
+            ? mlp.train_epoch_batched(training_samples, batch_size, learning_rate, workspace,
+                  *scratch_arena, MlpOptimizer::MomentumSgd, weight_decay)
+            : mlp.train_epoch(training_samples, learning_rate, training_tape,
+                  MlpOptimizer::MomentumSgd, weight_decay);
 
         if (epoch == 1 || epoch % 20 == 0 || epoch == epochs) {
             const double valid_rmse = rmse(mlp, validation_samples);

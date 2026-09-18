@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "reverse_mode.h"
+#include "MlpBatch.h"
 
 enum class MlpActivation {
     Linear,
@@ -21,6 +22,13 @@ enum class MlpActivation {
     Sigmoid,
     Swish,
     Relu
+};
+
+// Which of the two training paths a caller wants. Both compute the same gradients, see
+// mlp_batch_test.batch_of_one_matches_train_step; MiniBatch is roughly thirty times faster.
+enum class MlpTrainingMode {
+    ScalarTape, // train_step / train_epoch: one reverse-mode tape per sample
+    MiniBatch   // train_batch / train_epoch_batched: matrix operations through the blocked GEMM
 };
 
 enum class MlpOptimizer {
@@ -259,102 +267,249 @@ public:
 
         tape.backward(loss);
 
-        // 5a. Gradient clipping: rescale all parameter gradients so their global L2 norm <= max_grad_norm
-        //     (the gradients of this one sample)
-        constexpr double max_grad_norm = 5.0;
+        // 5. Collect the parameter gradients into one flat array and hand them to the shared
+        //    optimizer. train_batch fills the same array from the GEMM results, so clipping,
+        //    momentum SGD and Adam exist exactly once and cannot drift between the two paths.
         {
-            double sq_norm = 0.0;
+            std::size_t next = 0;
             for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
                 const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
                 for (const Var<double>& w : ad_layer.weights) {
-                    const double g = w.gradient();
-                    sq_norm += g * g;
+                    flat_gradients_[next++] = w.gradient();
                 }
                 for (const Var<double>& b : ad_layer.biases) {
-                    const double g = b.gradient();
-                    sq_norm += g * g;
-                }
-            }
-            clip_scale_ = (sq_norm > max_grad_norm * max_grad_norm)
-                ? max_grad_norm / std::sqrt(sq_norm)
-                : 1.0;
-        }
-
-        // 5b. Select Optimization Path (Parameter updates with inline L2 Regularization)
-        if (optimizer == MlpOptimizer::MomentumSgd) {
-            const double momentum_factor = 0.9;
-            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-                DenseLayer& numeric_layer = layers_[layer_idx];
-                const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
-
-                // Weights update with weight Decay
-                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-                    // Regularized Gradient: grad = raw_grad + lambda * weight
-                    const double grad = clip_scale_ * ad_layer.weights[i].gradient() + weight_decay * numeric_layer.weights[i];
-
-                    numeric_layer.weight_velocities[i] = momentum_factor * numeric_layer.weight_velocities[i]
-                        + learning_rate * grad;
-                    numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
-                }
-                // Biases update (no weight decay)
-                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-                    numeric_layer.bias_velocities[i] = momentum_factor * numeric_layer.bias_velocities[i]
-                        + learning_rate * clip_scale_ * ad_layer.biases[i].gradient();
-                    numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
+                    flat_gradients_[next++] = b.gradient();
                 }
             }
         }
-        else if (optimizer == MlpOptimizer::Adam) {
-            constexpr double beta1 = 0.9;
-            constexpr double beta2 = 0.999;
-            constexpr double epsilon = 1e-8;
-
-            // Increment per-update step counter (correct Adam bias correction)
-            ++adam_step_;
-            const double bias_correction1 = 1.0 - std::pow(beta1, adam_step_);
-            const double bias_correction2 = 1.0 - std::pow(beta2, adam_step_);
-
-            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-                DenseLayer& numeric_layer = layers_[layer_idx];
-                const ReusableLayerVars& ad_layer = reusable_ad_layers_[layer_idx];
-
-                // Adam Weight Updates with weight Decay (AdamW style variant)
-                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
-                    // 1. Clipped gradient (no weight decay term in moment estimates)
-                    const double grad = clip_scale_ * ad_layer.weights[i].gradient();
-
-                    // 2. Update Adam moments exactly as normal
-                    numeric_layer.weight_velocities[i] = beta1 * numeric_layer.weight_velocities[i] + (1.0 - beta1) * grad;
-                    numeric_layer.v_weights[i] = beta2 * numeric_layer.v_weights[i] + (1.0 - beta2) * grad * grad;
-
-                    const double m_hat = numeric_layer.weight_velocities[i] / bias_correction1;
-                    const double v_hat = numeric_layer.v_weights[i] / bias_correction2;
-
-                    // 3. Apply the standard Adam update step
-                    numeric_layer.weights[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
-
-                    // 4. Decoupled weight decay (AdamW step):
-                    // Directly shrink the weight proportional to the current learning rate
-                    numeric_layer.weights[i] -= learning_rate * weight_decay * numeric_layer.weights[i];
-                }
-
-                // Adam Bias Updates (no weight decay)
-                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
-                    const double grad = clip_scale_ * ad_layer.biases[i].gradient();
-
-                    // Re-use bias_velocities vector array for Adam's first moment (m)
-                    numeric_layer.bias_velocities[i] = beta1 * numeric_layer.bias_velocities[i] + (1.0 - beta1) * grad;
-                    numeric_layer.v_biases[i] = beta2 * numeric_layer.v_biases[i] + (1.0 - beta2) * grad * grad;
-
-                    const double m_hat = numeric_layer.bias_velocities[i] / bias_correction1;
-                    const double v_hat = numeric_layer.v_biases[i] / bias_correction2;
-
-                    numeric_layer.biases[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
-                }
-            }
-        }
+        apply_parameter_update(flat_gradients_, learning_rate, optimizer, weight_decay);
 
         return loss.value();
+    }
+
+    // Sizes a workspace for this topology and the largest mini-batch that will be used. Call it once;
+    // forward_batch and train_batch then allocate nothing.
+    void prepare_workspace(MlpBatchWorkspace& workspace, std::size_t max_batch_size) const {
+        std::vector<std::size_t> widths;
+        std::vector<double> dropout_rates;
+        widths.reserve(layers_.size() + 1);
+        dropout_rates.reserve(layers_.size());
+
+        widths.push_back(input_size());
+        for (const DenseLayer& layer : layers_) {
+            widths.push_back(layer.output_size);
+            dropout_rates.push_back(layer.dropout_rate);
+        }
+        workspace.prepare(widths, dropout_rates, max_batch_size);
+    }
+
+    // Forward pass over a whole mini-batch, reading workspace.inputs and filling the per-layer
+    // pre-activations and activations. With training == false no dropout is applied, which makes
+    // the result match predict() row by row (up to the summation order of the GEMM).
+    // Not const: with training == true the dropout draws advance dropout_rng_.
+    void forward_batch(MlpBatchWorkspace& workspace, SimpleArena& scratch_arena, bool training) {
+        require_prepared(workspace);
+
+        const MlpMatrix* layer_input = &workspace.inputs;
+        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            const DenseLayer& layer = layers_[layer_idx];
+            MlpMatrix& pre_activation = workspace.pre_activations[layer_idx];
+            MlpMatrix& activation = workspace.activations[layer_idx];
+
+            // Z = X * W^T. W is stored (output_size x input_size), so op(B) = W^T is (in x out).
+            mlp_gemm(scratch_arena, GemmTranspose::NoTrans, GemmTranspose::Trans,
+                layer_input->const_view(), weight_view(layer), pre_activation.view(),
+                "Z = X * W^T");
+
+            const bool drops = training && layer.dropout_rate > 0.0;
+            std::vector<double>& mask = workspace.dropout_masks[layer_idx];
+
+            for (std::size_t row = 0; row < pre_activation.rows; ++row) {
+                double* z_row = pre_activation.row(row);
+                double* a_row = activation.row(row);
+                double* mask_row = drops ? mask.data() + row * layer.output_size : nullptr;
+
+                for (std::size_t col = 0; col < layer.output_size; ++col) {
+                    // The GEMM does not add the bias, so it goes in here, before the activation.
+                    z_row[col] += layer.biases[col];
+                    double value = apply_activation(layer.activation, z_row[col]);
+                    if (mask_row) {
+                        const double scale = draw_dropout_scale(layer.dropout_rate, dropout_rng_);
+                        mask_row[col] = scale;
+                        value *= scale;
+                    }
+                    a_row[col] = value;
+                }
+            }
+
+            layer_input = &activation;
+        }
+    }
+
+    // One optimizer step on a whole mini-batch. The caller fills workspace.inputs and
+    // workspace.targets and calls set_batch_size first; see train_epoch_batched.
+    //
+    // Same arithmetic as train_step, only over B rows at once: the loss is the mean squared error
+    // over batch and outputs, clipping uses the global norm of the batch gradient, and Adam counts
+    // one step per call. With B == 1 every one of those reduces to what train_step does, which is
+    // what mlp_batch_test.batch_of_one_matches_train_step pins down.
+    double train_batch(double learning_rate,
+        MlpBatchWorkspace& workspace,
+        SimpleArena& scratch_arena,
+        MlpOptimizer optimizer,
+        double weight_decay) {
+        require_prepared(workspace);
+
+        if (last_optimizer_ != optimizer) {
+            for (DenseLayer& layer : layers_) {
+                layer.reset_optimizer_state();
+            }
+            adam_step_ = 0;
+            last_optimizer_ = optimizer;
+        }
+
+        forward_batch(workspace, scratch_arena, /*training=*/true);
+
+        const std::size_t batch = workspace.batch_size;
+        const std::size_t last = layers_.size() - 1;
+        const std::size_t out_width = layers_[last].output_size;
+        const double sample_scale = 1.0 / static_cast<double>(batch);
+
+        // Loss and the seed of the backward pass. mse per row is sum((a - y)^2) / out_width, and
+        // the batch loss is the mean over rows; the derivative carries both divisors.
+        double loss = 0.0;
+        {
+            MlpMatrix& prediction = workspace.activations[last];
+            MlpMatrix& delta = workspace.deltas[last];
+            const double grad_scale = 2.0 / static_cast<double>(batch * out_width);
+
+            for (std::size_t row = 0; row < batch; ++row) {
+                const double* a_row = prediction.row(row);
+                const double* y_row = workspace.targets.row(row);
+                double* d_row = delta.row(row);
+                double row_loss = 0.0;
+
+                for (std::size_t col = 0; col < out_width; ++col) {
+                    const double diff = a_row[col] - y_row[col];
+                    row_loss += diff * diff;
+                    d_row[col] = grad_scale * diff;
+                }
+                loss += row_loss / static_cast<double>(out_width);
+            }
+            loss *= sample_scale;
+        }
+
+        // Backward through the chain. deltas[l] holds dA on entry and becomes dZ in place.
+        for (std::size_t layer_idx = layers_.size(); layer_idx-- > 0;) {
+            const DenseLayer& layer = layers_[layer_idx];
+            MlpMatrix& delta = workspace.deltas[layer_idx];
+            const MlpMatrix& pre_activation = workspace.pre_activations[layer_idx];
+            const MlpMatrix& activation = workspace.activations[layer_idx];
+            const std::vector<double>& mask = workspace.dropout_masks[layer_idx];
+            const bool drops = !mask.empty();
+
+            // dZ = dA (*) mask (*) act'(Z). Dropout scales the activation output, so its factor
+            // multiplies the incoming gradient before the activation derivative is applied.
+            for (std::size_t row = 0; row < batch; ++row) {
+                double* d_row = delta.row(row);
+                const double* z_row = pre_activation.row(row);
+                const double* a_row = activation.row(row);
+                const double* mask_row = drops ? mask.data() + row * layer.output_size : nullptr;
+
+                for (std::size_t col = 0; col < layer.output_size; ++col) {
+                    double gradient = d_row[col];
+                    double activation_value = a_row[col];
+                    if (mask_row) {
+                        gradient *= mask_row[col];
+                        // Undo the inverted-dropout scaling to recover act(z) for the derivative.
+                        if (mask_row[col] != 0.0) {
+                            activation_value /= mask_row[col];
+                        }
+                        else {
+                            activation_value = apply_activation(layer.activation, z_row[col]);
+                        }
+                    }
+                    d_row[col] = gradient * activation_derivative(layer.activation, z_row[col], activation_value);
+                }
+            }
+
+            // db = column sums of dZ
+            std::vector<double>& bias_gradient = workspace.bias_gradients[layer_idx];
+            for (std::size_t col = 0; col < layer.output_size; ++col) {
+                bias_gradient[col] = 0.0;
+            }
+            for (std::size_t row = 0; row < batch; ++row) {
+                const double* d_row = delta.row(row);
+                for (std::size_t col = 0; col < layer.output_size; ++col) {
+                    bias_gradient[col] += d_row[col];
+                }
+            }
+
+            // dW = dZ^T * X, which lands in exactly the layout of DenseLayer::weights.
+            const MlpMatrix& layer_input =
+                (layer_idx == 0) ? workspace.inputs : workspace.activations[layer_idx - 1];
+            mlp_gemm(scratch_arena, GemmTranspose::Trans, GemmTranspose::NoTrans,
+                delta.const_view(), layer_input.const_view(),
+                workspace.weight_gradients[layer_idx].view(), "dW = dZ^T * X");
+
+            // dA of the layer below = dZ * W. Not needed for the first layer: nothing backpropagates
+            // into the network input.
+            if (layer_idx > 0) {
+                mlp_gemm(scratch_arena, GemmTranspose::NoTrans, GemmTranspose::NoTrans,
+                    delta.const_view(), weight_view(layer),
+                    workspace.deltas[layer_idx - 1].view(), "dA = dZ * W");
+            }
+        }
+
+        // Same flat layout and the same shared optimizer as train_step.
+        {
+            std::size_t next = 0;
+            for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+                const std::vector<double>& weight_gradient = workspace.weight_gradients[layer_idx].data;
+                for (double g : weight_gradient) {
+                    flat_gradients_[next++] = g;
+                }
+                for (double g : workspace.bias_gradients[layer_idx]) {
+                    flat_gradients_[next++] = g;
+                }
+            }
+        }
+        apply_parameter_update(flat_gradients_, learning_rate, optimizer, weight_decay);
+
+        return loss;
+    }
+
+    // Counterpart of train_epoch: walks the samples in order in mini-batches of at most
+    // batch_size rows and returns the mean loss over the batches.
+    double train_epoch_batched(std::span<const MlpSample> samples,
+        std::size_t batch_size,
+        double learning_rate,
+        MlpBatchWorkspace& workspace,
+        SimpleArena& scratch_arena,
+        MlpOptimizer optimizer,
+        double weight_decay = 0.0) {
+        if (samples.empty() || batch_size == 0) {
+            return 0.0;
+        }
+
+        double total = 0.0;
+        std::size_t batches = 0;
+        for (std::size_t first = 0; first < samples.size(); first += batch_size) {
+            const std::size_t rows = std::min(batch_size, samples.size() - first);
+            workspace.set_batch_size(rows);
+
+            for (std::size_t row = 0; row < rows; ++row) {
+                const MlpSample& sample = samples[first + row];
+                assert_shape(sample.input.size(), input_size(), "input");
+                assert_shape(sample.target.size(), output_size(), "target");
+                std::copy(sample.input.begin(), sample.input.end(), workspace.inputs.row(row));
+                std::copy(sample.target.begin(), sample.target.end(), workspace.targets.row(row));
+            }
+
+            total += train_batch(learning_rate, workspace, scratch_arena, optimizer, weight_decay);
+            ++batches;
+        }
+        return total / static_cast<double>(batches);
     }
 
     double train_epoch(std::span<const MlpSample> samples, double learning_rate, Tape<double>& tape, MlpOptimizer optimizer, double weight_decay = 0.0) {
@@ -382,8 +537,134 @@ private:
     long long adam_step_ = 0;
     // Optimizer of the last train_step; a different one resets the optimizer state
     std::optional<MlpOptimizer> last_optimizer_{};
-    // Gradient clipping scale factor, recomputed each train_step before parameter updates
+    // Gradient clipping scale factor, recomputed each update before parameter updates
     double clip_scale_ = 1.0;
+    // All parameter gradients of one update, laid out per layer as weights then biases. Filled from
+    // the tape by train_step and from the GEMM results by train_batch.
+    std::vector<double> flat_gradients_{};
+
+    // Gradient clipping and the parameter update. 'gradients' holds, layer by layer, first every
+    // weight gradient in the layout of DenseLayer::weights, then every bias gradient - the order in
+    // which both train_step and train_batch fill the array.
+    void apply_parameter_update(std::span<const double> gradients,
+        double learning_rate,
+        MlpOptimizer optimizer,
+        double weight_decay) {
+        // Rescale all parameter gradients so their global L2 norm stays at or below max_grad_norm.
+        constexpr double max_grad_norm = 5.0;
+        {
+            double sq_norm = 0.0;
+            for (double g : gradients) {
+                sq_norm += g * g;
+            }
+            clip_scale_ = (sq_norm > max_grad_norm * max_grad_norm)
+                ? max_grad_norm / std::sqrt(sq_norm)
+                : 1.0;
+        }
+
+        if (optimizer == MlpOptimizer::MomentumSgd) {
+            const double momentum_factor = 0.9;
+            std::size_t next = 0;
+            for (DenseLayer& numeric_layer : layers_) {
+                // Weights update with weight decay
+                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                    // Regularized gradient: grad = raw_grad + lambda * weight
+                    const double grad = clip_scale_ * gradients[next++] + weight_decay * numeric_layer.weights[i];
+
+                    numeric_layer.weight_velocities[i] = momentum_factor * numeric_layer.weight_velocities[i]
+                        + learning_rate * grad;
+                    numeric_layer.weights[i] -= numeric_layer.weight_velocities[i];
+                }
+                // Biases update (no weight decay)
+                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
+                    numeric_layer.bias_velocities[i] = momentum_factor * numeric_layer.bias_velocities[i]
+                        + learning_rate * clip_scale_ * gradients[next++];
+                    numeric_layer.biases[i] -= numeric_layer.bias_velocities[i];
+                }
+            }
+        }
+        else if (optimizer == MlpOptimizer::Adam) {
+            constexpr double beta1 = 0.9;
+            constexpr double beta2 = 0.999;
+            constexpr double epsilon = 1e-8;
+
+            // Increment per-update step counter (correct Adam bias correction)
+            ++adam_step_;
+            const double bias_correction1 = 1.0 - std::pow(beta1, adam_step_);
+            const double bias_correction2 = 1.0 - std::pow(beta2, adam_step_);
+
+            std::size_t next = 0;
+            for (DenseLayer& numeric_layer : layers_) {
+                // Adam weight updates with weight decay (AdamW style variant)
+                for (std::size_t i = 0; i < numeric_layer.weights.size(); ++i) {
+                    // 1. Clipped gradient (no weight decay term in moment estimates)
+                    const double grad = clip_scale_ * gradients[next++];
+
+                    // 2. Update Adam moments exactly as normal
+                    numeric_layer.weight_velocities[i] = beta1 * numeric_layer.weight_velocities[i] + (1.0 - beta1) * grad;
+                    numeric_layer.v_weights[i] = beta2 * numeric_layer.v_weights[i] + (1.0 - beta2) * grad * grad;
+
+                    const double m_hat = numeric_layer.weight_velocities[i] / bias_correction1;
+                    const double v_hat = numeric_layer.v_weights[i] / bias_correction2;
+
+                    // 3. Apply the standard Adam update step
+                    numeric_layer.weights[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
+
+                    // 4. Decoupled weight decay (AdamW step):
+                    // Directly shrink the weight proportional to the current learning rate
+                    numeric_layer.weights[i] -= learning_rate * weight_decay * numeric_layer.weights[i];
+                }
+
+                // Adam bias updates (no weight decay)
+                for (std::size_t i = 0; i < numeric_layer.biases.size(); ++i) {
+                    const double grad = clip_scale_ * gradients[next++];
+
+                    // Re-use bias_velocities vector array for Adam's first moment (m)
+                    numeric_layer.bias_velocities[i] = beta1 * numeric_layer.bias_velocities[i] + (1.0 - beta1) * grad;
+                    numeric_layer.v_biases[i] = beta2 * numeric_layer.v_biases[i] + (1.0 - beta2) * grad * grad;
+
+                    const double m_hat = numeric_layer.bias_velocities[i] / bias_correction1;
+                    const double v_hat = numeric_layer.v_biases[i] / bias_correction2;
+
+                    numeric_layer.biases[i] -= (learning_rate / (std::sqrt(v_hat) + epsilon)) * m_hat;
+                }
+            }
+        }
+    }
+
+    // Derivative of the activation at the pre-activation z. 'a' is the activation output, which
+    // Tanh and Sigmoid can reuse instead of recomputing the transcendental.
+    static double activation_derivative(MlpActivation activation, double z, double a) {
+        switch (activation) {
+        case MlpActivation::Linear:
+            return 1.0;
+        case MlpActivation::Tanh:
+            return 1.0 - a * a;
+        case MlpActivation::Sigmoid:
+            return a * (1.0 - a);
+        case MlpActivation::Swish: {
+            const double s = apply_activation(MlpActivation::Sigmoid, z);
+            return s + z * s * (1.0 - s);
+        }
+        case MlpActivation::Relu:
+            // autodiff_max(x, 0.0) selects the constant branch at exactly 0, so the scalar path
+            // reports a derivative of 0 there. Match that.
+            return z > 0.0 ? 1.0 : 0.0;
+        }
+        return 1.0;
+    }
+
+    // W as the GEMM sees it: (output_size x input_size) row-major, stride == input_size.
+    [[nodiscard]] static MatrixView<const double> weight_view(const DenseLayer& layer) noexcept {
+        return MatrixView<const double>{ layer.weights.data(), layer.output_size, layer.input_size,
+                                         layer.input_size };
+    }
+
+    void require_prepared(const MlpBatchWorkspace& workspace) const {
+        if (!workspace.is_prepared() || workspace.pre_activations.size() != layers_.size()) {
+            throw std::invalid_argument("MlpBatchWorkspace was not prepared for this network.");
+        }
+    }
 
     static void assert_shape(std::size_t actual, std::size_t expected, const char* name) {
         if (actual != expected) {
@@ -405,6 +686,12 @@ private:
         // Ensure ping-pong buffers can fit the widest layer layer outputs without resizing
         activation_buffer_a_.reserve(max_layer_width);
         activation_buffer_b_.reserve(max_layer_width);
+
+        std::size_t parameter_count = 0;
+        for (const DenseLayer& layer : layers_) {
+            parameter_count += layer.weights.size() + layer.biases.size();
+        }
+        flat_gradients_.assign(parameter_count, 0.0);
     }
 
     [[nodiscard]] std::size_t estimate_required_nodes(std::size_t input_count) const {
@@ -458,15 +745,20 @@ private:
         return x;
     }
 
+    // One Bernoulli draw for one unit, inverted dropout. Both the scalar and the batched path go
+    // through here, so a batch of one consumes the random stream in exactly the same order.
+    static double draw_dropout_scale(double dropout_rate, std::mt19937& rng) {
+        const double keep_prob = 1.0 - dropout_rate;
+        std::bernoulli_distribution keep_dist(keep_prob);
+        return keep_dist(rng) ? (1.0 / keep_prob) : 0.0;
+    }
+
     static Var<double> apply_dropout(Var<double> x, double dropout_rate, std::mt19937& rng) {
         if (dropout_rate <= 0.0) {
             return x;
         }
 
-        const double keep_prob = 1.0 - dropout_rate;
-        std::bernoulli_distribution keep_dist(keep_prob);
-        const double scale = keep_dist(rng) ? (1.0 / keep_prob) : 0.0;
-        return x * scale;
+        return x * draw_dropout_scale(dropout_rate, rng);
     }
 
     static Var<double> apply_activation(MlpActivation activation, Var<double> x) {
