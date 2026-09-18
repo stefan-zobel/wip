@@ -52,13 +52,23 @@ struct Avx2GemmTraits<float> {
     using Scalar = float;
     using Vec = __m256;
 
+    // 6x16: same shape as the double kernel one vector width up. 12 accumulator registers keep the
+    // two FMA pipes busy despite the 4-cycle FMA latency, and one k step needs 6 broadcasts plus 2
+    // vector loads for 12 FMAs, which stays below one load per FMA. Both columns of the micro tile
+    // are full vectors, so the storeback needs neither a transpose nor a mask.
+    // See sgemm_micro_kernel_6x16_avx2.
     static constexpr size_t vector_lanes = 8;
-    static constexpr size_t mr = 8;
-    static constexpr size_t nr = 6;
+    static constexpr size_t mr = 6;
+    static constexpr size_t nr = 16;
 
+    // The packed A panel (mc x kc, 192 KB) is meant to stay in L2, the packed B panel
+    // (kc x nc, 512 KB) in L3. Measured on Zen 3 over n = 200 ... 2000. Most of the gain over the
+    // previous 128/256/256 comes from mc alone: 128 is not a multiple of mr, so the last micro
+    // panel carried 2 useful rows out of 6. Among the candidates with an aligned mc the spread is
+    // about 1 %, which is the run-to-run drift of this machine; 192/512/256 led consistently.
     static constexpr size_t kc = 256;
-    static constexpr size_t mc = 128;
-    static constexpr size_t nc = 256;
+    static constexpr size_t mc = 192; // 32 micro panels of mr rows
+    static constexpr size_t nc = 512; // 32 micro panels of nr columns
 
     static constexpr size_t alignment = 64;
 };

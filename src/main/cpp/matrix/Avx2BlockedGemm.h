@@ -76,7 +76,7 @@ inline void gemm_micro_kernel_dispatch(const float* packed_a,
                                        float* c,
                                        size_t c_stride,
                                        size_t kc) noexcept {
-    sgemm_micro_kernel_8x6_avx2(packed_a, packed_b, c, c_stride, kc);
+    sgemm_micro_kernel_6x16_avx2(packed_a, packed_b, c, c_stride, kc);
 }
 
 inline void gemm_micro_kernel_dispatch(const double* packed_a,

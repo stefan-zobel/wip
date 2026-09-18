@@ -35,10 +35,12 @@
 inline SimpleArena& get_thread_scratch_arena() {
     thread_local std::unique_ptr<SimpleArena> arena;
     if (!arena) {
-        // Derived from the blocking, so the arena stays in step with Avx2GemmTraits<double>.
-        // The arena only reserves address space and commits on demand, so nothing is paid
-        // for up front.
-        arena = SimpleArena::create(default_blocked_gemm_scratch_bytes<double>());
+        // Derived from the blocking, so the arena stays in step with Avx2GemmTraits. Both scalar
+        // types are taken into account: Mat itself is double, but the arena is the scratch space
+        // of the whole thread, and the float blocking is tuned independently. The arena only
+        // reserves address space and commits on demand, so nothing is paid for up front.
+        arena = SimpleArena::create(std::max(default_blocked_gemm_scratch_bytes<double>(),
+                                             default_blocked_gemm_scratch_bytes<float>()));
         if (!arena) {
             throw std::bad_alloc();
         }
