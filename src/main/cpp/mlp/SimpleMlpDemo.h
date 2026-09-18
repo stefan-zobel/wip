@@ -38,6 +38,9 @@ namespace simple_mlp_demo_detail {
         return samples;
     }
 
+    // Deliberately one sample at a time. Evaluating the whole set through predict_batch was tried
+    // and measured: it saves 0.09 s of the demo's 4.2 s, because the runtime is training, not
+    // validation. Not worth twenty lines of batching here. See Audit.md, section autodiff/mlp.
     inline double rmse(const SimpleMlp& mlp, const std::vector<MlpSample>& samples) {
         if (samples.empty()) {
             return 0.0;

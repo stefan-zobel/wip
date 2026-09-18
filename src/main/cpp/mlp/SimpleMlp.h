@@ -308,42 +308,14 @@ public:
     // the result match predict() row by row (up to the summation order of the GEMM).
     // Not const: with training == true the dropout draws advance dropout_rng_.
     void forward_batch(MlpBatchWorkspace& workspace, SimpleArena& scratch_arena, bool training) {
-        require_prepared(workspace);
+        forward_batch_core(workspace, scratch_arena, training ? &dropout_rng_ : nullptr);
+    }
 
-        const MlpMatrix* layer_input = &workspace.inputs;
-        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
-            const DenseLayer& layer = layers_[layer_idx];
-            MlpMatrix& pre_activation = workspace.pre_activations[layer_idx];
-            MlpMatrix& activation = workspace.activations[layer_idx];
-
-            // Z = X * W^T. W is stored (output_size x input_size), so op(B) = W^T is (in x out).
-            mlp_gemm(scratch_arena, GemmTranspose::NoTrans, GemmTranspose::Trans,
-                layer_input->const_view(), weight_view(layer), pre_activation.view(),
-                "Z = X * W^T");
-
-            const bool drops = training && layer.dropout_rate > 0.0;
-            std::vector<double>& mask = workspace.dropout_masks[layer_idx];
-
-            for (std::size_t row = 0; row < pre_activation.rows; ++row) {
-                double* z_row = pre_activation.row(row);
-                double* a_row = activation.row(row);
-                double* mask_row = drops ? mask.data() + row * layer.output_size : nullptr;
-
-                for (std::size_t col = 0; col < layer.output_size; ++col) {
-                    // The GEMM does not add the bias, so it goes in here, before the activation.
-                    z_row[col] += layer.biases[col];
-                    double value = apply_activation(layer.activation, z_row[col]);
-                    if (mask_row) {
-                        const double scale = draw_dropout_scale(layer.dropout_rate, dropout_rng_);
-                        mask_row[col] = scale;
-                        value *= scale;
-                    }
-                    a_row[col] = value;
-                }
-            }
-
-            layer_input = &activation;
-        }
+    // The whole batch through the network without dropout: what predict() computes, for
+    // workspace.batch_size rows at once. The result is workspace.activations.back().
+    // Const, because inference does not touch any state of the model.
+    void predict_batch(MlpBatchWorkspace& workspace, SimpleArena& scratch_arena) const {
+        forward_batch_core(workspace, scratch_arena, nullptr);
     }
 
     // One optimizer step on a whole mini-batch. The caller fills workspace.inputs and
@@ -542,6 +514,51 @@ private:
     // All parameter gradients of one update, laid out per layer as weights then biases. Filled from
     // the tape by train_step and from the GEMM results by train_batch.
     std::vector<double> flat_gradients_{};
+
+    // The shared forward pass. A null dropout_rng means inference; otherwise one Bernoulli is drawn
+    // per unit and the scale is recorded in the workspace, because the backward pass needs the very
+    // same mask. Const: the random generator is the only mutable state a forward pass touches, and
+    // it comes in from the caller.
+    void forward_batch_core(MlpBatchWorkspace& workspace,
+        SimpleArena& scratch_arena,
+        std::mt19937* dropout_rng) const {
+        require_prepared(workspace);
+
+        const MlpMatrix* layer_input = &workspace.inputs;
+        for (std::size_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            const DenseLayer& layer = layers_[layer_idx];
+            MlpMatrix& pre_activation = workspace.pre_activations[layer_idx];
+            MlpMatrix& activation = workspace.activations[layer_idx];
+
+            // Z = X * W^T. W is stored (output_size x input_size), so op(B) = W^T is (in x out).
+            mlp_gemm(scratch_arena, GemmTranspose::NoTrans, GemmTranspose::Trans,
+                layer_input->const_view(), weight_view(layer), pre_activation.view(),
+                "Z = X * W^T");
+
+            const bool drops = dropout_rng != nullptr && layer.dropout_rate > 0.0;
+            std::vector<double>& mask = workspace.dropout_masks[layer_idx];
+
+            for (std::size_t row = 0; row < pre_activation.rows; ++row) {
+                double* z_row = pre_activation.row(row);
+                double* a_row = activation.row(row);
+                double* mask_row = drops ? mask.data() + row * layer.output_size : nullptr;
+
+                for (std::size_t col = 0; col < layer.output_size; ++col) {
+                    // The GEMM does not add the bias, so it goes in here, before the activation.
+                    z_row[col] += layer.biases[col];
+                    double value = apply_activation(layer.activation, z_row[col]);
+                    if (mask_row) {
+                        const double scale = draw_dropout_scale(layer.dropout_rate, *dropout_rng);
+                        mask_row[col] = scale;
+                        value *= scale;
+                    }
+                    a_row[col] = value;
+                }
+            }
+
+            layer_input = &activation;
+        }
+    }
 
     // Gradient clipping and the parameter update. 'gradients' holds, layer by layer, first every
     // weight gradient in the layout of DenseLayer::weights, then every bias gradient - the order in

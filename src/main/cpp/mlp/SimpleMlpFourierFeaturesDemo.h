@@ -64,6 +64,8 @@ namespace simple_mlp_fourier_demo_detail {
         return samples;
     }
 
+    // One sample at a time on purpose; see simple_mlp_demo_detail::rmse for the measurement that
+    // says batching this is not worth it.
     inline double rmse(const SimpleMlp& mlp, const std::vector<MlpSample>& samples) {
         if (samples.empty()) {
             return 0.0;
