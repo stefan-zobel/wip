@@ -304,8 +304,7 @@ inline void pack_b_panel<double>(const MatrixView<const double>& b,
 }
 
 // One multiply-add step of a micro-kernel: a single rounded instruction where FMA is available, a
-// separate multiply and add otherwise. The two forms round differently, which is what
-// gemm_test_fma and gemm_test_nofma cover.
+// separate multiply and add otherwise. The two forms round differently.
 inline __m256 gemm_madd_ps(__m256 a, __m256 b, __m256 acc) noexcept {
 #if defined(__FMA__) || (defined(_MSC_VER) && defined(__AVX2__)) // MSVC does not define __FMA__; /arch:AVX2 implies FMA
     return _mm256_fmadd_ps(a, b, acc);
