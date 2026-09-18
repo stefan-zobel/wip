@@ -1,11 +1,26 @@
 package misc;
 
+/**
+ * Thomas algorithm for a tridiagonal system, solved directly on a strided slice of a larger grid.
+ * <p>
+ * <b>Not thread-safe.</b> The forward sweep keeps its intermediate results in the instance fields
+ * {@code cp} and {@code dp}, so two threads sharing one instance overwrite each other's scratch and
+ * silently produce wrong results. Give every thread its own instance, for example through a
+ * {@link ThreadLocal}.
+ * <p>
+ * No pivoting is performed. That is safe for the strictly diagonally dominant systems that arise
+ * from the usual diffusion and Laplacian stencils, but it is a precondition the caller has to meet:
+ * a zero pivot yields infinities rather than an exception.
+ */
 public class TriDiagInPlace {
     private final int n;
     private final double[] cp; // auxiliary memory
     private final double[] dp;
 
     public TriDiagInPlace(int n) {
+        if (n <= 1) {
+            throw new IllegalArgumentException("n must be greater than 1, but was " + n);
+        }
         this.n = n;
         this.cp = new double[n];
         this.dp = new double[n];
@@ -16,7 +31,8 @@ public class TriDiagInPlace {
      * @param grid The flat 1D total grid (is modified directly)
      * @param offset Start index of the current rod
      * @param stride Step size to the next element of the rod
-     * @param a, b, c The tridiagonal coefficients (1D arrays of length n)
+     * @param a, b, c The tridiagonal coefficients (1D arrays of length n). Note that {@code a[0]}
+     *        and {@code c[n-1]} are never read - they lie outside the matrix.
      */
     public void solveInPlace(double[] grid, int offset, int stride, double[] a, double[] b, double[] c) {
         // Forward Sweep
